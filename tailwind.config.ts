@@ -13,10 +13,6 @@ export default {
       },
     },
     extend: {
-      fontFamily: {
-        righteous: ['Righteous', 'cursive'],
-        grotesk: ['Space Grotesk', 'sans-serif'],
-      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -61,10 +57,6 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-      },
-      boxShadow: {
-        'retro': 'var(--shadow-retro)',
-        'retro-lg': 'var(--shadow-retro-lg)',
       },
       borderRadius: {
         lg: "var(--radius)",
