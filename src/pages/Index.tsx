@@ -179,6 +179,39 @@ const Index = () => {
               <p className="text-sm text-center">
                 <i>(Fuel my Salesforce wisdom with caffeine! ☕💡)</i>
               </p>
+
+              <hr className="border-2 border-foreground my-4" />
+
+              <button
+                onClick={async () => {
+                  try {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    
+                    if (!user) {
+                      toast.error('Please sign in to join the family');
+                      return;
+                    }
+
+                    const { data, error } = await supabase.functions.invoke('create-subscription-checkout', {
+                      body: { priceId: 'price_1SD2vxLJqhOyuCVBNKCjdl2T' }
+                    });
+                    
+                    if (error) throw error;
+                    if (data.url) {
+                      window.open(data.url, '_blank');
+                    }
+                  } catch (error) {
+                    toast.error('Failed to create subscription');
+                    console.error(error);
+                  }
+                }}
+                className="bg-primary text-primary-foreground border-4 border-foreground px-6 py-3 font-bold hover:bg-accent hover:text-accent-foreground cursor-pointer text-lg animate-pulse"
+              >
+                👨‍👩‍👧‍👦 Join My Family - $10/month
+              </button>
+              <p className="text-sm text-center">
+                <i>(First 10 days FREE! Access exclusive community & downloadable files 🎁)</i>
+              </p>
             </div>
           </div>
 
