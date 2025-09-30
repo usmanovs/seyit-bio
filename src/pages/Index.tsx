@@ -104,6 +104,60 @@ const Index = () => {
 
           <hr className="border-2 border-foreground my-6" />
 
+          <h2 className="text-2xl font-bold mb-4">💼 Hire Me</h2>
+
+          <div className="bg-card border-4 border-foreground p-6 mb-6 inline-block">
+            <p className="text-lg mb-4">
+              <b>Need expert Salesforce consulting?</b> Book a session with me:
+            </p>
+            
+            <div className="flex flex-col gap-4">
+              <button
+                onClick={async () => {
+                  try {
+                    const { data, error } = await supabase.functions.invoke('create-payment', {
+                      body: { priceId: 'price_1SCsw3LJqhOyuCVBPkoNGeWN' }
+                    });
+                    
+                    if (error) throw error;
+                    if (data.url) {
+                      window.open(data.url, '_blank');
+                    }
+                  } catch (error) {
+                    toast.error('Failed to create payment session');
+                    console.error(error);
+                  }
+                }}
+                className="bg-primary text-primary-foreground border-4 border-foreground px-6 py-3 font-bold hover:bg-accent hover:text-accent-foreground cursor-pointer text-lg"
+              >
+                📅 1 Hour Session - $200
+              </button>
+              
+              <button
+                onClick={async () => {
+                  try {
+                    const { data, error } = await supabase.functions.invoke('create-payment', {
+                      body: { priceId: 'price_1SCswKLJqhOyuCVBuIP84sT9' }
+                    });
+                    
+                    if (error) throw error;
+                    if (data.url) {
+                      window.open(data.url, '_blank');
+                    }
+                  } catch (error) {
+                    toast.error('Failed to create payment session');
+                    console.error(error);
+                  }
+                }}
+                className="bg-secondary text-secondary-foreground border-4 border-foreground px-6 py-3 font-bold hover:bg-accent hover:text-accent-foreground cursor-pointer text-lg"
+              >
+                📅 2 Hour Session - $300 (Save $100!)
+              </button>
+            </div>
+          </div>
+
+          <hr className="border-2 border-foreground my-6" />
+
           <img 
             src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExY3c2bWN2Mzk3dGF4YW1tOXAxemljamxsMXBjdGdtMzQ5MjEwZWgyNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JIX9t2j0ZTN9S/giphy.gif" 
             alt="Under Construction" 
