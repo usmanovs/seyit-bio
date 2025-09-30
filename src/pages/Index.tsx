@@ -1,34 +1,4 @@
-import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-
 const Index = () => {
-  const { toast } = useToast();
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    message: ""
-  });
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast({
-      title: "Message Sent!",
-      description: "Thank you for your message. I'll get back to you soon!",
-    });
-    setFormData({ name: "", email: "", message: "" });
-  };
-
-  const handleReset = () => {
-    setFormData({ name: "", email: "", message: "" });
-  };
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header Banner */}
@@ -130,74 +100,6 @@ const Index = () => {
           </div>
 
           <hr className="border-2 border-foreground my-6" />
-
-          <h2 className="text-2xl font-bold mb-4">📧 Contact Me</h2>
-          
-          <form onSubmit={handleSubmit} className="max-w-2xl mx-auto mb-8">
-            <table className="w-full border-4 border-foreground" cellPadding="8">
-              <tbody>
-                <tr className="bg-card">
-                  <td className="border-2 border-foreground font-bold">Name:</td>
-                  <td className="border-2 border-foreground">
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      className="w-full border-2 border-input bg-background px-2 py-1"
-                      size={40}
-                      required
-                    />
-                  </td>
-                </tr>
-                <tr className="bg-card">
-                  <td className="border-2 border-foreground font-bold">Email:</td>
-                  <td className="border-2 border-foreground">
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="w-full border-2 border-input bg-background px-2 py-1"
-                      size={40}
-                      required
-                    />
-                  </td>
-                </tr>
-                <tr className="bg-card">
-                  <td className="border-2 border-foreground font-bold">Message:</td>
-                  <td className="border-2 border-foreground">
-                    <textarea
-                      name="message"
-                      value={formData.message}
-                      onChange={handleChange}
-                      className="w-full border-2 border-input bg-background px-2 py-1"
-                      rows={6}
-                      cols={40}
-                      required
-                    />
-                  </td>
-                </tr>
-                <tr className="bg-accent">
-                  <td colSpan={2} className="border-2 border-foreground text-center">
-                    <button
-                      type="submit"
-                      className="border-2 border-foreground bg-primary text-primary-foreground px-6 py-2 hover:opacity-80 font-bold"
-                    >
-                      Send Message
-                    </button>
-                    <button
-                      type="reset"
-                      onClick={handleReset}
-                      className="border-2 border-foreground bg-secondary text-secondary-foreground px-6 py-2 hover:opacity-80 font-bold ml-4"
-                    >
-                      Reset
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </form>
 
           <img 
             src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExY3c2bWN2Mzk3dGF4YW1tOXAxemljamxsMXBjdGdtMzQ5MjEwZWgyNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JIX9t2j0ZTN9S/giphy.gif" 
