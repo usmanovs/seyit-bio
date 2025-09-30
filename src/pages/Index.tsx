@@ -153,6 +153,32 @@ const Index = () => {
               >
                 📅 2 Hour Session - $300 (Save $100!)
               </button>
+
+              <hr className="border-2 border-foreground my-2" />
+
+              <button
+                onClick={async () => {
+                  try {
+                    const { data, error } = await supabase.functions.invoke('create-payment', {
+                      body: { priceId: 'price_1SCsyFLJqhOyuCVBagDoYlCq' }
+                    });
+                    
+                    if (error) throw error;
+                    if (data.url) {
+                      window.open(data.url, '_blank');
+                    }
+                  } catch (error) {
+                    toast.error('Failed to create payment session');
+                    console.error(error);
+                  }
+                }}
+                className="bg-accent text-accent-foreground border-4 border-foreground px-6 py-3 font-bold hover:bg-secondary hover:text-secondary-foreground cursor-pointer text-lg"
+              >
+                ☕ Buy Seyit a Coffee - $5
+              </button>
+              <p className="text-sm text-center">
+                <i>(Fuel my Salesforce wisdom with caffeine! ☕💡)</i>
+              </p>
             </div>
           </div>
 
