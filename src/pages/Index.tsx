@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 const Index = () => {
   return (
@@ -128,16 +128,9 @@ const Index = () => {
                 .insert({ name, email, message });
               
               if (error) {
-                toast({
-                  title: "Error",
-                  description: "Failed to send message. Please try again.",
-                  variant: "destructive",
-                });
+                toast.error("Failed to send message. Please try again.");
               } else {
-                toast({
-                  title: "Message Sent!",
-                  description: `Thank you ${name}! I'll get back to you soon.`,
-                });
+                toast.success(`Thank you ${name}! I'll get back to you soon.`);
                 e.currentTarget.reset();
               }
             }}>
