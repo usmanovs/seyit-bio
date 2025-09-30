@@ -108,6 +108,76 @@ const Index = () => {
             width="150"
           />
 
+          <hr className="border-2 border-foreground my-6" />
+
+          <h2 className="text-2xl font-bold mb-4">📬 Contact Me</h2>
+
+          <div className="bg-card border-4 border-foreground p-6 mb-6 inline-block w-full max-w-md">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const name = formData.get('name');
+              const email = formData.get('email');
+              const message = formData.get('message');
+              alert(`Thank you ${name}! Your message has been received. I'll get back to you at ${email} soon!`);
+              e.currentTarget.reset();
+            }}>
+              <table className="w-full" cellPadding="8">
+                <tbody>
+                  <tr>
+                    <td className="text-left"><b>Name:</b></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <input 
+                        type="text" 
+                        name="name"
+                        required
+                        className="w-full border-2 border-foreground p-2 bg-background"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="text-left"><b>Email:</b></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <input 
+                        type="email" 
+                        name="email"
+                        required
+                        className="w-full border-2 border-foreground p-2 bg-background"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="text-left"><b>Message:</b></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <textarea 
+                        name="message"
+                        required
+                        rows={5}
+                        className="w-full border-2 border-foreground p-2 bg-background"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="text-center pt-4">
+                      <button 
+                        type="submit"
+                        className="bg-primary text-primary-foreground border-4 border-foreground px-6 py-2 font-bold hover:bg-accent cursor-pointer"
+                      >
+                        📤 SEND MESSAGE
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </form>
+          </div>
+
           <p className="text-sm mt-6">
             <i>Last Updated: {new Date().toLocaleDateString()}</i>
           </p>
