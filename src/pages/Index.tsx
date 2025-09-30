@@ -1,12 +1,62 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { User } from "@supabase/supabase-js";
 
 const Index = () => {
+  const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success("Logged out successfully");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header Banner */}
-      <div className="bg-accent border-4 border-double border-foreground py-3 text-center">
+      <div className="bg-accent border-4 border-double border-foreground py-3 text-center relative">
         <p className="text-2xl font-bold">🌐 Welcome to Seyitbek's Homepage 🌐</p>
+        <div className="absolute right-4 top-1/2 -translate-y-1/2">
+          {!loading && (
+            user ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm">👤 {user.email}</span>
+                <button
+                  onClick={handleLogout}
+                  className="bg-primary text-primary-foreground border-2 border-foreground px-3 py-1 text-sm font-bold hover:bg-accent hover:text-accent-foreground"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => navigate('/auth')}
+                className="bg-primary text-primary-foreground border-2 border-foreground px-4 py-2 font-bold hover:bg-accent hover:text-accent-foreground"
+              >
+                🔐 Login / Sign Up
+              </button>
+            )
+          )}
+        </div>
       </div>
 
       {/* Main Content */}
@@ -184,14 +234,13 @@ const Index = () => {
 
               <button
                 onClick={async () => {
-                  try {
-                    const { data: { user } } = await supabase.auth.getUser();
-                    
-                    if (!user) {
-                      toast.error('Please sign in to join the family');
-                      return;
-                    }
+                  if (!user) {
+                    toast.error('Please sign in to join the family');
+                    navigate('/auth');
+                    return;
+                  }
 
+                  try {
                     const { data, error } = await supabase.functions.invoke('create-subscription-checkout', {
                       body: { priceId: 'price_1SD2vxLJqhOyuCVBNKCjdl2T' }
                     });
