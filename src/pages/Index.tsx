@@ -1,3 +1,6 @@
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
@@ -113,14 +116,30 @@ const Index = () => {
           <h2 className="text-2xl font-bold mb-4">📬 Contact Me</h2>
 
           <div className="bg-card border-4 border-foreground p-6 mb-6 inline-block w-full max-w-md">
-            <form onSubmit={(e) => {
+            <form onSubmit={async (e) => {
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
-              const name = formData.get('name');
-              const email = formData.get('email');
-              const message = formData.get('message');
-              alert(`Thank you ${name}! Your message has been received. I'll get back to you at ${email} soon!`);
-              e.currentTarget.reset();
+              const name = formData.get('name') as string;
+              const email = formData.get('email') as string;
+              const message = formData.get('message') as string;
+              
+              const { error } = await supabase
+                .from('contact_submissions')
+                .insert({ name, email, message });
+              
+              if (error) {
+                toast({
+                  title: "Error",
+                  description: "Failed to send message. Please try again.",
+                  variant: "destructive",
+                });
+              } else {
+                toast({
+                  title: "Message Sent!",
+                  description: `Thank you ${name}! I'll get back to you soon.`,
+                });
+                e.currentTarget.reset();
+              }
             }}>
               <table className="w-full" cellPadding="8">
                 <tbody>
