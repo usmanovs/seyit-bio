@@ -115,19 +115,21 @@ export const DailyNews = () => {
               news.map((item, index) => (
                 <div
                   key={index}
-                  className="p-4 bg-background rounded-lg border hover:border-primary/50 transition-colors"
+                  className="p-4 bg-background rounded-lg border hover:border-primary/50 transition-colors flex gap-4"
                 >
                   {item.imageUrl && (
-                    <div className="mb-3 rounded-md overflow-hidden">
+                    <div className="flex-shrink-0 rounded-md overflow-hidden w-24 h-24">
                       <img 
                         src={item.imageUrl} 
                         alt={item.title}
-                        className="w-full h-48 object-cover"
+                        className="w-full h-full object-cover"
                       />
                     </div>
                   )}
-                  <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
-                  <p className="text-sm text-muted-foreground">{item.summary}</p>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
+                    <p className="text-sm text-muted-foreground">{item.summary}</p>
+                  </div>
                 </div>
               ))
             )}
