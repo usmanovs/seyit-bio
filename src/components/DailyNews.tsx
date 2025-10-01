@@ -14,6 +14,13 @@ export const DailyNews = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const todayDate = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
   const fetchNews = async () => {
     setLoading(true);
     try {
@@ -38,10 +45,13 @@ export const DailyNews = () => {
     <Card className="w-full bg-gradient-to-r from-primary/5 to-accent/5 border-2">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Newspaper className="w-5 h-5" />
-            Top 3 AI News (Powered by Gemini)
-          </CardTitle>
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Newspaper className="w-5 h-5" />
+              Top 3 AI News
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">{todayDate}</p>
+          </div>
           <Button
             variant="ghost"
             size="icon"
