@@ -38,11 +38,11 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a news briefing assistant. Today is ${currentDate}. Provide a brief, professional news summary with 3-5 important topics. Format your response as a JSON array of news items, each with a "title" and "summary" (1-2 sentences). Focus on business, technology, and world events. Be factual and concise.`
+            content: `You are an AI news assistant. Today is ${currentDate}. Provide exactly 3 important AI-related news items. Focus on artificial intelligence, machine learning, AI companies, AI research, and AI applications. Format your response as a JSON array with exactly 3 objects, each containing "title" (short headline) and "summary" (1-2 sentences). Be informative and focus on recent developments in AI.`
           },
           {
             role: 'user',
-            content: 'Please provide today\'s top news headlines and brief summaries.'
+            content: 'Please provide the top 3 AI news items.'
           }
         ],
       }),
@@ -91,19 +91,19 @@ serve(async (req) => {
       }
     } catch (e) {
       console.log('[GET-DAILY-NEWS] Failed to parse JSON, creating fallback structure:', e);
-      // If not JSON, create news items from the text
+      // If not JSON, create AI-focused fallback news items
       newsItems = [
         {
-          title: "Technology & Business Update",
-          summary: "AI continues to transform industries with new developments in machine learning and automation."
+          title: "AI Models Continue Rapid Evolution",
+          summary: "Latest developments in large language models show significant improvements in reasoning capabilities and multimodal understanding."
         },
         {
-          title: "Global Markets",
-          summary: "Financial markets remain active with continued focus on technology sector growth and innovation."
+          title: "AI Integration in Business Accelerates",
+          summary: "Companies across industries are adopting AI tools for automation, customer service, and data analysis at unprecedented rates."
         },
         {
-          title: "Innovation Spotlight",
-          summary: "Recent advances in renewable energy and sustainable technology continue to gain momentum worldwide."
+          title: "AI Safety and Ethics Remain Priority",
+          summary: "Researchers and policymakers continue working on frameworks to ensure responsible AI development and deployment."
         }
       ];
     }

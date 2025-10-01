@@ -40,7 +40,7 @@ export const DailyNews = () => {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Newspaper className="w-5 h-5" />
-            Today's Top News (Powered by Gemini)
+            Top 3 AI News (Powered by Gemini)
           </CardTitle>
           <Button
             variant="ghost"
