@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { User } from "@supabase/supabase-js";
+import napsterLogo from "@/assets/napster-logo.png";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -65,8 +66,8 @@ const Index = () => {
           <h1 className="text-4xl font-bold mb-4 underline">Seyitbek Usmanov</h1>
           
           <img 
-            src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcWp3NGVyOGZrZWV3OGo2YmE2NHZtNnQ3YjN6YjJ3ZnF5Y2NqNnJ1dCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/du3J3cXyzhj75IOgvA/giphy.gif" 
-            alt="Welcome" 
+            src={napsterLogo} 
+            alt="Napster" 
             className="my-4"
             width="200"
           />
