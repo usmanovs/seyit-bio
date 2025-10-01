@@ -15,8 +15,14 @@ const Index = () => {
         subscription
       }
     } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
       setLoading(false);
+      
+      // Redirect authenticated users to dashboard
+      if (currentUser) {
+        navigate('/dashboard');
+      }
     });
 
     // THEN check for existing session
@@ -25,11 +31,17 @@ const Index = () => {
         session
       }
     }) => {
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
       setLoading(false);
+      
+      // Redirect authenticated users to dashboard
+      if (currentUser) {
+        navigate('/dashboard');
+      }
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast.success("Logged out successfully");
