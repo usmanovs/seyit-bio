@@ -8,3 +8,6 @@ verify_jwt = true
 
 [functions.gemini-chat]
 verify_jwt = true
+
+[functions.get-daily-news]
+verify_jwt = true
