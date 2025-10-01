@@ -11,28 +11,6 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [subscribed, setSubscribed] = useState(false);
-  const [checkingSubscription, setCheckingSubscription] = useState(true);
-
-  const checkSubscription = async () => {
-    try {
-      setCheckingSubscription(true);
-      const { data, error } = await supabase.functions.invoke('check-subscription');
-      
-      if (error) throw error;
-      
-      setSubscribed(data.subscribed);
-      
-      if (!data.subscribed) {
-        toast.info("Please subscribe to access the dashboard");
-      }
-    } catch (error: any) {
-      console.error("Subscription check error:", error);
-      toast.error("Failed to check subscription status");
-    } finally {
-      setCheckingSubscription(false);
-    }
-  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -45,7 +23,6 @@ const Dashboard = () => {
       
       setUser(session.user);
       setLoading(false);
-      await checkSubscription();
     };
 
     checkAuth();
@@ -55,7 +32,6 @@ const Dashboard = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
-        checkSubscription();
       }
     });
 
@@ -68,52 +44,10 @@ const Dashboard = () => {
     navigate("/");
   };
 
-  const handleSubscribe = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke('create-checkout');
-      
-      if (error) throw error;
-      
-      if (data.url) {
-        window.open(data.url, '_blank');
-      }
-    } catch (error: any) {
-      console.error("Checkout error:", error);
-      toast.error("Failed to start checkout process");
-    }
-  };
-
-  if (loading || checkingSubscription) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!subscribed) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Join the Family</CardTitle>
-            <CardDescription>
-              Subscribe to access exclusive content and become part of our community
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-center">
-              <p className="text-3xl font-bold">$10</p>
-              <p className="text-muted-foreground">per month</p>
-            </div>
-            <Button onClick={handleSubscribe} className="w-full" size="lg">
-              Subscribe Now
-            </Button>
-            <Button onClick={handleLogout} variant="outline" className="w-full">
-              Sign Out
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     );
   }
