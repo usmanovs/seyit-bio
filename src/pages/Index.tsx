@@ -4,59 +4,49 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { User } from "@supabase/supabase-js";
 import napsterLogo from "@/assets/napster-logo.png";
-
 const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: {
+        subscription
+      }
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({
+      data: {
+        session
+      }
+    }) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
-
     return () => subscription.unsubscribe();
   }, []);
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast.success("Logged out successfully");
   };
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       {/* Header Banner */}
       <div className="bg-accent border-4 border-double border-foreground py-3 text-center relative">
         <p className="text-2xl font-bold">🌐 Welcome to Seyitbek's Homepage 🌐</p>
         <div className="absolute right-4 top-1/2 -translate-y-1/2">
-          {!loading && (
-            user ? (
-              <div className="flex items-center gap-2">
+          {!loading && (user ? <div className="flex items-center gap-2">
                 <span className="text-sm">👤 {user.email}</span>
-                <button
-                  onClick={handleLogout}
-                  className="bg-primary text-primary-foreground border-2 border-foreground px-3 py-1 text-sm font-bold hover:bg-accent hover:text-accent-foreground"
-                >
+                <button onClick={handleLogout} className="bg-primary text-primary-foreground border-2 border-foreground px-3 py-1 text-sm font-bold hover:bg-accent hover:text-accent-foreground">
                   Logout
                 </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => navigate('/auth')}
-                className="bg-primary text-primary-foreground border-2 border-foreground px-4 py-2 font-bold hover:bg-accent hover:text-accent-foreground"
-              >
+              </div> : <button onClick={() => navigate('/auth')} className="bg-primary text-primary-foreground border-2 border-foreground px-4 py-2 font-bold hover:bg-accent hover:text-accent-foreground">
                 🔐 Login / Sign Up
-              </button>
-            )
-          )}
+              </button>)}
         </div>
       </div>
 
@@ -65,20 +55,15 @@ const Index = () => {
         <center>
           <h1 className="text-4xl font-bold mb-4 underline">Seyitbek Usmanov</h1>
           
-          <img 
-            src={napsterLogo} 
-            alt="Napster" 
-            className="my-4"
-            width="200"
-          />
+          <img src={napsterLogo} alt="Napster" className="my-4" width="200" />
 
           <hr className="border-2 border-foreground my-6" />
 
-          <h2 className="text-2xl font-bold mb-3">📋 About Me</h2>
+          <h2 className="text-2xl font-bold mb-3 mx-[6px]">📋 About Seyitbek</h2>
         </center>
 
         <div className="bg-card border-4 border-foreground p-6 mb-6">
-          <p className="text-lg mb-4">
+          <p className="mb-4 mx-0 text-lg">
             <b>Welcome to my personal homepage!</b> I am a Salesforce expert, researcher, educator, and content creator.
           </p>
           <p className="text-lg">
@@ -163,68 +148,71 @@ const Index = () => {
             </p>
             
             <div className="flex flex-col gap-4">
-              <button
-                onClick={async () => {
-                  try {
-                    const { data, error } = await supabase.functions.invoke('create-payment', {
-                      body: { priceId: 'price_1SCsw3LJqhOyuCVBPkoNGeWN' }
-                    });
-                    
-                    if (error) throw error;
-                    if (data.url) {
-                      window.open(data.url, '_blank');
-                    }
-                  } catch (error) {
-                    toast.error('Failed to create payment session');
-                    console.error(error);
+              <button onClick={async () => {
+              try {
+                const {
+                  data,
+                  error
+                } = await supabase.functions.invoke('create-payment', {
+                  body: {
+                    priceId: 'price_1SCsw3LJqhOyuCVBPkoNGeWN'
                   }
-                }}
-                className="bg-primary text-primary-foreground border-4 border-foreground px-6 py-3 font-bold hover:bg-accent hover:text-accent-foreground cursor-pointer text-lg"
-              >
+                });
+                if (error) throw error;
+                if (data.url) {
+                  window.open(data.url, '_blank');
+                }
+              } catch (error) {
+                toast.error('Failed to create payment session');
+                console.error(error);
+              }
+            }} className="bg-primary text-primary-foreground border-4 border-foreground px-6 py-3 font-bold hover:bg-accent hover:text-accent-foreground cursor-pointer text-lg">
                 📅 1 Hour Session - $200
               </button>
               
-              <button
-                onClick={async () => {
-                  try {
-                    const { data, error } = await supabase.functions.invoke('create-payment', {
-                      body: { priceId: 'price_1SCswKLJqhOyuCVBuIP84sT9' }
-                    });
-                    
-                    if (error) throw error;
-                    if (data.url) {
-                      window.open(data.url, '_blank');
-                    }
-                  } catch (error) {
-                    toast.error('Failed to create payment session');
-                    console.error(error);
+              <button onClick={async () => {
+              try {
+                const {
+                  data,
+                  error
+                } = await supabase.functions.invoke('create-payment', {
+                  body: {
+                    priceId: 'price_1SCswKLJqhOyuCVBuIP84sT9'
                   }
-                }}
-                className="bg-secondary text-secondary-foreground border-4 border-foreground px-6 py-3 font-bold hover:bg-accent hover:text-accent-foreground cursor-pointer text-lg"
-              >
+                });
+                if (error) throw error;
+                if (data.url) {
+                  window.open(data.url, '_blank');
+                }
+              } catch (error) {
+                toast.error('Failed to create payment session');
+                console.error(error);
+              }
+            }} className="bg-secondary text-secondary-foreground border-4 border-foreground px-6 py-3 font-bold hover:bg-accent hover:text-accent-foreground cursor-pointer text-lg">
                 📅 2 Hour Session - $300 (Save $100!)
               </button>
 
               <hr className="border-2 border-foreground my-2" />
 
-              <button
-                onClick={async () => {
-                  try {
-                    const { data, error } = await supabase.functions.invoke('create-payment', {
-                      body: { priceId: 'price_1SCsyFLJqhOyuCVBagDoYlCq' }
-                    });
-                    
-                    if (error) throw error;
-                    if (data.url) {
-                      window.open(data.url, '_blank');
-                    }
-                  } catch (error) {
-                    toast.error('Failed to create payment session');
-                    console.error(error);
+              <button onClick={async () => {
+              try {
+                const {
+                  data,
+                  error
+                } = await supabase.functions.invoke('create-payment', {
+                  body: {
+                    priceId: 'price_1SCsyFLJqhOyuCVBagDoYlCq'
                   }
-                }}
-                className="bg-accent text-accent-foreground border-4 border-foreground px-6 py-3 font-bold hover:bg-secondary hover:text-secondary-foreground cursor-pointer text-lg"
-              >
+                });
+                if (error) throw error;
+                if (data.url) {
+                  window.open(data.url, '_blank');
+                }
+              } catch (error) {
+                toast.error('Failed to create payment session');
+                console.error(error);
+              }
+            }} className="bg-accent text-accent-foreground border-4 border-foreground px-6 py-3 font-bold hover:bg-secondary hover:text-secondary-foreground cursor-pointer text-lg">
                 ☕ Buy Seyit a Coffee - $5
               </button>
               <p className="text-sm text-center">
@@ -233,30 +221,30 @@ const Index = () => {
 
               <hr className="border-2 border-foreground my-4" />
 
-              <button
-                onClick={async () => {
-                  if (!user) {
-                    toast.error('Please sign in to join the family');
-                    navigate('/auth');
-                    return;
+              <button onClick={async () => {
+              if (!user) {
+                toast.error('Please sign in to join the family');
+                navigate('/auth');
+                return;
+              }
+              try {
+                const {
+                  data,
+                  error
+                } = await supabase.functions.invoke('create-subscription-checkout', {
+                  body: {
+                    priceId: 'price_1SD2vxLJqhOyuCVBNKCjdl2T'
                   }
-
-                  try {
-                    const { data, error } = await supabase.functions.invoke('create-subscription-checkout', {
-                      body: { priceId: 'price_1SD2vxLJqhOyuCVBNKCjdl2T' }
-                    });
-                    
-                    if (error) throw error;
-                    if (data.url) {
-                      window.open(data.url, '_blank');
-                    }
-                  } catch (error) {
-                    toast.error('Failed to create subscription');
-                    console.error(error);
-                  }
-                }}
-                className="bg-primary text-primary-foreground border-4 border-foreground px-6 py-3 font-bold hover:bg-accent hover:text-accent-foreground cursor-pointer text-lg animate-pulse"
-              >
+                });
+                if (error) throw error;
+                if (data.url) {
+                  window.open(data.url, '_blank');
+                }
+              } catch (error) {
+                toast.error('Failed to create subscription');
+                console.error(error);
+              }
+            }} className="bg-primary text-primary-foreground border-4 border-foreground px-6 py-3 font-bold hover:bg-accent hover:text-accent-foreground cursor-pointer text-lg animate-pulse">
                 👨‍👩‍👧‍👦 Join My Family - $10/month
               </button>
               <p className="text-sm text-center">
@@ -267,36 +255,33 @@ const Index = () => {
 
           <hr className="border-2 border-foreground my-6" />
 
-          <img 
-            src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExY3c2bWN2Mzk3dGF4YW1tOXAxemljamxsMXBjdGdtMzQ5MjEwZWgyNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JIX9t2j0ZTN9S/giphy.gif" 
-            alt="Under Construction" 
-            className="my-4"
-            width="150"
-          />
+          <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExY3c2bWN2Mzk3dGF4YW1tOXAxemljamxsMXBjdGdtMzQ5MjEwZWgyNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JIX9t2j0ZTN9S/giphy.gif" alt="Under Construction" className="my-4" width="150" />
 
           <hr className="border-2 border-foreground my-6" />
 
           <h2 className="text-2xl font-bold mb-4">📬 Contact Me</h2>
 
           <div className="bg-card border-4 border-foreground p-6 mb-6 inline-block w-full max-w-md">
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              const formData = new FormData(e.currentTarget);
-              const name = formData.get('name') as string;
-              const email = formData.get('email') as string;
-              const message = formData.get('message') as string;
-              
-              const { error } = await supabase
-                .from('contact_submissions')
-                .insert({ name, email, message });
-              
-              if (error) {
-                toast.error("Failed to send message. Please try again.");
-              } else {
-                toast.success(`Thank you ${name}! I'll get back to you soon.`);
-                e.currentTarget.reset();
-              }
-            }}>
+            <form onSubmit={async e => {
+            e.preventDefault();
+            const formData = new FormData(e.currentTarget);
+            const name = formData.get('name') as string;
+            const email = formData.get('email') as string;
+            const message = formData.get('message') as string;
+            const {
+              error
+            } = await supabase.from('contact_submissions').insert({
+              name,
+              email,
+              message
+            });
+            if (error) {
+              toast.error("Failed to send message. Please try again.");
+            } else {
+              toast.success(`Thank you ${name}! I'll get back to you soon.`);
+              e.currentTarget.reset();
+            }
+          }}>
               <table className="w-full" cellPadding="8">
                 <tbody>
                   <tr>
@@ -304,12 +289,7 @@ const Index = () => {
                   </tr>
                   <tr>
                     <td>
-                      <input 
-                        type="text" 
-                        name="name"
-                        required
-                        className="w-full border-2 border-foreground p-2 bg-background"
-                      />
+                      <input type="text" name="name" required className="w-full border-2 border-foreground p-2 bg-background" />
                     </td>
                   </tr>
                   <tr>
@@ -317,12 +297,7 @@ const Index = () => {
                   </tr>
                   <tr>
                     <td>
-                      <input 
-                        type="email" 
-                        name="email"
-                        required
-                        className="w-full border-2 border-foreground p-2 bg-background"
-                      />
+                      <input type="email" name="email" required className="w-full border-2 border-foreground p-2 bg-background" />
                     </td>
                   </tr>
                   <tr>
@@ -330,20 +305,12 @@ const Index = () => {
                   </tr>
                   <tr>
                     <td>
-                      <textarea 
-                        name="message"
-                        required
-                        rows={5}
-                        className="w-full border-2 border-foreground p-2 bg-background"
-                      />
+                      <textarea name="message" required rows={5} className="w-full border-2 border-foreground p-2 bg-background" />
                     </td>
                   </tr>
                   <tr>
                     <td className="text-center pt-4">
-                      <button 
-                        type="submit"
-                        className="bg-primary text-primary-foreground border-4 border-foreground px-6 py-2 font-bold hover:bg-accent cursor-pointer"
-                      >
+                      <button type="submit" className="bg-primary text-primary-foreground border-4 border-foreground px-6 py-2 font-bold hover:bg-accent cursor-pointer">
                         📤 SEND MESSAGE
                       </button>
                     </td>
@@ -369,8 +336,6 @@ const Index = () => {
           </div>
         </center>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
