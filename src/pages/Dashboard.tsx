@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { GeminiChat } from "@/components/GeminiChat";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -67,6 +68,10 @@ const Dashboard = () => {
         <div className="mb-8">
           <h2 className="text-3xl font-bold mb-2">Welcome, {user?.email}!</h2>
           <p className="text-muted-foreground">This is your authenticated dashboard area</p>
+        </div>
+
+        <div className="mb-8">
+          <GeminiChat />
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
