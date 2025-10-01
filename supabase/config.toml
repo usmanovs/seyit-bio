@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.get-daily-news]
 verify_jwt = true
+
+[functions.generate-news-image]
+verify_jwt = true

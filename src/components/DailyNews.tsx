@@ -8,11 +8,13 @@ import { Button } from "@/components/ui/button";
 interface NewsItem {
   title: string;
   summary: string;
+  imageUrl?: string;
 }
 
 export const DailyNews = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [generatingImages, setGeneratingImages] = useState(false);
 
   const todayDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -21,6 +23,28 @@ export const DailyNews = () => {
     day: 'numeric'
   });
 
+  const generateImages = async (newsItems: NewsItem[]) => {
+    setGeneratingImages(true);
+    const newsWithImages = await Promise.all(
+      newsItems.map(async (item) => {
+        try {
+          const { data, error } = await supabase.functions.invoke('generate-news-image', {
+            body: { newsTitle: item.title }
+          });
+          
+          if (error) throw error;
+          
+          return { ...item, imageUrl: data.imageUrl };
+        } catch (error) {
+          console.error('Failed to generate image for:', item.title, error);
+          return item;
+        }
+      })
+    );
+    setNews(newsWithImages);
+    setGeneratingImages(false);
+  };
+
   const fetchNews = async () => {
     setLoading(true);
     try {
@@ -28,7 +52,13 @@ export const DailyNews = () => {
 
       if (error) throw error;
 
-      setNews(data.news || []);
+      const newsItems = data.news || [];
+      setNews(newsItems);
+      
+      // Generate images after getting news
+      if (newsItems.length > 0) {
+        generateImages(newsItems);
+      }
     } catch (error: any) {
       console.error("News fetch error:", error);
       toast.error("Failed to fetch daily news");
@@ -69,6 +99,14 @@ export const DailyNews = () => {
           </div>
         ) : (
           <div className="space-y-4">
+            {generatingImages && (
+              <div className="text-center py-2">
+                <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating images...
+                </p>
+              </div>
+            )}
             {news.length === 0 ? (
               <p className="text-muted-foreground text-center py-4">
                 No news available at the moment
@@ -79,6 +117,15 @@ export const DailyNews = () => {
                   key={index}
                   className="p-4 bg-background rounded-lg border hover:border-primary/50 transition-colors"
                 >
+                  {item.imageUrl && (
+                    <div className="mb-3 rounded-md overflow-hidden">
+                      <img 
+                        src={item.imageUrl} 
+                        alt={item.title}
+                        className="w-full h-48 object-cover"
+                      />
+                    </div>
+                  )}
                   <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
                   <p className="text-sm text-muted-foreground">{item.summary}</p>
                 </div>
