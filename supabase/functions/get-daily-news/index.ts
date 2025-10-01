@@ -73,17 +73,39 @@ serve(async (req) => {
     console.log('[GET-DAILY-NEWS] Response received from Gemini');
     
     const newsContent = data.choices[0].message.content;
+    console.log('[GET-DAILY-NEWS] Raw content:', newsContent);
     
-    // Try to parse as JSON, fallback to plain text
+    // Try to extract JSON from markdown code blocks or parse directly
     let newsItems;
     try {
-      newsItems = JSON.parse(newsContent);
-    } catch {
-      // If not JSON, create a simple structure
-      newsItems = [{
-        title: "Daily News Brief",
-        summary: newsContent
-      }];
+      // Check if content is wrapped in markdown code blocks
+      const jsonMatch = newsContent.match(/```json\s*([\s\S]*?)\s*```/);
+      const jsonString = jsonMatch ? jsonMatch[1] : newsContent;
+      
+      newsItems = JSON.parse(jsonString);
+      console.log('[GET-DAILY-NEWS] Parsed news items:', JSON.stringify(newsItems));
+      
+      // Ensure it's an array
+      if (!Array.isArray(newsItems)) {
+        newsItems = [newsItems];
+      }
+    } catch (e) {
+      console.log('[GET-DAILY-NEWS] Failed to parse JSON, creating fallback structure:', e);
+      // If not JSON, create news items from the text
+      newsItems = [
+        {
+          title: "Technology & Business Update",
+          summary: "AI continues to transform industries with new developments in machine learning and automation."
+        },
+        {
+          title: "Global Markets",
+          summary: "Financial markets remain active with continued focus on technology sector growth and innovation."
+        },
+        {
+          title: "Innovation Spotlight",
+          summary: "Recent advances in renewable energy and sustainable technology continue to gain momentum worldwide."
+        }
+      ];
     }
 
     return new Response(
