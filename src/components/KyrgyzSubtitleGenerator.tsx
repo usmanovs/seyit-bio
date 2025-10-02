@@ -212,6 +212,28 @@ export const KyrgyzSubtitleGenerator = () => {
     toast.success("Captions updated");
   };
 
+  const formatTime = (seconds: number): string => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    const ms = Math.floor((seconds % 1) * 1000);
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
+  };
+
+  const handleCueTextChange = (index: number, newText: string) => {
+    const newCues = [...parsedCues];
+    newCues[index] = { ...newCues[index], text: newText };
+    setParsedCues(newCues);
+    
+    // Convert back to SRT format
+    const srt = newCues.map((cue, i) => {
+      return `${i + 1}\n${formatTime(cue.start)} --> ${formatTime(cue.end)}\n${cue.text}\n`;
+    }).join('\n');
+    
+    setEditedSubtitles(srt);
+    setHasUnsavedChanges(true);
+  };
+
   const downloadSubtitles = () => {
     if (!subtitles) return;
 
@@ -323,14 +345,32 @@ export const KyrgyzSubtitleGenerator = () => {
                 </span>
               )}
             </div>
-            <Textarea 
-              value={editedSubtitles} 
-              onChange={(e) => {
-                setEditedSubtitles(e.target.value);
-                setHasUnsavedChanges(true);
-              }}
-              className="min-h-[150px] font-mono text-xs"
-            />
+            
+            <div className="border rounded-lg p-3 max-h-[400px] overflow-y-auto space-y-3 bg-muted/20">
+              {parsedCues.map((cue, index) => (
+                <div
+                  key={index}
+                  className={`p-3 rounded-md border transition-all ${
+                    currentCueIndex === index
+                      ? 'bg-primary/10 border-primary shadow-sm scale-[1.02]'
+                      : 'bg-background border-border'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-mono text-muted-foreground">#{index + 1}</span>
+                    <span className="text-xs font-mono text-muted-foreground">
+                      {formatTime(cue.start)} → {formatTime(cue.end)}
+                    </span>
+                  </div>
+                  <Textarea
+                    value={cue.text}
+                    onChange={(e) => handleCueTextChange(index, e.target.value)}
+                    className="min-h-[60px] text-sm resize-none bg-transparent border-0 p-0 focus-visible:ring-0"
+                    placeholder="Subtitle text..."
+                  />
+                </div>
+              ))}
+            </div>
             <div className="flex gap-2">
               {hasUnsavedChanges && (
                 <Button
