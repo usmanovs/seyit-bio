@@ -16,12 +16,11 @@ export const VideoSubtitleGenerator = () => {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
-      // Check file format
-      const supportedFormats = ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm'];
       const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase();
       
-      if (!fileExtension || !supportedFormats.includes(fileExtension)) {
-        toast.error(`Unsupported format. Please use: ${supportedFormats.join(', ')}`);
+      // Show warning for MOV files
+      if (fileExtension === 'mov') {
+        toast.error("MOV format is not supported. Please convert to MP4 first using a free converter like CloudConvert or HandBrake.");
         return;
       }
       
@@ -119,7 +118,7 @@ export const VideoSubtitleGenerator = () => {
           <div className="flex items-center gap-2">
             <input
               type="file"
-              accept=".flac,.m4a,.mp3,.mp4,.mpeg,.mpga,.oga,.ogg,.wav,.webm"
+              accept=".flac,.m4a,.mp3,.mp4,.mpeg,.mpga,.oga,.ogg,.wav,.webm,.mov"
               onChange={handleFileChange}
               className="hidden"
               id="video-upload"
