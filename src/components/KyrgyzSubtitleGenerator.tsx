@@ -33,8 +33,8 @@ export const KyrgyzSubtitleGenerator = () => {
     { id: 'default', name: 'Classic', css: 'background-color: rgba(0, 0, 0, 0.8); color: white; font-weight: bold; text-shadow: 2px 2px 4px rgba(255, 215, 0, 0.8);', prompt: 'white text with yellow glow, bold font, black background' },
     { id: 'outline', name: 'Outline', css: 'background-color: transparent; color: white; font-weight: bold; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;', prompt: 'white text with thick black outline, no background, bold font' },
     { id: 'minimal', name: 'Minimal', css: 'background-color: rgba(0, 0, 0, 0.5); color: white; font-weight: normal; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);', prompt: 'white text, normal weight, semi-transparent black background, minimal shadow' },
-    { id: 'yellow', name: 'Yellow', css: 'background-color: rgba(255, 255, 0, 0.9); color: black; font-weight: bold; text-shadow: none;', prompt: 'black text on bright yellow background, bold font' },
-    { id: 'green', name: 'Green', css: 'background-color: rgba(0, 255, 0, 0.9); color: black; font-weight: bold; text-shadow: none;', prompt: 'black text on bright green background, bold font' },
+    { id: 'yellow', name: 'Yellow', css: 'background-color: rgb(255, 255, 0); color: black; font-weight: bold; text-shadow: none;', prompt: 'black text on bright solid yellow background, bold font, high contrast' },
+    { id: 'green', name: 'Green', css: 'background-color: rgb(0, 255, 0); color: black; font-weight: bold; text-shadow: none;', prompt: 'black text on bright solid green background, bold font, high contrast' },
     { id: 'boxed', name: 'Boxed', css: 'background-color: rgba(0, 0, 0, 0.9); color: white; font-weight: bold; border: 3px solid white; text-shadow: none;', prompt: 'white text with white border box, bold font, solid black background' },
   ];
 
@@ -428,9 +428,9 @@ export const KyrgyzSubtitleGenerator = () => {
                       case 'minimal':
                         return 'bg-black/50 text-white font-normal shadow-sm';
                       case 'yellow':
-                        return 'bg-yellow-400 text-black font-bold';
+                        return 'text-black font-bold' + ' ' + 'bg-[rgb(255,255,0)]';
                       case 'green':
-                        return 'bg-green-400 text-black font-bold';
+                        return 'text-black font-bold' + ' ' + 'bg-[rgb(0,255,0)]';
                       case 'boxed':
                         return 'bg-black text-white font-bold border-[3px] border-white';
                       default:
