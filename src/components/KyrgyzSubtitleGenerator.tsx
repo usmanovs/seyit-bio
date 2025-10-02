@@ -452,41 +452,57 @@ export const KyrgyzSubtitleGenerator = () => {
         )}
 
         {subtitles && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">
-                Subtitles (SRT Format) - Editable:
-                {hasUnsavedChanges && <span className="text-amber-500 ml-2">(unsaved changes)</span>}
-              </label>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold">Subtitle Editor</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {hasUnsavedChanges ? (
+                      <span className="text-amber-500 font-medium">● Unsaved changes</span>
+                    ) : (
+                      <span>All changes saved</span>
+                    )}
+                  </p>
+                </div>
+              </div>
               {currentCueIndex >= 0 && (
-                <span className="text-xs text-muted-foreground bg-primary/10 px-2 py-1 rounded">
-                  Currently playing: #{currentCueIndex + 1}
-                </span>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/20 rounded-full border border-primary/30">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  <span className="text-xs font-medium">Playing #{currentCueIndex + 1}</span>
+                </div>
               )}
             </div>
             
-            <div className="border rounded-lg p-3 max-h-[400px] overflow-y-auto space-y-3 bg-muted/20">
+            <div className="border rounded-xl p-4 max-h-[500px] overflow-y-auto space-y-2 bg-gradient-to-b from-muted/20 to-muted/5">
               {parsedCues.map((cue, index) => (
                 <div
                   key={index}
                   ref={(el) => subtitleRefs.current[index] = el}
-                  className={`p-3 rounded-md border transition-all duration-300 ${
+                  className={`p-4 rounded-lg border transition-all duration-300 ${
                     currentCueIndex === index
-                      ? 'bg-primary/20 border-primary shadow-lg scale-105 ring-2 ring-primary/30'
-                      : 'bg-background border-border opacity-60'
+                      ? 'bg-primary/10 border-primary/40 shadow-lg scale-[1.02] ring-2 ring-primary/20'
+                      : 'bg-card/50 border-border/50 hover:bg-card/80 hover:border-border'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-mono text-muted-foreground">#{index + 1}</span>
-                    <span className="text-xs font-mono text-muted-foreground">
+                  <div className="flex items-center justify-between mb-2 pb-2 border-b border-border/50">
+                    <span className="text-xs font-semibold text-primary px-2 py-0.5 bg-primary/10 rounded">
+                      #{index + 1}
+                    </span>
+                    <span className="text-xs font-mono text-muted-foreground bg-muted/30 px-2 py-0.5 rounded">
                       {formatTime(cue.start)} → {formatTime(cue.end)}
                     </span>
                   </div>
                   <Textarea
                     value={cue.text}
                     onChange={(e) => handleCueTextChange(index, e.target.value)}
-                    className="min-h-[60px] text-sm resize-none bg-transparent border-0 p-0 focus-visible:ring-0"
-                    placeholder="Subtitle text..."
+                    className="min-h-[60px] text-sm resize-none bg-transparent border-0 p-0 focus-visible:ring-0 font-medium"
+                    placeholder="Enter subtitle text..."
                   />
                 </div>
               ))}
