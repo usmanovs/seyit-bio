@@ -10,6 +10,7 @@ import { GeminiChat } from "@/components/GeminiChat";
 import { DailyNews } from "@/components/DailyNews";
 import { VideoSubtitleGenerator } from "@/components/VideoSubtitleGenerator";
 import { ElevenLabsVoice } from "@/components/ElevenLabsVoice";
+import { ElevenLabsASR } from "@/components/ElevenLabsASR";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -79,6 +80,7 @@ const Dashboard = () => {
 
         <div className="mb-8">
           <ElevenLabsVoice />
+          <ElevenLabsASR />
         </div>
 
         <div className="mb-8">
