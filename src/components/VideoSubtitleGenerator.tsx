@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Download, Loader2, FileVideo } from "lucide-react";
+import { Upload, Download, Loader2, FileVideo, ChevronDown } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 export const VideoSubtitleGenerator = () => {
@@ -15,6 +16,7 @@ export const VideoSubtitleGenerator = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [vttUrl, setVttUrl] = useState<string | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<string>("auto");
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -132,17 +134,24 @@ export const VideoSubtitleGenerator = () => {
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileVideo className="w-5 h-5" />
-          Multi-Language Video Subtitle Generator
-        </CardTitle>
-        <CardDescription>
-          Upload a video file and generate subtitles in multiple languages (SRT format)
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Card className="w-full">
+        <CardHeader>
+          <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
+            <div className="flex flex-col items-start gap-2">
+              <CardTitle className="flex items-center gap-2">
+                <FileVideo className="w-5 h-5" />
+                Multi-Language Video Subtitle Generator
+              </CardTitle>
+              <CardDescription>
+                Upload a video file and generate subtitles in multiple languages (SRT format)
+              </CardDescription>
+            </div>
+            <ChevronDown className={`w-5 h-5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="space-y-4">
         {/* Language Selection */}
         <div className="space-y-2">
           <label className="block text-sm font-medium">
@@ -340,6 +349,8 @@ export const VideoSubtitleGenerator = () => {
           <p><strong>Output:</strong> SRT subtitle file with timestamps</p>
         </div>
       </CardContent>
-    </Card>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 };
