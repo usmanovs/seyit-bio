@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Upload, Loader2, Download, Video } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 
 export const KyrgyzSubtitleGenerator = () => {
   const [isUploading, setIsUploading] = useState(false);
@@ -20,6 +21,8 @@ export const KyrgyzSubtitleGenerator = () => {
   const [currentCueIndex, setCurrentCueIndex] = useState<number>(-1);
   const [isProcessingVideo, setIsProcessingVideo] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<string>('');
+  const [processingProgress, setProcessingProgress] = useState<number>(0);
+  const [processingStartTime, setProcessingStartTime] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
@@ -76,6 +79,31 @@ export const KyrgyzSubtitleGenerator = () => {
       });
     }
   }, [currentCueIndex]);
+
+  // Track processing progress based on elapsed time
+  useEffect(() => {
+    if (!isProcessingVideo || processingStartTime === 0) {
+      setProcessingProgress(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const elapsed = (Date.now() - processingStartTime) / 1000; // seconds
+      // Estimate: typical video processing takes ~120 seconds
+      // Progress curve: fast at start, slows down near end
+      const estimatedTotal = 120;
+      let progress = Math.min((elapsed / estimatedTotal) * 100, 95);
+      
+      // Apply curve: progress faster in early stages
+      if (progress < 50) {
+        progress = progress * 1.2;
+      }
+      
+      setProcessingProgress(Math.min(progress, 95));
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [isProcessingVideo, processingStartTime]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -254,6 +282,8 @@ export const KyrgyzSubtitleGenerator = () => {
 
     setIsProcessingVideo(true);
     setProcessingStatus('starting');
+    setProcessingProgress(0);
+    setProcessingStartTime(Date.now());
 
     try {
       console.log('[KyrgyzSubtitleGenerator] Calling backend burn-subtitles function...');
@@ -280,6 +310,8 @@ export const KyrgyzSubtitleGenerator = () => {
           if (statusData?.status) setProcessingStatus(statusData.status);
 
           if (statusData?.videoUrl) {
+            // Completed successfully – set to 100%
+            setProcessingProgress(100);
             // Completed successfully – download
             const processedVideoBlob = await fetch(statusData.videoUrl).then(r => r.blob());
             const videoLink = document.createElement('a');
@@ -318,6 +350,8 @@ export const KyrgyzSubtitleGenerator = () => {
     } finally {
       setIsProcessingVideo(false);
       setProcessingStatus('');
+      setProcessingProgress(0);
+      setProcessingStartTime(0);
     }
   };
 
@@ -461,12 +495,13 @@ export const KyrgyzSubtitleGenerator = () => {
                 disabled={isProcessingVideo}
               >
                 {isProcessingVideo ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      <span>
-                        Processing{processingStatus ? ` (${processingStatus})` : '...'}
-                      </span>
-                    </>
+                    <div className="w-full space-y-2">
+                      <div className="flex items-center justify-center">
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        <span>Processing ({processingStatus}) - {Math.round(processingProgress)}%</span>
+                      </div>
+                      <Progress value={processingProgress} className="w-full" />
+                    </div>
                 ) : (
                   <>
                     <Download className="w-4 h-4 mr-2" />
