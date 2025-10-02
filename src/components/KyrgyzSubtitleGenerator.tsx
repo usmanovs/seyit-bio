@@ -21,6 +21,7 @@ export const KyrgyzSubtitleGenerator = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
+  const subtitleRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -64,6 +65,15 @@ export const KyrgyzSubtitleGenerator = () => {
     onTime();
     return () => video.removeEventListener('timeupdate', onTime);
   }, [parsedCues, videoUrl]);
+
+  useEffect(() => {
+    if (currentCueIndex >= 0 && subtitleRefs.current[currentCueIndex]) {
+      subtitleRefs.current[currentCueIndex]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }
+  }, [currentCueIndex]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -350,6 +360,7 @@ export const KyrgyzSubtitleGenerator = () => {
               {parsedCues.map((cue, index) => (
                 <div
                   key={index}
+                  ref={(el) => subtitleRefs.current[index] = el}
                   className={`p-3 rounded-md border transition-all ${
                     currentCueIndex === index
                       ? 'bg-primary/10 border-primary shadow-sm scale-[1.02]'
