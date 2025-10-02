@@ -378,168 +378,172 @@ export const KyrgyzSubtitleGenerator = () => {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="video/*"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-          <Button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="w-full"
-          >
-            {isUploading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Video
-              </>
-            )}
-          </Button>
-        </div>
-
-        {videoUrl && (
-          <div className="space-y-2">
-            <div className="border rounded-lg p-2 flex justify-center">
-              <div className="relative inline-block">
-                <video 
-                  key={subtitleBlobUrl || 'no-vtt'}
-                  ref={videoRef}
-                  src={videoUrl} 
-                  controls 
-                  className="rounded max-w-[500px] w-full"
-                  crossOrigin="anonymous"
-                  onLoadedMetadata={() => {
-                    if (videoRef.current) {
-                      const tracks = videoRef.current.textTracks;
-                      for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
-                    }
-                  }}
-                  onLoadedData={() => {
-                    if (videoRef.current) {
-                      const tracks = videoRef.current.textTracks;
-                      for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
-                    }
-                  }}
-                >
-                  {subtitleBlobUrl && (
-                    <track 
-                      kind="captions" 
-                      src={subtitleBlobUrl} 
-                      srcLang="ky" 
-                      label="Kyrgyz"
-                      default
-                      ref={trackRef}
-                    />
-                  )}
-                </video>
-              </div>
-            </div>
-
-            {isGenerating && !subtitles && (
-              <div className="flex items-center justify-center p-3 border rounded-lg">
-                <Loader2 className="w-6 h-6 animate-spin mr-2" />
-                <span className="text-sm text-muted-foreground">Generating Kyrgyz subtitles...</span>
-              </div>
-            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="w-full"
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Video
+                </>
+              )}
+            </Button>
           </div>
-        )}
 
-        {subtitles && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold">Subtitle Editor</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {hasUnsavedChanges ? (
-                      <span className="text-amber-500 font-medium">● Unsaved changes</span>
-                    ) : (
-                      <span>All changes saved</span>
-                    )}
-                  </p>
-                </div>
-              </div>
-              {currentCueIndex >= 0 && (
-                <div className="flex items-center gap-2 px-2.5 py-1 bg-primary/20 rounded-full border border-primary/30">
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  <span className="text-xs font-medium">Playing #{currentCueIndex + 1}</span>
-                </div>
-              )}
-            </div>
-            
-            <div className="border rounded-xl p-2 max-h-[500px] overflow-y-auto space-y-1.5 bg-gradient-to-b from-muted/20 to-muted/5">
-              {parsedCues.map((cue, index) => (
-                <div
-                  key={index}
-                  ref={(el) => subtitleRefs.current[index] = el}
-                  className={`p-2.5 rounded-lg border transition-all duration-300 ${
-                    currentCueIndex === index
-                      ? 'bg-primary/10 border-primary/40 shadow-lg scale-[1.02] ring-2 ring-primary/20'
-                      : 'bg-card/50 border-border/50 hover:bg-card/80 hover:border-border'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1 pb-1 border-b border-border/50">
-                    <span className="text-xs font-semibold text-primary px-2 py-0.5 bg-primary/10 rounded">
-                      #{index + 1}
-                    </span>
-                    <span className="text-xs font-mono text-muted-foreground bg-muted/30 px-2 py-0.5 rounded">
-                      {formatTime(cue.start)} → {formatTime(cue.end)}
-                    </span>
-                  </div>
-                  <Textarea
-                    value={cue.text}
-                    onChange={(e) => handleCueTextChange(index, e.target.value)}
-                    className="min-h-[50px] text-sm resize-none bg-transparent border-0 p-0 focus-visible:ring-0 font-medium"
-                    placeholder="Enter subtitle text..."
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              {hasUnsavedChanges && (
-                <Button
-                  onClick={applySubtitleChanges}
-                  className="flex-1"
-                >
-                  Update Captions
-                </Button>
-              )}
-              <Button
-                onClick={downloadVideoWithSubtitles}
-                variant="outline"
-                className={hasUnsavedChanges ? "flex-1" : "w-full"}
-                disabled={isProcessingVideo}
-              >
-                {isProcessingVideo ? (
-                    <div className="w-full space-y-2">
-                      <div className="flex items-center justify-center">
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        <span>Processing ({processingStatus}) - {Math.round(processingProgress)}%</span>
+          {videoUrl && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Left side - Subtitle Editor */}
+              {subtitles && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
                       </div>
-                      <Progress value={processingProgress} className="w-full" />
+                      <div>
+                        <h3 className="text-sm font-semibold">Subtitle Editor</h3>
+                        <p className="text-xs text-muted-foreground">
+                          {hasUnsavedChanges ? (
+                            <span className="text-amber-500 font-medium">● Unsaved changes</span>
+                          ) : (
+                            <span>All changes saved</span>
+                          )}
+                        </p>
+                      </div>
                     </div>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 mr-2" />
-                    Download Video + SRT
-                  </>
+                    {currentCueIndex >= 0 && (
+                      <div className="flex items-center gap-2 px-2.5 py-1 bg-primary/20 rounded-full border border-primary/30">
+                        <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                        <span className="text-xs font-medium">Playing #{currentCueIndex + 1}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="border rounded-xl p-2 max-h-[500px] overflow-y-auto space-y-1.5 bg-gradient-to-b from-muted/20 to-muted/5">
+                    {parsedCues.map((cue, index) => (
+                      <div
+                        key={index}
+                        ref={(el) => subtitleRefs.current[index] = el}
+                        className={`p-2.5 rounded-lg border transition-all duration-300 ${
+                          currentCueIndex === index
+                            ? 'bg-primary/10 border-primary/40 shadow-lg scale-[1.02] ring-2 ring-primary/20'
+                            : 'bg-card/50 border-border/50 hover:bg-card/80 hover:border-border'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1 pb-1 border-b border-border/50">
+                          <span className="text-xs font-semibold text-primary px-2 py-0.5 bg-primary/10 rounded">
+                            #{index + 1}
+                          </span>
+                          <span className="text-xs font-mono text-muted-foreground bg-muted/30 px-2 py-0.5 rounded">
+                            {formatTime(cue.start)} → {formatTime(cue.end)}
+                          </span>
+                        </div>
+                        <Textarea
+                          value={cue.text}
+                          onChange={(e) => handleCueTextChange(index, e.target.value)}
+                          className="min-h-[50px] text-sm resize-none bg-transparent border-0 p-0 focus-visible:ring-0 font-medium"
+                          placeholder="Enter subtitle text..."
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    {hasUnsavedChanges && (
+                      <Button
+                        onClick={applySubtitleChanges}
+                        className="flex-1"
+                      >
+                        Update Captions
+                      </Button>
+                    )}
+                    <Button
+                      onClick={downloadVideoWithSubtitles}
+                      variant="outline"
+                      className={hasUnsavedChanges ? "flex-1" : "w-full"}
+                      disabled={isProcessingVideo}
+                    >
+                      {isProcessingVideo ? (
+                          <div className="w-full space-y-2">
+                            <div className="flex items-center justify-center">
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              <span>Processing ({processingStatus}) - {Math.round(processingProgress)}%</span>
+                            </div>
+                            <Progress value={processingProgress} className="w-full" />
+                          </div>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4 mr-2" />
+                          Download Video + SRT
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Right side - Video Player */}
+              <div className="space-y-2">
+                <div className="border rounded-lg p-2 flex justify-center">
+                  <div className="relative inline-block">
+                    <video 
+                      key={subtitleBlobUrl || 'no-vtt'}
+                      ref={videoRef}
+                      src={videoUrl} 
+                      controls 
+                      className="rounded max-w-full w-full"
+                      crossOrigin="anonymous"
+                      onLoadedMetadata={() => {
+                        if (videoRef.current) {
+                          const tracks = videoRef.current.textTracks;
+                          for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
+                        }
+                      }}
+                      onLoadedData={() => {
+                        if (videoRef.current) {
+                          const tracks = videoRef.current.textTracks;
+                          for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
+                        }
+                      }}
+                    >
+                      {subtitleBlobUrl && (
+                        <track 
+                          kind="captions" 
+                          src={subtitleBlobUrl} 
+                          srcLang="ky" 
+                          label="Kyrgyz"
+                          default
+                          ref={trackRef}
+                        />
+                      )}
+                    </video>
+                  </div>
+                </div>
+
+                {isGenerating && !subtitles && (
+                  <div className="flex items-center justify-center p-3 border rounded-lg">
+                    <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                    <span className="text-sm text-muted-foreground">Generating Kyrgyz subtitles...</span>
+                  </div>
                 )}
-              </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </CardContent>
     </Card>
     </>
