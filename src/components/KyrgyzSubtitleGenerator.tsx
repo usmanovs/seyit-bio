@@ -376,8 +376,8 @@ export const KyrgyzSubtitleGenerator = () => {
             Upload a video and generate Kyrgyz subtitles using ElevenLabs ASR
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-        <div className="space-y-2">
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -443,7 +443,7 @@ export const KyrgyzSubtitleGenerator = () => {
             </div>
 
             {isGenerating && !subtitles && (
-              <div className="flex items-center justify-center p-4 border rounded-lg">
+              <div className="flex items-center justify-center p-3 border rounded-lg">
                 <Loader2 className="w-6 h-6 animate-spin mr-2" />
                 <span className="text-sm text-muted-foreground">Generating Kyrgyz subtitles...</span>
               </div>
@@ -452,16 +452,16 @@ export const KyrgyzSubtitleGenerator = () => {
         )}
 
         {subtitles && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-base font-semibold">Subtitle Editor</h3>
+                  <h3 className="text-sm font-semibold">Subtitle Editor</h3>
                   <p className="text-xs text-muted-foreground">
                     {hasUnsavedChanges ? (
                       <span className="text-amber-500 font-medium">● Unsaved changes</span>
@@ -472,25 +472,25 @@ export const KyrgyzSubtitleGenerator = () => {
                 </div>
               </div>
               {currentCueIndex >= 0 && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/20 rounded-full border border-primary/30">
+                <div className="flex items-center gap-2 px-2.5 py-1 bg-primary/20 rounded-full border border-primary/30">
                   <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                   <span className="text-xs font-medium">Playing #{currentCueIndex + 1}</span>
                 </div>
               )}
             </div>
             
-            <div className="border rounded-xl p-4 max-h-[500px] overflow-y-auto space-y-2 bg-gradient-to-b from-muted/20 to-muted/5">
+            <div className="border rounded-xl p-2 max-h-[500px] overflow-y-auto space-y-1.5 bg-gradient-to-b from-muted/20 to-muted/5">
               {parsedCues.map((cue, index) => (
                 <div
                   key={index}
                   ref={(el) => subtitleRefs.current[index] = el}
-                  className={`p-4 rounded-lg border transition-all duration-300 ${
+                  className={`p-2.5 rounded-lg border transition-all duration-300 ${
                     currentCueIndex === index
                       ? 'bg-primary/10 border-primary/40 shadow-lg scale-[1.02] ring-2 ring-primary/20'
                       : 'bg-card/50 border-border/50 hover:bg-card/80 hover:border-border'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-2 pb-2 border-b border-border/50">
+                  <div className="flex items-center justify-between mb-1.5 pb-1.5 border-b border-border/50">
                     <span className="text-xs font-semibold text-primary px-2 py-0.5 bg-primary/10 rounded">
                       #{index + 1}
                     </span>
@@ -501,7 +501,7 @@ export const KyrgyzSubtitleGenerator = () => {
                   <Textarea
                     value={cue.text}
                     onChange={(e) => handleCueTextChange(index, e.target.value)}
-                    className="min-h-[60px] text-sm resize-none bg-transparent border-0 p-0 focus-visible:ring-0 font-medium"
+                    className="min-h-[50px] text-sm resize-none bg-transparent border-0 p-0 focus-visible:ring-0 font-medium"
                     placeholder="Enter subtitle text..."
                   />
                 </div>
