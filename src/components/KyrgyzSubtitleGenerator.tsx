@@ -102,6 +102,9 @@ export const KyrgyzSubtitleGenerator = () => {
       setVideoUrl(publicUrl);
       setVideoPath(fileName);
       toast.success("Video uploaded successfully");
+      
+      // Auto-generate subtitles after upload
+      await generateSubtitlesForPath(fileName);
     } catch (error: any) {
       console.error("Error uploading video:", error);
       toast.error(error.message || "Failed to upload video");
@@ -110,18 +113,18 @@ export const KyrgyzSubtitleGenerator = () => {
     }
   };
 
-  const generateSubtitles = async () => {
-    if (!videoPath) {
+  const generateSubtitlesForPath = async (path: string) => {
+    if (!path) {
       toast.error("Please upload a video first");
       return;
     }
 
     setIsGenerating(true);
     try {
-      console.log('[KyrgyzSubtitleGenerator] Calling edge function with videoPath:', videoPath);
+      console.log('[KyrgyzSubtitleGenerator] Calling edge function with videoPath:', path);
       
       const { data, error } = await supabase.functions.invoke('generate-kyrgyz-subtitles', {
-        body: { videoPath },
+        body: { videoPath: path },
         headers: (await supabase.auth.getSession()).data.session?.access_token ? { Authorization: `Bearer ${(await supabase.auth.getSession()).data.session!.access_token}` } : undefined,
       });
 
@@ -296,24 +299,11 @@ export const KyrgyzSubtitleGenerator = () => {
               </div>
             </div>
 
-            {!subtitles && (
-              <Button
-                onClick={generateSubtitles}
-                disabled={isGenerating}
-                className="w-full"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating Kyrgyz Subtitles...
-                  </>
-                ) : (
-                  <>
-                    <Video className="w-4 h-4 mr-2" />
-                    Generate Kyrgyz Subtitles
-                  </>
-                )}
-              </Button>
+            {isGenerating && !subtitles && (
+              <div className="flex items-center justify-center p-4 border rounded-lg">
+                <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                <span className="text-sm text-muted-foreground">Generating Kyrgyz subtitles...</span>
+              </div>
             )}
           </div>
         )}
