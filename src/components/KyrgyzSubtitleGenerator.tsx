@@ -506,7 +506,7 @@ export const KyrgyzSubtitleGenerator = () => {
                       ref={videoRef}
                       src={videoUrl} 
                       controls 
-                      className="rounded max-w-full w-full max-h-[300px]"
+                      className="rounded w-full h-full object-contain"
                       crossOrigin="anonymous"
                       onLoadedMetadata={() => {
                         if (videoRef.current) {
