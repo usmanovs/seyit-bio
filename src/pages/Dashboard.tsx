@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { GeminiChat } from "@/components/GeminiChat";
 import { DailyNews } from "@/components/DailyNews";
+import { VideoSubtitleGenerator } from "@/components/VideoSubtitleGenerator";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -73,6 +74,10 @@ const Dashboard = () => {
 
         <div className="mb-8">
           <DailyNews />
+        </div>
+
+        <div className="mb-8">
+          <VideoSubtitleGenerator />
         </div>
 
         <div className="mb-8">

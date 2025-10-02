@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.transcribe-audio]
 verify_jwt = true
+
+[functions.generate-subtitles]
+verify_jwt = true
