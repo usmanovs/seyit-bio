@@ -46,7 +46,7 @@ serve(async (req) => {
     const openaiFormData = new FormData();
     openaiFormData.append('file', file);
     openaiFormData.append('model', 'whisper-1');
-    openaiFormData.append('language', 'ky'); // Kyrgyz language code
+    // Let Whisper auto-detect the language (supports Kyrgyz transcription)
     openaiFormData.append('response_format', 'verbose_json'); // Get timestamps
     openaiFormData.append('timestamp_granularities[]', 'segment'); // Get segment timestamps
 
