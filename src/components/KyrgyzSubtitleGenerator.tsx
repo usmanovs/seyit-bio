@@ -397,7 +397,7 @@ export const KyrgyzSubtitleGenerator = () => {
                 className={hasUnsavedChanges ? "flex-1" : "w-full"}
               >
                 <Download className="w-4 h-4 mr-2" />
-                Download SRT File
+                Download Video
               </Button>
             </div>
           </div>
