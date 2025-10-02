@@ -13,7 +13,9 @@ export const KyrgyzSubtitleGenerator = () => {
   const [videoPath, setVideoPath] = useState<string | null>(null);
   const [subtitles, setSubtitles] = useState<string>("");
   const [transcription, setTranscription] = useState<string>("");
+  const [subtitleBlobUrl, setSubtitleBlobUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -78,6 +80,13 @@ export const KyrgyzSubtitleGenerator = () => {
 
       setSubtitles(data.subtitles);
       setTranscription(data.transcription);
+      
+      // Convert SRT to WebVTT format for video player
+      const webvtt = convertSrtToWebVtt(data.subtitles);
+      const blob = new Blob([webvtt], { type: 'text/vtt' });
+      const blobUrl = URL.createObjectURL(blob);
+      setSubtitleBlobUrl(blobUrl);
+      
       toast.success("Kyrgyz subtitles generated successfully");
     } catch (error: any) {
       console.error("Error generating subtitles:", error);
@@ -85,6 +94,11 @@ export const KyrgyzSubtitleGenerator = () => {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const convertSrtToWebVtt = (srt: string): string => {
+    // Convert SRT to WebVTT format
+    return 'WEBVTT\n\n' + srt.replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2');
   };
 
   const downloadSubtitles = () => {
@@ -142,31 +156,43 @@ export const KyrgyzSubtitleGenerator = () => {
           <div className="space-y-2">
             <div className="border rounded-lg p-2">
               <video 
+                ref={videoRef}
                 src={videoUrl} 
                 controls 
                 className="w-full rounded"
+                crossOrigin="anonymous"
               >
-                <track kind="subtitles" srcLang="ky" label="Kyrgyz" />
+                {subtitleBlobUrl && (
+                  <track 
+                    kind="subtitles" 
+                    src={subtitleBlobUrl} 
+                    srcLang="ky" 
+                    label="Kyrgyz"
+                    default
+                  />
+                )}
               </video>
             </div>
 
-            <Button
-              onClick={generateSubtitles}
-              disabled={isGenerating}
-              className="w-full"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Generating Kyrgyz Subtitles...
-                </>
-              ) : (
-                <>
-                  <Video className="w-4 h-4 mr-2" />
-                  Generate Kyrgyz Subtitles
-                </>
-              )}
-            </Button>
+            {!subtitles && (
+              <Button
+                onClick={generateSubtitles}
+                disabled={isGenerating}
+                className="w-full"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating Kyrgyz Subtitles...
+                  </>
+                ) : (
+                  <>
+                    <Video className="w-4 h-4 mr-2" />
+                    Generate Kyrgyz Subtitles
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         )}
 
