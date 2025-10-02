@@ -32,20 +32,30 @@ export const KyrgyzSubtitleGenerator = () => {
     const loadFFmpeg = async () => {
       if (ffmpegRef.current) return;
       
+      console.log('[KyrgyzSubtitleGenerator] Starting FFmpeg initialization...');
       const ffmpeg = new FFmpeg();
       ffmpegRef.current = ffmpeg;
       
+      ffmpeg.on('log', ({ message }) => {
+        console.log('[FFmpeg]', message);
+      });
+      
       try {
-        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
+        console.log('[KyrgyzSubtitleGenerator] Loading FFmpeg from:', baseURL);
+        
         await ffmpeg.load({
           coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
           wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
         });
-        setFfmpegLoaded(true);
+        
         console.log('[KyrgyzSubtitleGenerator] FFmpeg loaded successfully');
+        setFfmpegLoaded(true);
+        toast.success("Video processor ready!");
       } catch (error) {
         console.error('[KyrgyzSubtitleGenerator] Failed to load FFmpeg:', error);
-        toast.error("Failed to initialize video processor");
+        toast.error("Failed to initialize video processor. You can still download video and subtitles separately.");
+        setFfmpegLoaded(false);
       }
     };
     
@@ -274,13 +284,42 @@ export const KyrgyzSubtitleGenerator = () => {
   };
 
   const downloadVideoWithSubtitles = async () => {
-    if (!videoUrl || !subtitles || !videoPath || !ffmpegRef.current) {
-      toast.error("Video processor not ready or no video/subtitles available");
+    if (!videoUrl || !subtitles || !videoPath) {
+      toast.error("No video or subtitles available");
       return;
     }
 
-    if (!ffmpegLoaded) {
-      toast.error("Video processor is still loading. Please wait...");
+    if (!ffmpegLoaded || !ffmpegRef.current) {
+      // Fallback: download video and SRT separately
+      toast.info("Downloading video and subtitles separately...");
+      
+      try {
+        const videoResponse = await fetch(videoUrl);
+        const videoBlob = await videoResponse.blob();
+        
+        const srtBlob = new Blob([subtitles], { type: 'text/plain' });
+        
+        const videoLink = document.createElement('a');
+        videoLink.href = window.URL.createObjectURL(videoBlob);
+        videoLink.download = 'video.mp4';
+        document.body.appendChild(videoLink);
+        videoLink.click();
+        document.body.removeChild(videoLink);
+        window.URL.revokeObjectURL(videoLink.href);
+        
+        const srtLink = document.createElement('a');
+        srtLink.href = window.URL.createObjectURL(srtBlob);
+        srtLink.download = 'kyrgyz_subtitles.srt';
+        document.body.appendChild(srtLink);
+        srtLink.click();
+        document.body.removeChild(srtLink);
+        window.URL.revokeObjectURL(srtLink.href);
+        
+        toast.success("Video and SRT file downloaded! Use a video editor to burn subtitles.");
+      } catch (error) {
+        console.error('Download error:', error);
+        toast.error("Failed to download files");
+      }
       return;
     }
 
@@ -288,20 +327,18 @@ export const KyrgyzSubtitleGenerator = () => {
     const ffmpeg = ffmpegRef.current;
 
     try {
+      console.log('[KyrgyzSubtitleGenerator] Starting video processing...');
       toast.info("Processing video with burned-in subtitles...");
       
-      // Fetch the video file
       const videoResponse = await fetch(videoUrl);
       const videoBlob = await videoResponse.blob();
       const videoData = await fetchFile(videoBlob);
       
-      // Write files to FFmpeg virtual filesystem
+      console.log('[KyrgyzSubtitleGenerator] Writing files to FFmpeg...');
       await ffmpeg.writeFile('input.mp4', videoData);
       await ffmpeg.writeFile('subtitles.srt', subtitles);
       
-      console.log('[KyrgyzSubtitleGenerator] Files written to FFmpeg');
-      
-      // Run FFmpeg command to burn subtitles
+      console.log('[KyrgyzSubtitleGenerator] Running FFmpeg command...');
       await ffmpeg.exec([
         '-i', 'input.mp4',
         '-vf', `subtitles=subtitles.srt:force_style='FontName=Arial,FontSize=24,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,Outline=2'`,
@@ -309,13 +346,10 @@ export const KyrgyzSubtitleGenerator = () => {
         'output.mp4'
       ]);
       
-      console.log('[KyrgyzSubtitleGenerator] FFmpeg processing complete');
-      
-      // Read the output file
+      console.log('[KyrgyzSubtitleGenerator] Reading output file...');
       const data = await ffmpeg.readFile('output.mp4');
       const outputBlob = new Blob([data], { type: 'video/mp4' });
       
-      // Download the processed video
       const url = window.URL.createObjectURL(outputBlob);
       const a = document.createElement('a');
       a.href = url;
@@ -325,7 +359,6 @@ export const KyrgyzSubtitleGenerator = () => {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       
-      // Clean up FFmpeg files
       try {
         await ffmpeg.deleteFile('input.mp4');
         await ffmpeg.deleteFile('subtitles.srt');
@@ -337,7 +370,28 @@ export const KyrgyzSubtitleGenerator = () => {
       toast.success("Video with burned-in subtitles downloaded!");
     } catch (error: any) {
       console.error('[KyrgyzSubtitleGenerator] Error processing video:', error);
-      toast.error("Failed to process video. Try downloading separately and using a video editor.");
+      toast.error("Failed to process video. Downloading separately instead...");
+      
+      // Fallback to separate downloads
+      try {
+        const videoResponse = await fetch(videoUrl);
+        const videoBlob = await videoResponse.blob();
+        const srtBlob = new Blob([subtitles], { type: 'text/plain' });
+        
+        const videoLink = document.createElement('a');
+        videoLink.href = window.URL.createObjectURL(videoBlob);
+        videoLink.download = 'video.mp4';
+        document.body.appendChild(videoLink);
+        videoLink.click();
+        document.body.removeChild(videoLink);
+        
+        const srtLink = document.createElement('a');
+        srtLink.href = window.URL.createObjectURL(srtBlob);
+        srtLink.download = 'kyrgyz_subtitles.srt';
+        document.body.appendChild(srtLink);
+        srtLink.click();
+        document.body.removeChild(srtLink);
+      } catch {}
     } finally {
       setIsProcessingVideo(false);
     }
@@ -479,22 +533,17 @@ export const KyrgyzSubtitleGenerator = () => {
                 onClick={downloadVideoWithSubtitles}
                 variant="outline"
                 className={hasUnsavedChanges ? "flex-1" : "w-full"}
-                disabled={isProcessingVideo || !ffmpegLoaded}
+                disabled={isProcessingVideo}
               >
                 {isProcessingVideo ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Burning Subtitles...
                   </>
-                ) : !ffmpegLoaded ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Loading Processor...
-                  </>
                 ) : (
                   <>
                     <Download className="w-4 h-4 mr-2" />
-                    Download Video
+                    Download Video {ffmpegLoaded ? "(with burned subtitles)" : "+ SRT"}
                   </>
                 )}
               </Button>
