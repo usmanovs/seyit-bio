@@ -13,7 +13,7 @@ export const VideoSubtitleGenerator = () => {
   const [srtContent, setSrtContent] = useState("");
   const [videoInfo, setVideoInfo] = useState<{ language: string; duration: number } | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [srtUrl, setSrtUrl] = useState<string | null>(null);
+  const [vttUrl, setVttUrl] = useState<string | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -32,9 +32,13 @@ export const VideoSubtitleGenerator = () => {
         return;
       }
       
-      // Clean up previous video URL
+      // Clean up previous video/subtitle URLs
       if (videoUrl) {
         URL.revokeObjectURL(videoUrl);
+      }
+      if (vttUrl) {
+        URL.revokeObjectURL(vttUrl);
+        setVttUrl(null);
       }
       
       // Create new video URL
@@ -81,13 +85,17 @@ export const VideoSubtitleGenerator = () => {
       setTranscription(data.text);
       setSrtContent(data.srt);
       
-      // Create blob URL for SRT content to handle Unicode characters
-      if (srtUrl) {
-        URL.revokeObjectURL(srtUrl);
+      // Create blob URL for VTT content (convert from SRT) to handle Unicode characters
+      if (vttUrl) {
+        URL.revokeObjectURL(vttUrl);
       }
-      const srtBlob = new Blob([data.srt], { type: 'text/plain;charset=utf-8' });
-      const newSrtUrl = URL.createObjectURL(srtBlob);
-      setSrtUrl(newSrtUrl);
+      const vttText = 'WEBVTT\n\n' + String(data.srt || '')
+        .replace(/\r+/g, '')
+        .replace(/^\d+\s*$/gm, '')
+        .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+      const vttBlob = new Blob([vttText], { type: 'text/vtt;charset=utf-8' });
+      const newVttUrl = URL.createObjectURL(vttBlob);
+      setVttUrl(newVttUrl);
       
       setVideoInfo({
         language: data.language,
@@ -222,7 +230,7 @@ export const VideoSubtitleGenerator = () => {
         )}
 
         {/* Video Player */}
-        {videoUrl && srtUrl && (
+        {videoUrl && vttUrl && (
           <div className="space-y-2">
             <label className="block text-sm font-medium">
               Video Preview with Subtitles
@@ -254,7 +262,7 @@ export const VideoSubtitleGenerator = () => {
                 kind="subtitles"
                 label="Kyrgyz"
                 srcLang="ky"
-                src={srtUrl}
+                src={vttUrl}
                 default
                 onLoad={(e) => {
                   console.log('Track loaded successfully');
