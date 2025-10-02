@@ -23,10 +23,22 @@ export const KyrgyzSubtitleGenerator = () => {
   const [processingStatus, setProcessingStatus] = useState<string>('');
   const [processingProgress, setProcessingProgress] = useState<number>(0);
   const [processingStartTime, setProcessingStartTime] = useState<number>(0);
+  const [captionStyle, setCaptionStyle] = useState<string>('default');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
   const subtitleRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const captionStyles = [
+    { id: 'default', name: 'Classic', css: 'background-color: rgba(0, 0, 0, 0.8); color: white; font-weight: bold; text-shadow: 2px 2px 4px rgba(255, 215, 0, 0.8);', prompt: 'white text with yellow glow, bold font, black background' },
+    { id: 'outline', name: 'Outline', css: 'background-color: transparent; color: white; font-weight: bold; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;', prompt: 'white text with thick black outline, no background, bold font' },
+    { id: 'minimal', name: 'Minimal', css: 'background-color: rgba(0, 0, 0, 0.5); color: white; font-weight: normal; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);', prompt: 'white text, normal weight, semi-transparent black background, minimal shadow' },
+    { id: 'yellow', name: 'Yellow', css: 'background-color: rgba(255, 255, 0, 0.9); color: black; font-weight: bold; text-shadow: none;', prompt: 'black text on bright yellow background, bold font' },
+    { id: 'green', name: 'Green', css: 'background-color: rgba(0, 255, 0, 0.9); color: black; font-weight: bold; text-shadow: none;', prompt: 'black text on bright green background, bold font' },
+    { id: 'boxed', name: 'Boxed', css: 'background-color: rgba(0, 0, 0, 0.9); color: white; font-weight: bold; border: 3px solid white; text-shadow: none;', prompt: 'white text with white border box, bold font, solid black background' },
+  ];
+
+  const currentStyle = captionStyles.find(s => s.id === captionStyle) || captionStyles[0];
 
   useEffect(() => {
     const video = videoRef.current;
@@ -291,7 +303,7 @@ export const KyrgyzSubtitleGenerator = () => {
       
       // Start the processing job; backend returns a predictionId for polling
       const { data, error } = await supabase.functions.invoke('burn-subtitles-backend', {
-        body: { videoPath, subtitles }
+        body: { videoPath, subtitles, stylePrompt: currentStyle.prompt }
       });
 
       if (error) throw error;
@@ -360,11 +372,8 @@ export const KyrgyzSubtitleGenerator = () => {
     <>
       <style>{`
         video::cue {
-          background-color: rgba(0, 0, 0, 0.8);
-          color: white;
+          ${currentStyle.css}
           font-size: 1.5em;
-          font-weight: bold;
-          text-shadow: 2px 2px 4px rgba(255, 215, 0, 0.8), 0 0 10px rgba(255, 215, 0, 0.5);
           padding: 0.2em 0.5em;
           border-radius: 4px;
         }
@@ -403,6 +412,28 @@ export const KyrgyzSubtitleGenerator = () => {
               )}
             </Button>
           </div>
+
+          {/* Caption Style Selector */}
+          {videoUrl && subtitles && (
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Caption Style</label>
+              <div className="grid grid-cols-3 gap-2">
+                {captionStyles.map((style) => (
+                  <button
+                    key={style.id}
+                    onClick={() => setCaptionStyle(style.id)}
+                    className={`p-3 rounded-lg border-2 transition-all text-sm font-medium ${
+                      captionStyle === style.id
+                        ? 'border-primary bg-primary/10 shadow-md'
+                        : 'border-border hover:border-primary/50 bg-card'
+                    }`}
+                  >
+                    {style.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {videoUrl && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

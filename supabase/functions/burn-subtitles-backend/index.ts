@@ -101,15 +101,15 @@ serve(async (req) => {
 
     console.log('[BURN-SUBTITLES] SRT URL:', srtUrl);
 
-    // Start Replicate job using predictions API so we can poll from the client
-    const prediction = await replicate.predictions.create({
-      version: 'fofr/smart-ffmpeg',
-      input: {
-        files: [publicUrl, srtUrl],
-        prompt: 'Burn the subtitles from the SRT file onto the video at the bottom center. Use white text with a yellow highlight/glow effect, bold font, 18px size, with a semi-transparent black background box for readability. Add a subtle shadow to make text pop.',
-        max_attempts: 3,
-      },
-    } as any);
+      // Start Replicate job using predictions API so we can poll from the client
+      const prediction = await replicate.predictions.create({
+        version: 'fofr/smart-ffmpeg',
+        input: {
+          files: [publicUrl, srtUrl],
+          prompt: `Burn the subtitles from the SRT file onto the video at the bottom center. Style: ${body.stylePrompt || 'white text with yellow glow, bold font, black background'}. Use 18px font size with a semi-transparent background box for readability. Add a subtle shadow to make text pop.`,
+          max_attempts: 3,
+        },
+      } as any);
 
     console.log('[BURN-SUBTITLES] Prediction created:', prediction.id);
 
