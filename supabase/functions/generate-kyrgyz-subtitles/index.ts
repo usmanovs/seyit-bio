@@ -61,8 +61,29 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get('Authorization');
+    const apikey = req.headers.get('apikey') || req.headers.get('x-apikey');
+    console.log('[KYRGYZ-SUBTITLES] Incoming headers:', {
+      hasAuth: !!authHeader,
+      authPrefix: authHeader ? authHeader.slice(0, 20) + '...' : null,
+      hasApiKey: !!apikey,
+    });
+
     if (!authHeader) {
       throw new Error('No authorization header');
+    }
+
+    // Decode user id from verified JWT (platform has already verified when verify_jwt=true)
+    const token = authHeader.replace('Bearer ', '');
+    let userId: string | null = null;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      userId = payload.sub || payload.user_id || null;
+    } catch (e) {
+      console.error('[KYRGYZ-SUBTITLES] Failed to decode JWT payload');
+    }
+    console.log('[KYRGYZ-SUBTITLES] Decoded userId:', userId);
+    if (!userId) {
+      throw new Error('User not authenticated');
     }
 
     const supabaseClient = createClient(
@@ -70,11 +91,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: authHeader } } }
     );
-
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
 
     const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
     if (!ELEVENLABS_API_KEY) {
@@ -137,7 +153,7 @@ serve(async (req) => {
     const { error: insertError } = await supabaseClient
       .from('video_subtitles')
       .insert({
-        user_id: user.id,
+        user_id: userId,
         video_path: videoPath,
         subtitle_content: srtContent,
         language: 'ky'
