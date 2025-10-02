@@ -458,10 +458,10 @@ export const KyrgyzSubtitleGenerator = () => {
                 <div
                   key={index}
                   ref={(el) => subtitleRefs.current[index] = el}
-                  className={`p-3 rounded-md border transition-all ${
+                  className={`p-3 rounded-md border transition-all duration-300 ${
                     currentCueIndex === index
-                      ? 'bg-primary/10 border-primary shadow-sm scale-[1.02]'
-                      : 'bg-background border-border'
+                      ? 'bg-primary/20 border-primary shadow-lg scale-105 ring-2 ring-primary/30'
+                      : 'bg-background border-border opacity-60'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
