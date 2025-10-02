@@ -6,6 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Send, ChevronDown, ChevronUp } from "lucide-react";
+import { VoiceInput } from "./VoiceInput";
 
 export const GeminiChat = () => {
   const [message, setMessage] = useState("");
@@ -86,12 +87,20 @@ export const GeminiChat = () => {
             </div>
 
             <div className="flex gap-2">
+              <VoiceInput 
+                onTranscription={(text) => {
+                  setMessage(text);
+                  // Optionally auto-send after transcription
+                  // setTimeout(() => sendMessage(), 100);
+                }}
+              />
               <Input
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && !loading && sendMessage()}
                 placeholder="Type your message..."
                 disabled={loading}
+                className="flex-1"
               />
               <Button onClick={sendMessage} disabled={loading || !message.trim()}>
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
