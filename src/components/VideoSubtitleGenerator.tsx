@@ -232,11 +232,21 @@ export const VideoSubtitleGenerator = () => {
               crossOrigin="anonymous"
               className="w-full max-w-2xl mx-auto rounded-lg"
               src={videoUrl}
-              onLoadedMetadata={(e) => {
-                const video = e.currentTarget;
-                const track = video.textTracks[0];
-                if (track) {
-                  track.mode = 'showing';
+              ref={(video) => {
+                if (video) {
+                  // Enable subtitles when video loads
+                  video.addEventListener('loadedmetadata', () => {
+                    const tracks = video.textTracks;
+                    if (tracks.length > 0) {
+                      tracks[0].mode = 'showing';
+                      console.log('Subtitle track enabled:', tracks[0]);
+                    }
+                  });
+                  
+                  // Also try to enable immediately if already loaded
+                  if (video.readyState >= 1 && video.textTracks.length > 0) {
+                    video.textTracks[0].mode = 'showing';
+                  }
                 }
               }}
             >
@@ -246,11 +256,22 @@ export const VideoSubtitleGenerator = () => {
                 srcLang="ky"
                 src={srtUrl}
                 default
+                onLoad={(e) => {
+                  console.log('Track loaded successfully');
+                  const track = e.currentTarget.track;
+                  if (track) {
+                    track.mode = 'showing';
+                  }
+                }}
+                onError={(e) => {
+                  console.error('Track loading error:', e);
+                  toast.error('Could not load subtitles');
+                }}
               />
               Your browser does not support the video tag.
             </video>
             <p className="text-xs text-muted-foreground text-center">
-              Subtitles are enabled by default. Use video controls to toggle them if needed.
+              Subtitles should appear on the video. If not visible, check your browser's subtitle settings (CC button).
             </p>
           </div>
         )}
