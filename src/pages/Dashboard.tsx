@@ -9,7 +9,6 @@ import { Loader2 } from "lucide-react";
 import { GeminiChat } from "@/components/GeminiChat";
 import { DailyNews } from "@/components/DailyNews";
 import { VideoSubtitleGenerator } from "@/components/VideoSubtitleGenerator";
-import { VideoSubtitleKyrgyz } from "@/components/VideoSubtitleKyrgyz";
 import { KyrgyzSubtitleGenerator } from "@/components/KyrgyzSubtitleGenerator";
 
 const Dashboard = () => {
@@ -79,7 +78,6 @@ const Dashboard = () => {
         </div>
 
         <div className="mb-8">
-          <VideoSubtitleKyrgyz />
           <KyrgyzSubtitleGenerator />
         </div>
 
