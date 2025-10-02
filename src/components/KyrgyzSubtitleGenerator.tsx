@@ -418,19 +418,40 @@ export const KyrgyzSubtitleGenerator = () => {
             <div className="space-y-2">
               <label className="text-sm font-semibold">Caption Style</label>
               <div className="grid grid-cols-3 gap-2">
-                {captionStyles.map((style) => (
-                  <button
-                    key={style.id}
-                    onClick={() => setCaptionStyle(style.id)}
-                    className={`p-3 rounded-lg border-2 transition-all text-sm font-medium ${
-                      captionStyle === style.id
-                        ? 'border-primary bg-primary/10 shadow-md'
-                        : 'border-border hover:border-primary/50 bg-card'
-                    }`}
-                  >
-                    {style.name}
-                  </button>
-                ))}
+                {captionStyles.map((style) => {
+                  const getStyleClasses = () => {
+                    switch(style.id) {
+                      case 'default':
+                        return 'bg-black text-white font-bold shadow-[0_0_10px_rgba(255,215,0,0.8)]';
+                      case 'outline':
+                        return 'bg-transparent text-white font-bold [text-shadow:-2px_-2px_0_#000,2px_-2px_0_#000,-2px_2px_0_#000,2px_2px_0_#000]';
+                      case 'minimal':
+                        return 'bg-black/50 text-white font-normal shadow-sm';
+                      case 'yellow':
+                        return 'bg-yellow-400 text-black font-bold';
+                      case 'green':
+                        return 'bg-green-400 text-black font-bold';
+                      case 'boxed':
+                        return 'bg-black text-white font-bold border-[3px] border-white';
+                      default:
+                        return '';
+                    }
+                  };
+                  
+                  return (
+                    <button
+                      key={style.id}
+                      onClick={() => setCaptionStyle(style.id)}
+                      className={`p-3 rounded-lg transition-all text-sm relative ${getStyleClasses()} ${
+                        captionStyle === style.id
+                          ? 'ring-4 ring-primary ring-offset-2 ring-offset-background scale-105'
+                          : 'hover:scale-102'
+                      }`}
+                    >
+                      {style.name}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
