@@ -11,7 +11,7 @@ export const GeminiChat = () => {
   const [message, setMessage] = useState("");
   const [conversation, setConversation] = useState<Array<{ role: string; content: string }>>([]);
   const [loading, setLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
 
   const sendMessage = async () => {
     if (!message.trim()) return;
