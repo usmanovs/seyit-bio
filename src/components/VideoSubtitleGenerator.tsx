@@ -16,6 +16,15 @@ export const VideoSubtitleGenerator = () => {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
+      // Check file format
+      const supportedFormats = ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm'];
+      const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase();
+      
+      if (!fileExtension || !supportedFormats.includes(fileExtension)) {
+        toast.error(`Unsupported format. Please use: ${supportedFormats.join(', ')}`);
+        return;
+      }
+      
       // Check file size (max 25MB for Whisper API)
       if (selectedFile.size > 25 * 1024 * 1024) {
         toast.error("File size must be less than 25MB");
@@ -110,7 +119,7 @@ export const VideoSubtitleGenerator = () => {
           <div className="flex items-center gap-2">
             <input
               type="file"
-              accept="video/*,audio/*"
+              accept=".flac,.m4a,.mp3,.mp4,.mpeg,.mpga,.oga,.ogg,.wav,.webm"
               onChange={handleFileChange}
               className="hidden"
               id="video-upload"
@@ -206,7 +215,8 @@ export const VideoSubtitleGenerator = () => {
 
         {/* Usage Instructions */}
         <div className="text-xs text-muted-foreground space-y-1 pt-2 border-t">
-          <p><strong>Supported formats:</strong> MP4, AVI, MOV, MP3, WAV, and more</p>
+          <p><strong>Supported formats:</strong> FLAC, M4A, MP3, MP4, MPEG, MPGA, OGA, OGG, WAV, WEBM</p>
+          <p><strong>Note:</strong> MOV files are not supported - convert to MP4 first</p>
           <p><strong>Language:</strong> Automatically transcribes in Kyrgyz</p>
           <p><strong>Output:</strong> SRT subtitle file with timestamps</p>
         </div>
