@@ -106,7 +106,7 @@ serve(async (req) => {
       version: 'fofr/smart-ffmpeg',
       input: {
         files: [publicUrl, srtUrl],
-        prompt: 'Burn the subtitles from the SRT file onto the video at the bottom center with a black background for readability',
+        prompt: 'Burn the subtitles from the SRT file onto the video at the bottom center with a smaller font size (16px) and a black background for readability',
         max_attempts: 3,
       },
     } as any);
