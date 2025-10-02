@@ -308,17 +308,6 @@ export const KyrgyzSubtitleGenerator = () => {
           </div>
         )}
 
-        {transcription && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Transcription (Kyrgyz):</label>
-            <Textarea 
-              value={transcription} 
-              readOnly
-              className="min-h-[100px]"
-            />
-          </div>
-        )}
-
         {subtitles && (
           <div className="space-y-2">
             <label className="text-sm font-medium">Subtitles (SRT Format) - Editable:</label>
