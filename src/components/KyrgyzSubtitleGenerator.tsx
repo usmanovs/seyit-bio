@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,15 @@ export const KyrgyzSubtitleGenerator = () => {
   const [subtitleBlobUrl, setSubtitleBlobUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current && subtitleBlobUrl) {
+      const tracks = videoRef.current.textTracks;
+      for (let i = 0; i < tracks.length; i++) {
+        tracks[i].mode = 'showing';
+      }
+    }
+  }, [subtitleBlobUrl]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -97,8 +106,22 @@ export const KyrgyzSubtitleGenerator = () => {
   };
 
   const convertSrtToWebVtt = (srt: string): string => {
-    // Convert SRT to WebVTT format
-    return 'WEBVTT\n\n' + srt.replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2');
+    // Robust SRT -> WebVTT conversion: remove numeric cue IDs and fix timestamps
+    const normalized = srt
+      .replace(/\r+/g, '')
+      .trim();
+
+    const cues = normalized.split('\n\n').map(block => {
+      const lines = block.split('\n');
+      // Remove numeric cue identifier if present
+      if (/^\d+$/.test(lines[0])) {
+        lines.shift();
+      }
+      return lines.join('\n');
+    }).join('\n\n');
+
+    const withDots = cues.replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2');
+    return 'WEBVTT\n\n' + withDots;
   };
 
   const downloadSubtitles = () => {
@@ -162,17 +185,21 @@ export const KyrgyzSubtitleGenerator = () => {
                 className="rounded max-w-[500px] w-full"
                 crossOrigin="anonymous"
                 onLoadedMetadata={() => {
-                  if (videoRef.current && subtitleBlobUrl) {
+                  if (videoRef.current) {
                     const tracks = videoRef.current.textTracks;
-                    if (tracks.length > 0) {
-                      tracks[0].mode = 'showing';
-                    }
+                    for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
+                  }
+                }}
+                onLoadedData={() => {
+                  if (videoRef.current) {
+                    const tracks = videoRef.current.textTracks;
+                    for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
                   }
                 }}
               >
                 {subtitleBlobUrl && (
                   <track 
-                    kind="subtitles" 
+                    kind="captions" 
                     src={subtitleBlobUrl} 
                     srcLang="ky" 
                     label="Kyrgyz"
