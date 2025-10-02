@@ -120,7 +120,7 @@ serve(async (req) => {
 
     // Prepare form data for ElevenLabs ASR
     const formData = new FormData();
-    formData.append('audio', videoData, 'video.mp4');
+    formData.append('file', videoData, 'video.mp4');
     formData.append('model_id', 'eleven_flash_v2_5');
     formData.append('language_code', 'ky'); // Kyrgyz language code
 
