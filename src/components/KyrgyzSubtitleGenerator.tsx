@@ -121,7 +121,8 @@ export const KyrgyzSubtitleGenerator = () => {
       console.log('[KyrgyzSubtitleGenerator] Calling edge function with videoPath:', videoPath);
       
       const { data, error } = await supabase.functions.invoke('generate-kyrgyz-subtitles', {
-        body: { videoPath }
+        body: { videoPath },
+        headers: (await supabase.auth.getSession()).data.session?.access_token ? { Authorization: `Bearer ${(await supabase.auth.getSession()).data.session!.access_token}` } : undefined,
       });
 
       console.log('[KyrgyzSubtitleGenerator] Response data:', data);
