@@ -499,7 +499,7 @@ export const KyrgyzSubtitleGenerator = () => {
 
               {/* Right side - Video Player */}
               <div className="space-y-2">
-                <div className="border rounded-lg p-2 flex justify-center">
+                <div className="border rounded-lg p-2 flex justify-center h-[500px] items-start overflow-hidden">
                   <div className="relative inline-block">
                     <video 
                       key={subtitleBlobUrl || 'no-vtt'}
