@@ -12,6 +12,8 @@ export const KyrgyzSubtitleGenerator = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoPath, setVideoPath] = useState<string | null>(null);
   const [subtitles, setSubtitles] = useState<string>("");
+  const [editedSubtitles, setEditedSubtitles] = useState<string>("");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [transcription, setTranscription] = useState<string>("");
   const [subtitleBlobUrl, setSubtitleBlobUrl] = useState<string | null>(null);
   const [parsedCues, setParsedCues] = useState<Array<{ start: number; end: number; text: string }>>([]);
@@ -134,6 +136,8 @@ export const KyrgyzSubtitleGenerator = () => {
       if (error) throw error;
 
       setSubtitles(data.subtitles);
+      setEditedSubtitles(data.subtitles);
+      setHasUnsavedChanges(false);
       setTranscription(data.transcription);
       setParsedCues(parseSrtToCues(data.subtitles));
       setActiveCaption("");
@@ -196,6 +200,17 @@ export const KyrgyzSubtitleGenerator = () => {
   const hmsToSeconds = (hms: string, ms: string) => {
     const [h, m, s] = hms.split(':').map(Number);
     return h * 3600 + m * 60 + s + Number(ms) / 1000;
+  };
+
+  const applySubtitleChanges = () => {
+    setParsedCues(parseSrtToCues(editedSubtitles));
+    const webvtt = convertSrtToWebVtt(editedSubtitles);
+    const blob = new Blob([webvtt], { type: 'text/vtt' });
+    const blobUrl = URL.createObjectURL(blob);
+    setSubtitleBlobUrl(blobUrl);
+    setSubtitles(editedSubtitles);
+    setHasUnsavedChanges(false);
+    toast.success("Captions updated");
   };
 
   const downloadSubtitles = () => {
@@ -310,29 +325,36 @@ export const KyrgyzSubtitleGenerator = () => {
 
         {subtitles && (
           <div className="space-y-2">
-            <label className="text-sm font-medium">Subtitles (SRT Format) - Editable:</label>
+            <label className="text-sm font-medium">
+              Subtitles (SRT Format) - Editable:
+              {hasUnsavedChanges && <span className="text-amber-500 ml-2">(unsaved changes)</span>}
+            </label>
             <Textarea 
-              value={subtitles} 
+              value={editedSubtitles} 
               onChange={(e) => {
-                const newSrt = e.target.value;
-                setSubtitles(newSrt);
-                // Update parsed cues and blob URL when editing
-                setParsedCues(parseSrtToCues(newSrt));
-                const webvtt = convertSrtToWebVtt(newSrt);
-                const blob = new Blob([webvtt], { type: 'text/vtt' });
-                const blobUrl = URL.createObjectURL(blob);
-                setSubtitleBlobUrl(blobUrl);
+                setEditedSubtitles(e.target.value);
+                setHasUnsavedChanges(true);
               }}
               className="min-h-[150px] font-mono text-xs"
             />
-            <Button
-              onClick={downloadSubtitles}
-              variant="outline"
-              className="w-full"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Download SRT File
-            </Button>
+            <div className="flex gap-2">
+              {hasUnsavedChanges && (
+                <Button
+                  onClick={applySubtitleChanges}
+                  className="flex-1"
+                >
+                  Update Captions
+                </Button>
+              )}
+              <Button
+                onClick={downloadSubtitles}
+                variant="outline"
+                className={hasUnsavedChanges ? "flex-1" : "w-full"}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download SRT File
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>
