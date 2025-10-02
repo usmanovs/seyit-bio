@@ -490,7 +490,7 @@ export const KyrgyzSubtitleGenerator = () => {
                       : 'bg-card/50 border-border/50 hover:bg-card/80 hover:border-border'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1.5 pb-1.5 border-b border-border/50">
+                  <div className="flex items-center justify-between mb-1 pb-1 border-b border-border/50">
                     <span className="text-xs font-semibold text-primary px-2 py-0.5 bg-primary/10 rounded">
                       #{index + 1}
                     </span>
