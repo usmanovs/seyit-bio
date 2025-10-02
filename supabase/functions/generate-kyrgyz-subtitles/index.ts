@@ -1,3 +1,4 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
@@ -121,7 +122,7 @@ serve(async (req) => {
     // Prepare form data for ElevenLabs ASR
     const formData = new FormData();
     formData.append('file', videoData, 'video.mp4');
-    formData.append('model_id', 'eleven_flash_v2_5');
+    formData.append('model_id', 'scribe_v1');
     formData.append('language_code', 'ky'); // Kyrgyz language code
 
     console.log('[KYRGYZ-SUBTITLES] Sending to ElevenLabs ASR...');
