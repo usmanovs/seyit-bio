@@ -327,8 +327,9 @@ export const KyrgyzSubtitleGenerator = () => {
     const ffmpeg = ffmpegRef.current;
 
     try {
+      let usedFallback = false;
       console.log('[KyrgyzSubtitleGenerator] Starting video processing...');
-      toast.info("Processing video with burned-in subtitles...");
+      toast.info("Processing video with subtitles...");
       
       const videoResponse = await fetch(videoUrl);
       const videoBlob = await videoResponse.blob();
