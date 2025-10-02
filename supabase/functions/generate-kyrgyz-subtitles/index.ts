@@ -93,7 +93,7 @@ serve(async (req) => {
     const { data: videoData, error: downloadError } = await supabaseClient
       .storage
       .from('videos')
-      .download(videoPath.replace(`${user.id}/`, ''));
+      .download(videoPath);
 
     if (downloadError) {
       console.error('[KYRGYZ-SUBTITLES] Download error:', downloadError);
