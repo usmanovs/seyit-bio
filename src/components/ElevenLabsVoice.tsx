@@ -52,7 +52,9 @@ export const ElevenLabsVoice = () => {
       }
 
       // Start the conversation with the signed URL
-      await conversation.startSession({ url: data.signedUrl });
+      await conversation.startSession({
+        signedUrl: data.signedUrl
+      });
     } catch (error: any) {
       console.error("Error starting conversation:", error);
       toast.error(error.message || "Failed to start conversation");
