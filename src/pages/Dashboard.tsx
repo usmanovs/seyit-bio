@@ -11,6 +11,7 @@ import { DailyNews } from "@/components/DailyNews";
 import { VideoSubtitleGenerator } from "@/components/VideoSubtitleGenerator";
 import { ElevenLabsVoice } from "@/components/ElevenLabsVoice";
 import { ElevenLabsASR } from "@/components/ElevenLabsASR";
+import { KyrgyzSubtitleGenerator } from "@/components/KyrgyzSubtitleGenerator";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -81,6 +82,7 @@ const Dashboard = () => {
         <div className="mb-8">
           <ElevenLabsVoice />
           <ElevenLabsASR />
+          <KyrgyzSubtitleGenerator />
         </div>
 
         <div className="mb-8">
