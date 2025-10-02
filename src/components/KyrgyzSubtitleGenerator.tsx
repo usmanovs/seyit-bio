@@ -17,6 +17,7 @@ export const KyrgyzSubtitleGenerator = () => {
   const [transcription, setTranscription] = useState<string>("");
   const [subtitleBlobUrl, setSubtitleBlobUrl] = useState<string | null>(null);
   const [parsedCues, setParsedCues] = useState<Array<{ start: number; end: number; text: string }>>([]);
+  const [currentCueIndex, setCurrentCueIndex] = useState<number>(-1);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
@@ -47,6 +48,22 @@ export const KyrgyzSubtitleGenerator = () => {
       clearTimeout(id);
     };
   }, [subtitleBlobUrl]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || parsedCues.length === 0) {
+      setCurrentCueIndex(-1);
+      return;
+    }
+    const onTime = () => {
+      const t = video.currentTime;
+      const index = parsedCues.findIndex(c => t >= c.start && t <= c.end);
+      setCurrentCueIndex(index);
+    };
+    video.addEventListener('timeupdate', onTime);
+    onTime();
+    return () => video.removeEventListener('timeupdate', onTime);
+  }, [parsedCues, videoUrl]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -295,10 +312,17 @@ export const KyrgyzSubtitleGenerator = () => {
 
         {subtitles && (
           <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Subtitles (SRT Format) - Editable:
-              {hasUnsavedChanges && <span className="text-amber-500 ml-2">(unsaved changes)</span>}
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">
+                Subtitles (SRT Format) - Editable:
+                {hasUnsavedChanges && <span className="text-amber-500 ml-2">(unsaved changes)</span>}
+              </label>
+              {currentCueIndex >= 0 && (
+                <span className="text-xs text-muted-foreground bg-primary/10 px-2 py-1 rounded">
+                  Currently playing: #{currentCueIndex + 1}
+                </span>
+              )}
+            </div>
             <Textarea 
               value={editedSubtitles} 
               onChange={(e) => {
