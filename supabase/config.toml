@@ -21,9 +21,5 @@ verify_jwt = true
 [functions.generate-subtitles]
 verify_jwt = true
 
-
-[functions.generate-kyrgyz-subtitles]
-verify_jwt = true
-
 [functions.generate-kyrgyz-subtitles]
 verify_jwt = true

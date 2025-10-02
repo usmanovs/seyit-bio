@@ -118,9 +118,14 @@ export const KyrgyzSubtitleGenerator = () => {
 
     setIsGenerating(true);
     try {
+      console.log('[KyrgyzSubtitleGenerator] Calling edge function with videoPath:', videoPath);
+      
       const { data, error } = await supabase.functions.invoke('generate-kyrgyz-subtitles', {
         body: { videoPath }
       });
+
+      console.log('[KyrgyzSubtitleGenerator] Response data:', data);
+      console.log('[KyrgyzSubtitleGenerator] Response error:', error);
 
       if (error) throw error;
 
@@ -131,12 +136,15 @@ export const KyrgyzSubtitleGenerator = () => {
       
       // Convert SRT to WebVTT format for video player
       const webvtt = convertSrtToWebVtt(data.subtitles);
+      console.log('[KyrgyzSubtitleGenerator] WebVTT preview:', webvtt.substring(0, 200));
       const blob = new Blob([webvtt], { type: 'text/vtt' });
       const blobUrl = URL.createObjectURL(blob);
       setSubtitleBlobUrl(blobUrl);
+      console.log('[KyrgyzSubtitleGenerator] Subtitles generated, cues:', parsedCues.length);
       toast.success("Kyrgyz subtitles generated successfully");
     } catch (error: any) {
-      console.error("Error generating subtitles:", error);
+      console.error("[KyrgyzSubtitleGenerator] Full error:", error);
+      console.error("[KyrgyzSubtitleGenerator] Error context:", { message: error.message, context: error.context });
       toast.error(error.message || "Failed to generate subtitles");
     } finally {
       setIsGenerating(false);
