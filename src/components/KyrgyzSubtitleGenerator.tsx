@@ -321,10 +321,19 @@ export const KyrgyzSubtitleGenerator = () => {
 
         {subtitles && (
           <div className="space-y-2">
-            <label className="text-sm font-medium">Subtitles (SRT Format):</label>
+            <label className="text-sm font-medium">Subtitles (SRT Format) - Editable:</label>
             <Textarea 
               value={subtitles} 
-              readOnly
+              onChange={(e) => {
+                const newSrt = e.target.value;
+                setSubtitles(newSrt);
+                // Update parsed cues and blob URL when editing
+                setParsedCues(parseSrtToCues(newSrt));
+                const webvtt = convertSrtToWebVtt(newSrt);
+                const blob = new Blob([webvtt], { type: 'text/vtt' });
+                const blobUrl = URL.createObjectURL(blob);
+                setSubtitleBlobUrl(blobUrl);
+              }}
               className="min-h-[150px] font-mono text-xs"
             />
             <Button
