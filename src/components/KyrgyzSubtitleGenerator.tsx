@@ -154,13 +154,21 @@ export const KyrgyzSubtitleGenerator = () => {
 
         {videoUrl && (
           <div className="space-y-2">
-            <div className="border rounded-lg p-2">
+            <div className="border rounded-lg p-2 flex justify-center">
               <video 
                 ref={videoRef}
                 src={videoUrl} 
                 controls 
-                className="w-full rounded"
+                className="rounded max-w-[500px] w-full"
                 crossOrigin="anonymous"
+                onLoadedMetadata={() => {
+                  if (videoRef.current && subtitleBlobUrl) {
+                    const tracks = videoRef.current.textTracks;
+                    if (tracks.length > 0) {
+                      tracks[0].mode = 'showing';
+                    }
+                  }
+                }}
               >
                 {subtitleBlobUrl && (
                   <track 
