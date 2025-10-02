@@ -17,7 +17,6 @@ export const KyrgyzSubtitleGenerator = () => {
   const [transcription, setTranscription] = useState<string>("");
   const [subtitleBlobUrl, setSubtitleBlobUrl] = useState<string | null>(null);
   const [parsedCues, setParsedCues] = useState<Array<{ start: number; end: number; text: string }>>([]);
-  const [activeCaption, setActiveCaption] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
@@ -48,22 +47,6 @@ export const KyrgyzSubtitleGenerator = () => {
       clearTimeout(id);
     };
   }, [subtitleBlobUrl]);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || parsedCues.length === 0) {
-      setActiveCaption("");
-      return;
-    }
-    const onTime = () => {
-      const t = video.currentTime;
-      const cue = parsedCues.find(c => t >= c.start && t <= c.end);
-      setActiveCaption(cue ? cue.text : "");
-    };
-    video.addEventListener('timeupdate', onTime);
-    onTime();
-    return () => video.removeEventListener('timeupdate', onTime);
-  }, [parsedCues, videoUrl]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -140,7 +123,6 @@ export const KyrgyzSubtitleGenerator = () => {
       setHasUnsavedChanges(false);
       setTranscription(data.transcription);
       setParsedCues(parseSrtToCues(data.subtitles));
-      setActiveCaption("");
       
       // Convert SRT to WebVTT format for video player
       const webvtt = convertSrtToWebVtt(data.subtitles);
@@ -299,18 +281,6 @@ export const KyrgyzSubtitleGenerator = () => {
                     />
                   )}
                 </video>
-                {activeCaption && (
-                  <div className="pointer-events-none absolute inset-x-2 bottom-2 flex justify-center">
-                    <div className="max-w-[480px] rounded px-3 py-1.5 bg-background/80 text-foreground text-sm md:text-base leading-tight shadow-md">
-                      {activeCaption.split('\n').map((line, i) => (
-                        <span key={i}>
-                          {line}
-                          <br />
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
