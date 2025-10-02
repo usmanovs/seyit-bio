@@ -225,12 +225,20 @@ export const VideoSubtitleGenerator = () => {
         {videoUrl && srtUrl && (
           <div className="space-y-2">
             <label className="block text-sm font-medium">
-              Video Preview
+              Video Preview with Subtitles
             </label>
             <video
               controls
+              crossOrigin="anonymous"
               className="w-full max-w-2xl mx-auto rounded-lg"
               src={videoUrl}
+              onLoadedMetadata={(e) => {
+                const video = e.currentTarget;
+                const track = video.textTracks[0];
+                if (track) {
+                  track.mode = 'showing';
+                }
+              }}
             >
               <track
                 kind="subtitles"
@@ -241,6 +249,9 @@ export const VideoSubtitleGenerator = () => {
               />
               Your browser does not support the video tag.
             </video>
+            <p className="text-xs text-muted-foreground text-center">
+              Subtitles are enabled by default. Use video controls to toggle them if needed.
+            </p>
           </div>
         )}
 
