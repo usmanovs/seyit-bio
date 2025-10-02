@@ -12,6 +12,7 @@ export const VideoSubtitleGenerator = () => {
   const [transcription, setTranscription] = useState("");
   const [srtContent, setSrtContent] = useState("");
   const [videoInfo, setVideoInfo] = useState<{ language: string; duration: number } | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -29,7 +30,17 @@ export const VideoSubtitleGenerator = () => {
         toast.error("File size must be less than 25MB");
         return;
       }
+      
+      // Clean up previous video URL
+      if (videoUrl) {
+        URL.revokeObjectURL(videoUrl);
+      }
+      
+      // Create new video URL
+      const newVideoUrl = URL.createObjectURL(selectedFile);
+      setVideoUrl(newVideoUrl);
       setFile(selectedFile);
+      
       // Reset previous results
       setTranscription("");
       setSrtContent("");
@@ -197,6 +208,29 @@ export const VideoSubtitleGenerator = () => {
               readOnly
               className="min-h-[200px] font-mono text-sm"
             />
+          </div>
+        )}
+
+        {/* Video Player */}
+        {videoUrl && srtContent && (
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">
+              Video Preview
+            </label>
+            <video
+              controls
+              className="w-full rounded-lg"
+              src={videoUrl}
+            >
+              <track
+                kind="subtitles"
+                label="Kyrgyz"
+                srcLang="ky"
+                src={`data:text/plain;base64,${btoa(srtContent)}`}
+                default
+              />
+              Your browser does not support the video tag.
+            </video>
           </div>
         )}
 
