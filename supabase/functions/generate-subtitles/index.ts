@@ -35,18 +35,27 @@ serve(async (req) => {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
+    const language = formData.get('language') as string | null;
     
     if (!file) {
       throw new Error('No file provided');
     }
 
     console.log('[GENERATE-SUBTITLES] Processing file:', file.name, 'Size:', file.size);
+    if (language) {
+      console.log('[GENERATE-SUBTITLES] Target language:', language);
+    }
 
     // Prepare form data for OpenAI
     const openaiFormData = new FormData();
     openaiFormData.append('file', file);
     openaiFormData.append('model', 'whisper-1');
-    // Let Whisper auto-detect the language (supports Kyrgyz transcription)
+    
+    // Add language parameter if specified
+    if (language) {
+      openaiFormData.append('language', language);
+    }
+    
     openaiFormData.append('response_format', 'verbose_json'); // Get timestamps
     openaiFormData.append('timestamp_granularities[]', 'segment'); // Get segment timestamps
 

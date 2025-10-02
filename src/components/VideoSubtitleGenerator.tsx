@@ -14,6 +14,7 @@ export const VideoSubtitleGenerator = () => {
   const [videoInfo, setVideoInfo] = useState<{ language: string; duration: number } | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [vttUrl, setVttUrl] = useState<string | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("auto");
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -63,6 +64,9 @@ export const VideoSubtitleGenerator = () => {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      if (selectedLanguage !== 'auto') {
+        formData.append('language', selectedLanguage);
+      }
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-subtitles`,
@@ -139,6 +143,38 @@ export const VideoSubtitleGenerator = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Language Selection */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">
+            Subtitle Language
+          </label>
+          <select
+            value={selectedLanguage}
+            onChange={(e) => setSelectedLanguage(e.target.value)}
+            disabled={isProcessing}
+            className="w-full px-3 py-2 border rounded-lg bg-background"
+          >
+            <option value="auto">Auto-detect</option>
+            <option value="en">English</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="it">Italian</option>
+            <option value="pt">Portuguese</option>
+            <option value="ru">Russian</option>
+            <option value="ja">Japanese</option>
+            <option value="ko">Korean</option>
+            <option value="zh">Chinese</option>
+            <option value="ar">Arabic</option>
+            <option value="tr">Turkish</option>
+            <option value="kk">Kazakh</option>
+            <option value="uz">Uzbek</option>
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Note: Kyrgyz is not supported by the transcription service. Kazakh is the closest available option.
+          </p>
+        </div>
+
         {/* File Upload */}
         <div className="space-y-2">
           <label className="block text-sm font-medium">
