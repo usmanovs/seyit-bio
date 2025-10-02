@@ -136,10 +136,10 @@ export const VideoSubtitleGenerator = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileVideo className="w-5 h-5" />
-          Kyrgyz Video Subtitle Generator
+          Multi-Language Video Subtitle Generator
         </CardTitle>
         <CardDescription>
-          Upload a video file and generate Kyrgyz subtitles (SRT format)
+          Upload a video file and generate subtitles in multiple languages (SRT format)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
