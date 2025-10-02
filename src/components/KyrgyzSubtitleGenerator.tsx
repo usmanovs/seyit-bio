@@ -244,19 +244,47 @@ export const KyrgyzSubtitleGenerator = () => {
     setHasUnsavedChanges(true);
   };
 
-  const downloadSubtitles = () => {
-    if (!subtitles) return;
+  const downloadVideoWithSubtitles = async () => {
+    if (!videoUrl || !subtitles || !videoPath) {
+      toast.error("No video or subtitles available");
+      return;
+    }
 
-    const blob = new Blob([subtitles], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'subtitles_kyrgyz.srt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-    toast.success("Subtitles downloaded");
+    try {
+      setIsGenerating(true);
+      
+      // Download the original video
+      const videoResponse = await fetch(videoUrl);
+      const videoBlob = await videoResponse.blob();
+      
+      // Create SRT file
+      const srtBlob = new Blob([subtitles], { type: 'text/plain' });
+      
+      // Download video
+      const videoLink = document.createElement('a');
+      videoLink.href = window.URL.createObjectURL(videoBlob);
+      videoLink.download = 'video_with_kyrgyz_subtitles.mp4';
+      document.body.appendChild(videoLink);
+      videoLink.click();
+      document.body.removeChild(videoLink);
+      window.URL.revokeObjectURL(videoLink.href);
+      
+      // Download SRT file alongside
+      const srtLink = document.createElement('a');
+      srtLink.href = window.URL.createObjectURL(srtBlob);
+      srtLink.download = 'kyrgyz_subtitles.srt';
+      document.body.appendChild(srtLink);
+      srtLink.click();
+      document.body.removeChild(srtLink);
+      window.URL.revokeObjectURL(srtLink.href);
+      
+      toast.success("Video and subtitle file downloaded! Import the SRT file into your video editor to burn subtitles.");
+    } catch (error: any) {
+      console.error('Error downloading video:', error);
+      toast.error("Failed to download video");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -392,12 +420,22 @@ export const KyrgyzSubtitleGenerator = () => {
                 </Button>
               )}
               <Button
-                onClick={downloadSubtitles}
+                onClick={downloadVideoWithSubtitles}
                 variant="outline"
                 className={hasUnsavedChanges ? "flex-1" : "w-full"}
+                disabled={isGenerating}
               >
-                <Download className="w-4 h-4 mr-2" />
-                Download Video
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Video
+                  </>
+                )}
               </Button>
             </div>
           </div>
