@@ -13,6 +13,7 @@ export const VideoSubtitleGenerator = () => {
   const [srtContent, setSrtContent] = useState("");
   const [videoInfo, setVideoInfo] = useState<{ language: string; duration: number } | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [srtUrl, setSrtUrl] = useState<string | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -79,6 +80,15 @@ export const VideoSubtitleGenerator = () => {
       
       setTranscription(data.text);
       setSrtContent(data.srt);
+      
+      // Create blob URL for SRT content to handle Unicode characters
+      if (srtUrl) {
+        URL.revokeObjectURL(srtUrl);
+      }
+      const srtBlob = new Blob([data.srt], { type: 'text/plain;charset=utf-8' });
+      const newSrtUrl = URL.createObjectURL(srtBlob);
+      setSrtUrl(newSrtUrl);
+      
       setVideoInfo({
         language: data.language,
         duration: data.duration
@@ -212,7 +222,7 @@ export const VideoSubtitleGenerator = () => {
         )}
 
         {/* Video Player */}
-        {videoUrl && srtContent && (
+        {videoUrl && srtUrl && (
           <div className="space-y-2">
             <label className="block text-sm font-medium">
               Video Preview
@@ -226,7 +236,7 @@ export const VideoSubtitleGenerator = () => {
                 kind="subtitles"
                 label="Kyrgyz"
                 srcLang="ky"
-                src={`data:text/plain;base64,${btoa(srtContent)}`}
+                src={srtUrl}
                 default
               />
               Your browser does not support the video tag.
