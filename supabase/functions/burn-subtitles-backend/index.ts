@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Replicate from "https://esm.sh/replicate@0.25.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -37,71 +38,65 @@ serve(async (req) => {
       throw new Error('REPLICATE_API_KEY is not configured');
     }
 
-    console.log('[BURN-SUBTITLES] Starting Replicate video processing');
-
-    // Call Replicate API for video processing with FFmpeg to burn subtitles
-    const prediction = await fetch('https://api.replicate.com/v1/predictions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Token ${replicateToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        version: "3b3e9c019c30159299e7498f6c4b6c3f1f4bfb4dc56c0b3c5e4d5e6f7a8b9c0d",
-        input: {
-          video: publicUrl,
-          subtitles: subtitles,
-          subtitle_position: "bottom"
-        }
-      })
+    const replicate = new Replicate({
+      auth: replicateToken,
     });
 
-    if (!prediction.ok) {
-      const errorText = await prediction.text();
-      console.error('[BURN-SUBTITLES] Replicate API error:', errorText);
-      throw new Error(`Replicate API error: ${errorText}`);
-    }
+    console.log('[BURN-SUBTITLES] Starting Replicate video processing');
 
-    const predictionData = await prediction.json();
-    console.log('[BURN-SUBTITLES] Prediction started:', predictionData.id);
-
-    // Poll for completion
-    let status = predictionData.status;
-    let outputUrl = null;
-    let attempts = 0;
-    const maxAttempts = 60; // 5 minutes max
-
-    while (status !== 'succeeded' && status !== 'failed' && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
-      
-      const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionData.id}`, {
-        headers: {
-          'Authorization': `Token ${replicateToken}`,
-        }
+    // Create a temporary SRT file content
+    const srtContent = subtitles;
+    const srtBlob = new Blob([srtContent], { type: 'text/plain' });
+    const srtFileName = `subtitles_${Date.now()}.srt`;
+    
+    // Upload SRT to storage temporarily
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('videos')
+      .upload(`temp/${srtFileName}`, srtBlob, {
+        contentType: 'text/plain',
+        upsert: true
       });
 
-      const statusData = await statusResponse.json();
-      status = statusData.status;
-      
-      if (status === 'succeeded') {
-        outputUrl = statusData.output;
-        console.log('[BURN-SUBTITLES] Processing completed:', outputUrl);
-      } else if (status === 'failed') {
-        console.error('[BURN-SUBTITLES] Processing failed:', statusData.error);
-        throw new Error('Video processing failed');
-      }
-      
-      attempts++;
+    if (uploadError) {
+      console.error('[BURN-SUBTITLES] SRT upload error:', uploadError);
+      throw new Error('Failed to upload subtitle file');
     }
 
-    if (!outputUrl) {
-      throw new Error('Video processing timed out');
+    const { data: { publicUrl: srtUrl } } = supabase.storage
+      .from('videos')
+      .getPublicUrl(`temp/${srtFileName}`);
+
+    console.log('[BURN-SUBTITLES] SRT URL:', srtUrl);
+
+    // Call Replicate API using smart-ffmpeg model
+    const output = await replicate.run(
+      "fofr/smart-ffmpeg",
+      {
+        input: {
+          files: [publicUrl, srtUrl],
+          prompt: "Burn the subtitles from the SRT file onto the video at the bottom center with a black background for readability",
+          max_attempts: 3
+        }
+      }
+    );
+
+    console.log('[BURN-SUBTITLES] Replicate processing complete:', output);
+
+    if (!output) {
+      throw new Error('No output from Replicate');
+    }
+
+    // Clean up temporary SRT file
+    try {
+      await supabase.storage.from('videos').remove([`temp/${srtFileName}`]);
+    } catch (cleanupError) {
+      console.log('[BURN-SUBTITLES] Cleanup warning:', cleanupError);
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        videoUrl: outputUrl,
+        videoUrl: Array.isArray(output) ? output[0] : output,
         message: "Video processed successfully with burned subtitles"
       }),
       {
