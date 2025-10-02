@@ -229,7 +229,7 @@ export const VideoSubtitleGenerator = () => {
             </label>
             <video
               controls
-              className="w-full rounded-lg"
+              className="w-full max-w-2xl mx-auto rounded-lg"
               src={videoUrl}
             >
               <track
