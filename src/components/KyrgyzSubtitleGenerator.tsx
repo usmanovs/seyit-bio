@@ -16,14 +16,33 @@ export const KyrgyzSubtitleGenerator = () => {
   const [subtitleBlobUrl, setSubtitleBlobUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const trackRef = useRef<HTMLTrackElement>(null);
 
   useEffect(() => {
-    if (videoRef.current && subtitleBlobUrl) {
-      const tracks = videoRef.current.textTracks;
+    const video = videoRef.current;
+    if (!video || !subtitleBlobUrl) return;
+
+    try { video.load(); } catch {}
+
+    const showTracks = () => {
+      const tracks = video.textTracks;
+      console.log('[KyrgyzSubtitleGenerator] textTracks count:', tracks.length);
       for (let i = 0; i < tracks.length; i++) {
         tracks[i].mode = 'showing';
+        console.log('[KyrgyzSubtitleGenerator] set track', i, 'mode to', tracks[i].mode, 'cues:', tracks[i].cues?.length ?? 0);
       }
-    }
+    };
+
+    video.addEventListener('loadeddata', showTracks, { once: true } as any);
+    const t = trackRef.current;
+    if (t) t.addEventListener('load', showTracks, { once: true } as any);
+    const id = setTimeout(showTracks, 800);
+
+    return () => {
+      video.removeEventListener('loadeddata', showTracks as any);
+      if (t) t.removeEventListener('load', showTracks as any);
+      clearTimeout(id);
+    };
   }, [subtitleBlobUrl]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,6 +198,7 @@ export const KyrgyzSubtitleGenerator = () => {
           <div className="space-y-2">
             <div className="border rounded-lg p-2 flex justify-center">
               <video 
+                key={subtitleBlobUrl || 'no-vtt'}
                 ref={videoRef}
                 src={videoUrl} 
                 controls 
@@ -204,6 +224,7 @@ export const KyrgyzSubtitleGenerator = () => {
                     srcLang="ky" 
                     label="Kyrgyz"
                     default
+                    ref={trackRef}
                   />
                 )}
               </video>
