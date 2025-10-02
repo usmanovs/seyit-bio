@@ -44,6 +44,42 @@ serve(async (req) => {
 
     console.log('[BURN-SUBTITLES] Starting Replicate video processing');
 
+    // Support status polling: if a predictionId is provided, return current status
+    if (typeof (subtitles as any) === 'undefined') {
+      try {
+        const { predictionId } = await req.json();
+        if (predictionId) {
+          const prediction = await replicate.predictions.get(predictionId as string);
+          console.log('[BURN-SUBTITLES] Status check:', { id: predictionId, status: prediction.status });
+
+          // If finished successfully, return the output URL
+          if (prediction.status === 'succeeded') {
+            const outputUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+            return new Response(
+              JSON.stringify({ success: true, status: prediction.status, videoUrl: outputUrl }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          // If failed, bubble up clear error
+          if (prediction.status === 'failed') {
+            return new Response(
+              JSON.stringify({ success: false, status: prediction.status, error: prediction.error ?? 'Video processing failed' }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+            );
+          }
+
+          // Still running
+          return new Response(
+            JSON.stringify({ success: true, status: prediction.status }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } catch (e) {
+        // ignore if body doesn't contain predictionId
+      }
+    }
+
     // Create a temporary SRT file content
     const srtContent = subtitles;
     const srtBlob = new Blob([srtContent], { type: 'text/plain' });
@@ -68,40 +104,22 @@ serve(async (req) => {
 
     console.log('[BURN-SUBTITLES] SRT URL:', srtUrl);
 
-    // Call Replicate API using smart-ffmpeg model
-    const output = await replicate.run(
-      "fofr/smart-ffmpeg",
-      {
-        input: {
-          files: [publicUrl, srtUrl],
-          prompt: "Burn the subtitles from the SRT file onto the video at the bottom center with a black background for readability",
-          max_attempts: 3
-        }
-      }
-    );
+    // Start Replicate job using predictions API so we can poll from the client
+    const prediction = await replicate.predictions.create({
+      version: 'fofr/smart-ffmpeg',
+      input: {
+        files: [publicUrl, srtUrl],
+        prompt: 'Burn the subtitles from the SRT file onto the video at the bottom center with a black background for readability',
+        max_attempts: 3,
+      },
+    } as any);
 
-    console.log('[BURN-SUBTITLES] Replicate processing complete:', output);
+    console.log('[BURN-SUBTITLES] Prediction created:', prediction.id);
 
-    if (!output) {
-      throw new Error('No output from Replicate');
-    }
-
-    // Clean up temporary SRT file
-    try {
-      await supabase.storage.from('videos').remove([`temp/${srtFileName}`]);
-    } catch (cleanupError) {
-      console.log('[BURN-SUBTITLES] Cleanup warning:', cleanupError);
-    }
-
+    // Return immediately with predictionId for client-side polling
     return new Response(
-      JSON.stringify({
-        success: true,
-        videoUrl: Array.isArray(output) ? output[0] : output,
-        message: "Video processed successfully with burned subtitles"
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      JSON.stringify({ success: true, predictionId: prediction.id }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 202 }
     );
 
   } catch (error: any) {

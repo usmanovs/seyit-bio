@@ -19,6 +19,7 @@ export const KyrgyzSubtitleGenerator = () => {
   const [parsedCues, setParsedCues] = useState<Array<{ start: number; end: number; text: string }>>([]);
   const [currentCueIndex, setCurrentCueIndex] = useState<number>(-1);
   const [isProcessingVideo, setIsProcessingVideo] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
@@ -252,21 +253,51 @@ export const KyrgyzSubtitleGenerator = () => {
     }
 
     setIsProcessingVideo(true);
+    setProcessingStatus('starting');
 
     try {
       console.log('[KyrgyzSubtitleGenerator] Calling backend burn-subtitles function...');
-      toast.info("Processing video with subtitles. This may take a few minutes...");
+      toast.info("Processing started. This may take several minutes...");
       
+      // Start the processing job; backend returns a predictionId for polling
       const { data, error } = await supabase.functions.invoke('burn-subtitles-backend', {
         body: { videoPath, subtitles }
       });
 
-      console.log('[KyrgyzSubtitleGenerator] Backend response:', data);
-
       if (error) throw error;
 
-      if (data.success && data.videoUrl) {
-        // Download the processed video with burned subtitles
+      // New flow: poll by predictionId
+      if (data?.predictionId) {
+        const predictionId: string = data.predictionId;
+        for (let attempt = 0; attempt < 120; attempt++) { // ~10 minutes max
+          await new Promise((res) => setTimeout(res, 5000));
+          const { data: statusData, error: statusError } = await supabase.functions.invoke('burn-subtitles-backend', {
+            body: { predictionId }
+          });
+
+          if (statusError) throw statusError;
+
+          if (statusData?.status) setProcessingStatus(statusData.status);
+
+          if (statusData?.videoUrl) {
+            // Completed successfully – download
+            const processedVideoBlob = await fetch(statusData.videoUrl).then(r => r.blob());
+            const videoLink = document.createElement('a');
+            videoLink.href = window.URL.createObjectURL(processedVideoBlob);
+            videoLink.download = 'video_with_subtitles.mp4';
+            document.body.appendChild(videoLink);
+            videoLink.click();
+            document.body.removeChild(videoLink);
+            window.URL.revokeObjectURL(videoLink.href);
+            toast.success("Video with burned subtitles downloaded successfully!");
+            return;
+          }
+        }
+        throw new Error("Processing timed out. Please try again later.");
+      }
+
+      // Backward-compatibility: if backend returns the URL directly
+      if (data?.success && data?.videoUrl) {
         const processedVideoBlob = await fetch(data.videoUrl).then(r => r.blob());
         const videoLink = document.createElement('a');
         videoLink.href = window.URL.createObjectURL(processedVideoBlob);
@@ -275,18 +306,18 @@ export const KyrgyzSubtitleGenerator = () => {
         videoLink.click();
         document.body.removeChild(videoLink);
         window.URL.revokeObjectURL(videoLink.href);
-        
         toast.success("Video with burned subtitles downloaded successfully!");
         return;
       }
 
-      throw new Error("Failed to process video");
+      throw new Error(data?.error || "Failed to start video processing");
 
     } catch (error: any) {
       console.error('[KyrgyzSubtitleGenerator] Backend processing failed:', error);
-      toast.error("Processing failed: " + error.message);
+      toast.error("Processing failed: " + (error?.message || 'Unknown error'));
     } finally {
       setIsProcessingVideo(false);
+      setProcessingStatus('');
     }
   };
 
@@ -430,10 +461,12 @@ export const KyrgyzSubtitleGenerator = () => {
                 disabled={isProcessingVideo}
               >
                 {isProcessingVideo ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <span>
+                        Processing{processingStatus ? ` (${processingStatus})` : '...'}
+                      </span>
+                    </>
                 ) : (
                   <>
                     <Download className="w-4 h-4 mr-2" />
