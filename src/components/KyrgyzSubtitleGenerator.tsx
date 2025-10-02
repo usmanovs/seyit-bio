@@ -14,6 +14,8 @@ export const KyrgyzSubtitleGenerator = () => {
   const [subtitles, setSubtitles] = useState<string>("");
   const [transcription, setTranscription] = useState<string>("");
   const [subtitleBlobUrl, setSubtitleBlobUrl] = useState<string | null>(null);
+  const [parsedCues, setParsedCues] = useState<Array<{ start: number; end: number; text: string }>>([]);
+  const [activeCaption, setActiveCaption] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
@@ -44,6 +46,22 @@ export const KyrgyzSubtitleGenerator = () => {
       clearTimeout(id);
     };
   }, [subtitleBlobUrl]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || parsedCues.length === 0) {
+      setActiveCaption("");
+      return;
+    }
+    const onTime = () => {
+      const t = video.currentTime;
+      const cue = parsedCues.find(c => t >= c.start && t <= c.end);
+      setActiveCaption(cue ? cue.text : "");
+    };
+    video.addEventListener('timeupdate', onTime);
+    onTime();
+    return () => video.removeEventListener('timeupdate', onTime);
+  }, [parsedCues, videoUrl]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -108,13 +126,14 @@ export const KyrgyzSubtitleGenerator = () => {
 
       setSubtitles(data.subtitles);
       setTranscription(data.transcription);
+      setParsedCues(parseSrtToCues(data.subtitles));
+      setActiveCaption("");
       
       // Convert SRT to WebVTT format for video player
       const webvtt = convertSrtToWebVtt(data.subtitles);
       const blob = new Blob([webvtt], { type: 'text/vtt' });
       const blobUrl = URL.createObjectURL(blob);
       setSubtitleBlobUrl(blobUrl);
-      
       toast.success("Kyrgyz subtitles generated successfully");
     } catch (error: any) {
       console.error("Error generating subtitles:", error);
@@ -141,6 +160,30 @@ export const KyrgyzSubtitleGenerator = () => {
 
     const withDots = cues.replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2');
     return 'WEBVTT\n\n' + withDots;
+  };
+
+  const parseSrtToCues = (srt: string) => {
+    const normalized = srt.replace(/\r+/g, '').trim();
+    const blocks = normalized.split('\n\n');
+    const cues: Array<{ start: number; end: number; text: string }> = [];
+    for (const block of blocks) {
+      const lines = block.split('\n');
+      if (!lines.length) continue;
+      if (/^\d+$/.test(lines[0])) lines.shift();
+      const timing = lines.shift() || '';
+      const m = timing.match(/(\d+:\d+:\d+)[,.](\d+)\s+-->\s+(\d+:\d+:\d+)[,.](\d+)/);
+      if (!m) continue;
+      const start = hmsToSeconds(m[1], m[2]);
+      const end = hmsToSeconds(m[3], m[4]);
+      const text = lines.join('\n');
+      cues.push({ start, end, text });
+    }
+    return cues;
+  };
+
+  const hmsToSeconds = (hms: string, ms: string) => {
+    const [h, m, s] = hms.split(':').map(Number);
+    return h * 3600 + m * 60 + s + Number(ms) / 1000;
   };
 
   const downloadSubtitles = () => {
@@ -197,37 +240,51 @@ export const KyrgyzSubtitleGenerator = () => {
         {videoUrl && (
           <div className="space-y-2">
             <div className="border rounded-lg p-2 flex justify-center">
-              <video 
-                key={subtitleBlobUrl || 'no-vtt'}
-                ref={videoRef}
-                src={videoUrl} 
-                controls 
-                className="rounded max-w-[500px] w-full"
-                crossOrigin="anonymous"
-                onLoadedMetadata={() => {
-                  if (videoRef.current) {
-                    const tracks = videoRef.current.textTracks;
-                    for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
-                  }
-                }}
-                onLoadedData={() => {
-                  if (videoRef.current) {
-                    const tracks = videoRef.current.textTracks;
-                    for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
-                  }
-                }}
-              >
-                {subtitleBlobUrl && (
-                  <track 
-                    kind="captions" 
-                    src={subtitleBlobUrl} 
-                    srcLang="ky" 
-                    label="Kyrgyz"
-                    default
-                    ref={trackRef}
-                  />
+              <div className="relative inline-block">
+                <video 
+                  key={subtitleBlobUrl || 'no-vtt'}
+                  ref={videoRef}
+                  src={videoUrl} 
+                  controls 
+                  className="rounded max-w-[500px] w-full"
+                  crossOrigin="anonymous"
+                  onLoadedMetadata={() => {
+                    if (videoRef.current) {
+                      const tracks = videoRef.current.textTracks;
+                      for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
+                    }
+                  }}
+                  onLoadedData={() => {
+                    if (videoRef.current) {
+                      const tracks = videoRef.current.textTracks;
+                      for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
+                    }
+                  }}
+                >
+                  {subtitleBlobUrl && (
+                    <track 
+                      kind="captions" 
+                      src={subtitleBlobUrl} 
+                      srcLang="ky" 
+                      label="Kyrgyz"
+                      default
+                      ref={trackRef}
+                    />
+                  )}
+                </video>
+                {activeCaption && (
+                  <div className="pointer-events-none absolute inset-x-2 bottom-2 flex justify-center">
+                    <div className="max-w-[480px] rounded px-3 py-1.5 bg-background/80 text-foreground text-sm md:text-base leading-tight shadow-md">
+                      {activeCaption.split('\n').map((line, i) => (
+                        <span key={i}>
+                          {line}
+                          <br />
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
-              </video>
+              </div>
             </div>
 
             {!subtitles && (
