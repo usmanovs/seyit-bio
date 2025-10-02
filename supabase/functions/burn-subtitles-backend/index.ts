@@ -13,23 +13,12 @@ serve(async (req) => {
   }
 
   try {
-    const { videoPath, subtitles } = await req.json();
-    console.log('[BURN-SUBTITLES] Processing video:', videoPath);
-
-    if (!videoPath || !subtitles) {
-      throw new Error('Missing videoPath or subtitles');
-    }
+    const body = await req.json();
+    console.log('[BURN-SUBTITLES] Request body:', body);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Get video public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('videos')
-      .getPublicUrl(videoPath);
-
-    console.log('[BURN-SUBTITLES] Video URL:', publicUrl);
 
     const replicateToken = Deno.env.get('REPLICATE_API_KEY');
     
@@ -42,43 +31,51 @@ serve(async (req) => {
       auth: replicateToken,
     });
 
-    console.log('[BURN-SUBTITLES] Starting Replicate video processing');
+    // Case 1: Status polling - if body contains predictionId
+    if (body.predictionId) {
+      const predictionId = body.predictionId;
+      console.log('[BURN-SUBTITLES] Checking status for:', predictionId);
+      
+      const prediction = await replicate.predictions.get(predictionId);
+      console.log('[BURN-SUBTITLES] Status:', prediction.status);
 
-    // Support status polling: if a predictionId is provided, return current status
-    if (typeof (subtitles as any) === 'undefined') {
-      try {
-        const { predictionId } = await req.json();
-        if (predictionId) {
-          const prediction = await replicate.predictions.get(predictionId as string);
-          console.log('[BURN-SUBTITLES] Status check:', { id: predictionId, status: prediction.status });
-
-          // If finished successfully, return the output URL
-          if (prediction.status === 'succeeded') {
-            const outputUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
-            return new Response(
-              JSON.stringify({ success: true, status: prediction.status, videoUrl: outputUrl }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
-
-          // If failed, bubble up clear error
-          if (prediction.status === 'failed') {
-            return new Response(
-              JSON.stringify({ success: false, status: prediction.status, error: prediction.error ?? 'Video processing failed' }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-            );
-          }
-
-          // Still running
-          return new Response(
-            JSON.stringify({ success: true, status: prediction.status }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      } catch (e) {
-        // ignore if body doesn't contain predictionId
+      if (prediction.status === 'succeeded') {
+        const outputUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+        return new Response(
+          JSON.stringify({ success: true, status: prediction.status, videoUrl: outputUrl }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
+
+      if (prediction.status === 'failed') {
+        return new Response(
+          JSON.stringify({ success: false, status: prediction.status, error: prediction.error ?? 'Video processing failed' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+
+      // Still processing
+      return new Response(
+        JSON.stringify({ success: true, status: prediction.status }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    // Case 2: Start new job - body contains videoPath and subtitles
+    const { videoPath, subtitles } = body;
+    
+    if (!videoPath || !subtitles) {
+      throw new Error('Missing videoPath or subtitles');
+    }
+
+    console.log('[BURN-SUBTITLES] Starting new job for video:', videoPath);
+
+    // Get video public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('videos')
+      .getPublicUrl(videoPath);
+
+    console.log('[BURN-SUBTITLES] Video URL:', publicUrl);
 
     // Create a temporary SRT file content
     const srtContent = subtitles;
