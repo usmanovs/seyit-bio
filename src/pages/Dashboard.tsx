@@ -73,11 +73,11 @@ const Dashboard = () => {
         </div>
 
         <div className="mb-8">
-          <DailyNews />
+          <VideoSubtitleGenerator />
         </div>
 
         <div className="mb-8">
-          <VideoSubtitleGenerator />
+          <DailyNews />
         </div>
 
         <div className="mb-8">
