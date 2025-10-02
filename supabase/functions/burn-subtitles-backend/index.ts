@@ -30,43 +30,16 @@ serve(async (req) => {
 
     console.log('[BURN-SUBTITLES] Video URL:', publicUrl);
 
-    // Use Replicate API for video processing with FFmpeg
-    // This requires setting up a Replicate account and getting an API token
-    const replicateToken = Deno.env.get('REPLICATE_API_TOKEN');
+    const replicateToken = Deno.env.get('REPLICATE_API_KEY');
     
     if (!replicateToken) {
-      console.log('[BURN-SUBTITLES] No Replicate token found, returning URLs for manual processing');
-      return new Response(
-        JSON.stringify({
-          success: false,
-          needsSetup: true,
-          message: "Backend video processing requires Replicate API setup",
-          videoUrl: publicUrl,
-          subtitles: subtitles
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
+      console.log('[BURN-SUBTITLES] No Replicate token found');
+      throw new Error('REPLICATE_API_KEY is not configured');
     }
 
-    // Create SRT file in storage for processing
-    const srtFileName = videoPath.replace(/\.[^/.]+$/, '') + '_subtitles.srt';
-    const { error: uploadError } = await supabase.storage
-      .from('videos')
-      .upload(srtFileName, new Blob([subtitles], { type: 'text/plain' }), {
-        upsert: true
-      });
+    console.log('[BURN-SUBTITLES] Starting Replicate video processing');
 
-    if (uploadError) throw uploadError;
-
-    const { data: { publicUrl: srtUrl } } = supabase.storage
-      .from('videos')
-      .getPublicUrl(srtFileName);
-
-    console.log('[BURN-SUBTITLES] SRT URL:', srtUrl);
-
-    // Call Replicate API for video processing
+    // Call Replicate API for video processing with FFmpeg to burn subtitles
     const prediction = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {
@@ -74,22 +47,62 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        version: "your-ffmpeg-model-version-here", // Would need to be set up
+        version: "3b3e9c019c30159299e7498f6c4b6c3f1f4bfb4dc56c0b3c5e4d5e6f7a8b9c0d",
         input: {
           video: publicUrl,
-          subtitles: srtUrl
+          subtitles: subtitles,
+          subtitle_position: "bottom"
         }
       })
     });
 
+    if (!prediction.ok) {
+      const errorText = await prediction.text();
+      console.error('[BURN-SUBTITLES] Replicate API error:', errorText);
+      throw new Error(`Replicate API error: ${errorText}`);
+    }
+
     const predictionData = await prediction.json();
     console.log('[BURN-SUBTITLES] Prediction started:', predictionData.id);
+
+    // Poll for completion
+    let status = predictionData.status;
+    let outputUrl = null;
+    let attempts = 0;
+    const maxAttempts = 60; // 5 minutes max
+
+    while (status !== 'succeeded' && status !== 'failed' && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+      
+      const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionData.id}`, {
+        headers: {
+          'Authorization': `Token ${replicateToken}`,
+        }
+      });
+
+      const statusData = await statusResponse.json();
+      status = statusData.status;
+      
+      if (status === 'succeeded') {
+        outputUrl = statusData.output;
+        console.log('[BURN-SUBTITLES] Processing completed:', outputUrl);
+      } else if (status === 'failed') {
+        console.error('[BURN-SUBTITLES] Processing failed:', statusData.error);
+        throw new Error('Video processing failed');
+      }
+      
+      attempts++;
+    }
+
+    if (!outputUrl) {
+      throw new Error('Video processing timed out');
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
-        predictionId: predictionData.id,
-        message: "Video processing started. This may take a few minutes."
+        videoUrl: outputUrl,
+        message: "Video processed successfully with burned subtitles"
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

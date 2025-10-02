@@ -255,7 +255,7 @@ export const KyrgyzSubtitleGenerator = () => {
 
     try {
       console.log('[KyrgyzSubtitleGenerator] Calling backend burn-subtitles function...');
-      toast.info("Processing video on server...");
+      toast.info("Processing video with subtitles. This may take a few minutes...");
       
       const { data, error } = await supabase.functions.invoke('burn-subtitles-backend', {
         body: { videoPath, subtitles }
@@ -265,55 +265,31 @@ export const KyrgyzSubtitleGenerator = () => {
 
       if (error) throw error;
 
-      if (data.needsSetup) {
-        toast.error("Backend video processing not configured yet");
-        // Fallback to downloading separately
-        await downloadSeparately();
+      if (data.success && data.videoUrl) {
+        // Download the processed video with burned subtitles
+        const processedVideoBlob = await fetch(data.videoUrl).then(r => r.blob());
+        const videoLink = document.createElement('a');
+        videoLink.href = window.URL.createObjectURL(processedVideoBlob);
+        videoLink.download = 'video_with_subtitles.mp4';
+        document.body.appendChild(videoLink);
+        videoLink.click();
+        document.body.removeChild(videoLink);
+        window.URL.revokeObjectURL(videoLink.href);
+        
+        toast.success("Video with burned subtitles downloaded successfully!");
         return;
       }
 
-      if (data.success) {
-        toast.success("Video processing started! Check back in a few minutes.");
-        // TODO: Implement polling for completion
-      }
+      throw new Error("Failed to process video");
 
     } catch (error: any) {
       console.error('[KyrgyzSubtitleGenerator] Backend processing failed:', error);
-      toast.error("Backend processing failed. Downloading files separately...");
-      await downloadSeparately();
+      toast.error("Processing failed: " + error.message);
     } finally {
       setIsProcessingVideo(false);
     }
   };
 
-  const downloadSeparately = async () => {
-    try {
-      const videoResponse = await fetch(videoUrl!);
-      const videoBlob = await videoResponse.blob();
-      const srtBlob = new Blob([subtitles], { type: 'text/plain' });
-      
-      const videoLink = document.createElement('a');
-      videoLink.href = window.URL.createObjectURL(videoBlob);
-      videoLink.download = 'video.mp4';
-      document.body.appendChild(videoLink);
-      videoLink.click();
-      document.body.removeChild(videoLink);
-      window.URL.revokeObjectURL(videoLink.href);
-      
-      const srtLink = document.createElement('a');
-      srtLink.href = window.URL.createObjectURL(srtBlob);
-      srtLink.download = 'kyrgyz_subtitles.srt';
-      document.body.appendChild(srtLink);
-      srtLink.click();
-      document.body.removeChild(srtLink);
-      window.URL.revokeObjectURL(srtLink.href);
-      
-      toast.success("Video and SRT downloaded! Use CapCut, DaVinci Resolve, or Premiere to burn subtitles.");
-    } catch (error) {
-      console.error('Download error:', error);
-      toast.error("Failed to download files");
-    }
-  };
 
   return (
     <Card>
