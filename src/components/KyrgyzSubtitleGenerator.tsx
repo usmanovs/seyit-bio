@@ -357,14 +357,26 @@ export const KyrgyzSubtitleGenerator = () => {
 
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Kyrgyz Video Subtitle Generator</CardTitle>
-        <CardDescription>
-          Upload a video and generate Kyrgyz subtitles using ElevenLabs ASR
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <>
+      <style>{`
+        video::cue {
+          background-color: rgba(0, 0, 0, 0.8);
+          color: white;
+          font-size: 1.5em;
+          font-weight: bold;
+          text-shadow: 2px 2px 4px rgba(255, 215, 0, 0.8), 0 0 10px rgba(255, 215, 0, 0.5);
+          padding: 0.2em 0.5em;
+          border-radius: 4px;
+        }
+      `}</style>
+      <Card>
+        <CardHeader>
+          <CardTitle>Kyrgyz Video Subtitle Generator</CardTitle>
+          <CardDescription>
+            Upload a video and generate Kyrgyz subtitles using ElevenLabs ASR
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
         <div className="space-y-2">
           <input
             ref={fileInputRef}
@@ -514,5 +526,6 @@ export const KyrgyzSubtitleGenerator = () => {
         )}
       </CardContent>
     </Card>
+    </>
   );
 };
