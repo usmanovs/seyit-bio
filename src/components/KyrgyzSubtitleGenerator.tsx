@@ -38,8 +38,8 @@ export const KyrgyzSubtitleGenerator = () => {
   const captionStyles = [{
     id: 'outline',
     name: 'Outline',
-    css: 'background-color: transparent; color: white; font-weight: bold; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;',
-    prompt: 'white text with thick black outline, no background, bold font'
+    css: 'background-color: transparent; color: white; font-weight: bold; text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, -3px 0 0 #000, 3px 0 0 #000, 0 -3px 0 #000, 0 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;',
+    prompt: 'white text with extra thick black outline, no background, bold font, very high contrast'
   }, {
     id: 'minimal',
     name: 'Minimal',
