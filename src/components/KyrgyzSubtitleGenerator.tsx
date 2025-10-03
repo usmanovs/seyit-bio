@@ -38,23 +38,23 @@ export const KyrgyzSubtitleGenerator = () => {
   const captionStyles = [{
     id: 'outline',
     name: 'Stroke',
-    css: 'background-color: transparent; color: white; font-weight: bold; text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, -3px 0 0 #000, 3px 0 0 #000, 0 -3px 0 #000, 0 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;',
+    css: 'background-color: transparent; color: white; font-weight: bold; font-size: 2em; text-shadow: -4px -4px 0 #000, 4px -4px 0 #000, -4px 4px 0 #000, 4px 4px 0 #000, -4px 0 0 #000, 4px 0 0 #000, 0 -4px 0 #000, 0 4px 0 #000;',
     prompt: 'white text with extra thick black outline, no background, bold font, very high contrast'
   }, {
     id: 'minimal',
     name: 'Subtle',
-    css: 'background-color: rgba(0, 0, 0, 0.5); color: white; font-weight: normal; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);',
-    prompt: 'white text, normal weight, semi-transparent black background, minimal shadow'
+    css: 'background-color: rgba(0, 0, 0, 0.7); color: white; font-weight: 300; font-size: 1.3em; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); padding: 0.3em 0.8em;',
+    prompt: 'white text, light weight, semi-transparent black background, minimal shadow'
   }, {
     id: 'green',
     name: 'Highlight',
-    css: 'background-color: rgb(234, 179, 8); color: white; font-weight: bold; text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);',
-    prompt: 'white text on bright yellow/gold background, bold font, high visibility with text shadow'
+    css: 'background-color: rgb(234, 179, 8); color: black; font-weight: 900; font-size: 1.8em; text-shadow: none; padding: 0.4em 1em; border-radius: 8px;',
+    prompt: 'black text on bright yellow/gold background, extra bold font, high visibility'
   }, {
     id: 'boxed',
     name: 'Framed',
-    css: 'background-color: rgba(0, 0, 0, 0.9); color: white; font-weight: bold; border: 3px solid white; text-shadow: none;',
-    prompt: 'white text with white border box, bold font, solid black background'
+    css: 'background-color: rgba(0, 0, 0, 0.95); color: #00ff00; font-weight: bold; font-size: 1.6em; border: 4px solid #00ff00; text-shadow: 0 0 10px #00ff00; padding: 0.4em 0.8em;',
+    prompt: 'bright green text with green border box and glow effect, bold font, solid black background'
   }];
   const currentStyle = captionStyles.find(s => s.id === captionStyle) || captionStyles[0];
   useEffect(() => {
@@ -496,9 +496,9 @@ export const KyrgyzSubtitleGenerator = () => {
                   case 'minimal':
                     return 'bg-black/40 text-white font-normal';
                   case 'green':
-                    return 'bg-yellow-500 text-white font-bold';
+                    return 'bg-yellow-500 text-black font-black';
                   case 'boxed':
-                    return 'bg-black text-white font-bold border-2 border-white';
+                    return 'bg-black text-green-500 font-bold border-4 border-green-500';
                   default:
                     return '';
                 }
