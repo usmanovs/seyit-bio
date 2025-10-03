@@ -462,7 +462,7 @@ export const KyrgyzSubtitleGenerator = () => {
           border-radius: 4px;
         }
       `}</style>
-      <Card>
+      <Card className="max-w-4xl mx-auto">
         <CardHeader className="text-center">
           <CardTitle>Kyrgyz Video Subtitle Generator</CardTitle>
           <CardDescription>Upload a video and generate Kyrgyz subtitles</CardDescription>
