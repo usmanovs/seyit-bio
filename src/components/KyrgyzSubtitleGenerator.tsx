@@ -33,6 +33,7 @@ export const KyrgyzSubtitleGenerator = () => {
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number>(0);
   const [captionStyle, setCaptionStyle] = useState<string>('outline');
   const [addEmojis, setAddEmojis] = useState<boolean>(false);
+  const [correctSpelling, setCorrectSpelling] = useState<boolean>(true);
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
   const [titleVariations, setTitleVariations] = useState<string[]>([]);
   const [isGeneratingSummaries, setIsGeneratingSummaries] = useState(false);
@@ -343,14 +344,15 @@ export const KyrgyzSubtitleGenerator = () => {
     setIsGenerating(true);
     let responseData: any = null;
     try {
-      console.log('[KyrgyzSubtitleGenerator] Calling edge function with videoPath:', path, 'addEmojis:', addEmojis);
+      console.log('[KyrgyzSubtitleGenerator] Calling edge function with videoPath:', path, 'addEmojis:', addEmojis, 'correctSpelling:', correctSpelling);
       const {
         data,
         error
       } = await supabase.functions.invoke('generate-kyrgyz-subtitles', {
         body: {
           videoPath: path,
-          addEmojis: addEmojis
+          addEmojis: addEmojis,
+          correctSpelling: correctSpelling
         },
         headers: (await supabase.auth.getSession()).data.session?.access_token ? {
           Authorization: `Bearer ${(await supabase.auth.getSession()).data.session!.access_token}`
@@ -784,6 +786,24 @@ export const KyrgyzSubtitleGenerator = () => {
           {videoUrl && <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Left side - Controls and Subtitle Editor */}
               <div className="space-y-3">
+                {/* Spelling Correction Toggle */}
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="spelling-toggle" className="text-sm font-medium">
+                      ✓ Correct Spelling
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {subtitles ? correctSpelling ? "Spelling correction ON — click Regenerate to apply" : "Turn on and click Regenerate to correct spelling" : correctSpelling ? "Spelling will be corrected on generation" : "Fix spelling mistakes in Kyrgyz text"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch id="spelling-toggle" checked={correctSpelling} onCheckedChange={setCorrectSpelling} />
+                    {subtitles && <Button size="sm" variant="secondary" onClick={() => videoPath && generateSubtitlesForPath(videoPath)} disabled={isGenerating}>
+                        {isGenerating ? 'Regenerating...' : 'Regenerate'}
+                      </Button>}
+                  </div>
+                </div>
+
                 {/* Emoji Toggle */}
                 <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
                   <div className="space-y-0.5">

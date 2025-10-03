@@ -93,13 +93,14 @@ serve(async (req) => {
       throw new Error('ELEVENLABS_API_KEY is not set');
     }
 
-    const { videoPath, addEmojis = false } = await req.json();
+    const { videoPath, addEmojis = false, correctSpelling = true } = await req.json();
 
     if (!videoPath) {
       throw new Error('Video path is required');
     }
     
     console.log('[KYRGYZ-SUBTITLES] addEmojis flag:', addEmojis);
+    console.log('[KYRGYZ-SUBTITLES] correctSpelling flag:', correctSpelling);
 
     console.log('[KYRGYZ-SUBTITLES] Processing video:', videoPath);
 
@@ -146,6 +147,57 @@ serve(async (req) => {
 
     // Generate SRT subtitle file
     let srtContent = generateSRT(transcription);
+    
+    // Correct spelling if requested
+    if (correctSpelling) {
+      console.log('[KYRGYZ-SUBTITLES] Correcting spelling with Gemini...');
+      try {
+        const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+        if (!LOVABLE_API_KEY) {
+          console.error('[KYRGYZ-SUBTITLES] LOVABLE_API_KEY not found for spelling correction');
+        } else {
+          const geminiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${LOVABLE_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-2.5-flash',
+              messages: [{
+                role: 'user',
+                content: `You are a Kyrgyz language expert. Correct spelling mistakes in these Kyrgyz subtitles while preserving the exact SRT format.
+
+CRITICAL RULES:
+- Keep line numbers and timestamps EXACTLY as they are
+- Only fix obvious spelling errors in Kyrgyz text
+- Do NOT change the meaning or rephrase sentences
+- Preserve all punctuation
+- Return the complete SRT file with corrections
+
+Subtitles to correct:
+${srtContent}`
+              }]
+            })
+          });
+          
+          if (geminiResponse.ok) {
+            const geminiData = await geminiResponse.json();
+            const correctedContent = geminiData.choices[0]?.message?.content;
+            if (correctedContent) {
+              srtContent = correctedContent;
+              console.log('[KYRGYZ-SUBTITLES] Spelling corrected successfully');
+            }
+          } else {
+            const errorText = await geminiResponse.text();
+            console.error('[KYRGYZ-SUBTITLES] Failed to correct spelling:', geminiResponse.status, errorText);
+          }
+        }
+      } catch (spellingError) {
+        console.error('[KYRGYZ-SUBTITLES] Error correcting spelling:', spellingError);
+        // Continue with original subtitles if spelling correction fails
+      }
+    }
     
     // Add emojis if requested
     if (addEmojis) {
