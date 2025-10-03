@@ -111,15 +111,16 @@ serve(async (req) => {
 
     console.log('[BURN-SUBTITLES] SRT URL:', srtUrl);
 
-      // Ensure style prompt creates visible, non-obstructive subtitles
-      let enhancedPrompt = body.stylePrompt || 'white text with black outline, bold font';
+      // Enforce a clean, readable standard style for burned captions regardless of UI style to avoid ugly results
+      let enhancedPrompt = 'pure white text (#FFFFFF) with a crisp 3-4px solid black outline stroke (#000000), semibold weight (600), sans-serif, no glow, no blur, no background boxes';
       
-      // Fix common issues with style prompts
-      if (enhancedPrompt.includes('solid black background')) {
-        enhancedPrompt = enhancedPrompt.replace('solid black background', 'semi-transparent dark background (70% opacity)');
+      // If any style mentioned solid backgrounds, soften it to semi-transparent
+      if ((body.stylePrompt || '').includes('solid black background')) {
+        enhancedPrompt += ', optional semi-transparent dark background (60-70% opacity) only if needed';
       }
+      
       // Enforce normal spacing between words and letters
-      enhancedPrompt += ', no extra word spacing or letter spacing (word-spacing: 0px; letter-spacing: 0px; kerning: normal)';
+      enhancedPrompt += ', word-spacing: 0px; letter-spacing: 0px; kerning: normal';
       
       // Start Replicate job using predictions API so we can poll from the client
       const prediction = await replicate.predictions.create({
