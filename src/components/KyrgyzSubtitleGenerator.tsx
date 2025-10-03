@@ -947,7 +947,7 @@ export const KyrgyzSubtitleGenerator = () => {
                             <div className="flex items-center justify-center gap-2">
                               <Loader2 className="w-5 h-5 animate-spin" />
                               <span className="text-sm">
-                                {processingStatus} - {Math.round(processingProgress)}%
+                                {processingStatus.charAt(0).toUpperCase() + processingStatus.slice(1)} - {Math.round(processingProgress)}%
                                 {estimatedTimeRemaining > 0 && ` • ~${formatTimeRemaining(estimatedTimeRemaining)} left`}
                               </span>
                             </div>
