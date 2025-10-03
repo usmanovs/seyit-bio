@@ -219,6 +219,7 @@ export const KyrgyzSubtitleGenerator = () => {
       return;
     }
     setIsGenerating(true);
+    let responseData: any = null;
     try {
       console.log('[KyrgyzSubtitleGenerator] Calling edge function with videoPath:', path);
       const {
@@ -234,7 +235,16 @@ export const KyrgyzSubtitleGenerator = () => {
       });
       console.log('[KyrgyzSubtitleGenerator] Response data:', data);
       console.log('[KyrgyzSubtitleGenerator] Response error:', error);
+      
+      responseData = data;
+      
+      // Check for error in response data first (edge function returned error details)
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+      
       if (error) throw error;
+      
       setSubtitles(data.subtitles);
       setEditedSubtitles(data.subtitles);
       setHasUnsavedChanges(false);
@@ -257,7 +267,16 @@ export const KyrgyzSubtitleGenerator = () => {
         message: error.message,
         context: error.context
       });
-      toast.error(error.message || "Failed to generate subtitles");
+      
+      // Extract the actual error message
+      let errorMessage = error.message || "Failed to generate subtitles";
+      
+      // Check for specific "audio too short" error
+      if (errorMessage.includes("audio_too_short") || errorMessage.includes("Audio is too short")) {
+        errorMessage = "The video is too short for subtitle generation. Please upload a longer video (at least 10 seconds).";
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsGenerating(false);
     }
