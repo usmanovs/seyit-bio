@@ -135,13 +135,13 @@ export const KyrgyzSubtitleGenerator = () => {
 
     setIsUploading(true);
     try {
+      // Check if user is authenticated (optional for guest uploads)
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
-
-      // Upload to storage
-      const fileName = `${user.id}/${Date.now()}_${file.name}`;
+      
+      // Generate unique file name (works for both authenticated and guest users)
+      const userId = user?.id || 'guest';
+      const fileName = `${userId}/${Date.now()}_${file.name}`;
+      
       const { error: uploadError } = await supabase.storage
         .from('videos')
         .upload(fileName, file);
