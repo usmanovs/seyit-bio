@@ -69,28 +69,23 @@ serve(async (req) => {
       hasApiKey: !!apikey,
     });
 
-    if (!authHeader) {
-      throw new Error('No authorization header');
-    }
-
-    // Decode user id from verified JWT (platform has already verified when verify_jwt=true)
-    const token = authHeader.replace('Bearer ', '');
+    // Try to decode user id from JWT if present (optional for guest users)
     let userId: string | null = null;
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      userId = payload.sub || payload.user_id || null;
-    } catch (e) {
-      console.error('[KYRGYZ-SUBTITLES] Failed to decode JWT payload');
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        userId = payload.sub || payload.user_id || null;
+      } catch (e) {
+        console.error('[KYRGYZ-SUBTITLES] Failed to decode JWT payload');
+      }
     }
-    console.log('[KYRGYZ-SUBTITLES] Decoded userId:', userId);
-    if (!userId) {
-      throw new Error('User not authenticated');
-    }
+    console.log('[KYRGYZ-SUBTITLES] Decoded userId:', userId, '(guest user if null)');
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
+      authHeader ? { global: { headers: { Authorization: authHeader } } } : {}
     );
 
     const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
@@ -150,22 +145,27 @@ serve(async (req) => {
     // Generate SRT subtitle file
     const srtContent = generateSRT(transcription);
 
-    // Save subtitle to database
-    const { error: insertError } = await supabaseClient
-      .from('video_subtitles')
-      .insert({
-        user_id: userId,
-        video_path: videoPath,
-        subtitle_content: srtContent,
-        language: 'ky'
-      });
+    // Save subtitle to database only for authenticated users
+    if (userId) {
+      const { error: insertError } = await supabaseClient
+        .from('video_subtitles')
+        .insert({
+          user_id: userId,
+          video_path: videoPath,
+          subtitle_content: srtContent,
+          language: 'ky'
+        });
 
-    if (insertError) {
-      console.error('[KYRGYZ-SUBTITLES] Insert error:', insertError);
-      throw new Error(`Failed to save subtitles: ${insertError.message}`);
+      if (insertError) {
+        console.error('[KYRGYZ-SUBTITLES] Insert error:', insertError);
+        // Don't throw - still return subtitles even if save fails
+        console.warn('[KYRGYZ-SUBTITLES] Failed to save subtitles to database, but continuing');
+      } else {
+        console.log('[KYRGYZ-SUBTITLES] Subtitles saved successfully');
+      }
+    } else {
+      console.log('[KYRGYZ-SUBTITLES] Guest user - skipping database save');
     }
-
-    console.log('[KYRGYZ-SUBTITLES] Subtitles saved successfully');
 
     return new Response(
       JSON.stringify({ 
