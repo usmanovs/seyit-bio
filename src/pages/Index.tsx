@@ -91,7 +91,7 @@ const Index = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 lg:px-8 pt-20 pb-32">
+      <section className="container mx-auto px-4 lg:px-8 pt-20 pb-16">
         <div className="max-w-5xl mx-auto text-center space-y-8 animate-fade-in">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 backdrop-blur-sm">
             <Sparkles className="w-4 h-4 text-primary" />
@@ -147,7 +147,7 @@ const Index = () => {
       </section>
 
       {/* Features Section */}
-      <section className="container mx-auto px-4 lg:px-8 py-24">
+      <section className="container mx-auto px-4 lg:px-8 py-16">
         <div className="text-center mb-16 space-y-4">
           <h2 className="text-4xl lg:text-5xl font-bold">
             Everything You Need
@@ -216,7 +216,7 @@ const Index = () => {
       </section>
 
       {/* How It Works */}
-      <section className="container mx-auto px-4 lg:px-8 py-24">
+      <section className="container mx-auto px-4 lg:px-8 py-16">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16 space-y-4">
             <h2 className="text-4xl lg:text-5xl font-bold">
@@ -268,7 +268,7 @@ const Index = () => {
       </section>
 
       {/* Generator Section */}
-      <section id="generator-section" className="container mx-auto px-4 lg:px-8 py-24 scroll-mt-20">
+      <section id="generator-section" className="container mx-auto px-4 lg:px-8 py-16 scroll-mt-20">
         <div className="text-center mb-12 space-y-4">
           <h2 className="text-4xl lg:text-5xl font-bold">
             Try It Free
@@ -283,7 +283,7 @@ const Index = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="container mx-auto px-4 lg:px-8 py-24">
+      <section className="container mx-auto px-4 lg:px-8 py-16">
         <div className="relative overflow-hidden rounded-3xl">
           <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-secondary" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent" />
