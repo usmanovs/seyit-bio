@@ -229,9 +229,9 @@ export const KyrgyzSubtitleGenerator = () => {
       return;
     }
 
-    // Validate file size (max 100MB)
-    if (file.size > 100 * 1024 * 1024) {
-      toast.error("Video file must be less than 100MB");
+    // Validate file size (max 200MB)
+    if (file.size > 200 * 1024 * 1024) {
+      toast.error("Video file must be less than 200MB");
       return;
     }
 
