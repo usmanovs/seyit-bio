@@ -31,10 +31,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.generate-kyrgyz-subtitles]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-title-variations]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-video-summary]
-verify_jwt = false
+verify_jwt = true
