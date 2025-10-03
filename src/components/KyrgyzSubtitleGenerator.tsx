@@ -155,6 +155,21 @@ export const KyrgyzSubtitleGenerator = () => {
       toast.error("Video file must be less than 100MB");
       return;
     }
+
+    // Reset all state when uploading a new video
+    setVideoUrl(null);
+    setVideoPath(null);
+    setSubtitles("");
+    setEditedSubtitles("");
+    setTranscription("");
+    setSubtitleBlobUrl(null);
+    setParsedCues([]);
+    setCurrentCueIndex(-1);
+    setIsProcessingVideo(false);
+    setProcessingStatus('');
+    setProcessingProgress(0);
+    setHasUnsavedChanges(false);
+    
     setIsUploading(true);
     setUploadProgress(0);
 
