@@ -658,13 +658,6 @@ export const KyrgyzSubtitleGenerator = () => {
         video::cue {
           ${currentStyle.css}
         }
-        video::-webkit-media-controls-panel {
-          transform: scale(1.5);
-          transform-origin: bottom;
-        }
-        video::-webkit-media-controls-play-button {
-          transform: scale(1.8);
-        }
       `}</style>
       <Card className="max-w-4xl mx-auto">
         <CardHeader className="text-center">
