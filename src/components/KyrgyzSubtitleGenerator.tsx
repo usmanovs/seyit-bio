@@ -743,7 +743,7 @@ export const KyrgyzSubtitleGenerator = () => {
               const getPreviewClasses = () => {
                 switch (style.id) {
                   case 'outline':
-                    return 'bg-transparent text-white font-bold [text-shadow:-2px_-2px_0_#000,2px_-2px_0_#000,-2px_2px_0_#000,2px_2px_0_#000]';
+                    return 'bg-gray-900 text-white font-bold [text-shadow:-2px_-2px_0_#000,2px_-2px_0_#000,-2px_2px_0_#000,2px_2px_0_#000]';
                   case 'minimal':
                     return 'bg-black/70 text-white/90 font-light';
                   case 'green':
