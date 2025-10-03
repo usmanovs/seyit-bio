@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import editingExample from "@/assets/editing-example.png";
 export const KyrgyzSubtitleGenerator = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -665,6 +666,13 @@ export const KyrgyzSubtitleGenerator = () => {
           <CardDescription>Upload a video and generate Kyrgyz subtitles</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          {/* Example Image */}
+          {!videoUrl && (
+            <div className="mb-6 rounded-lg overflow-hidden border">
+              <img src={editingExample} alt="Example of subtitle editing interface" className="w-full h-auto" />
+              <p className="text-sm text-muted-foreground text-center py-2">Example: How subtitle editing works</p>
+            </div>
+          )}
           <div className="space-y-2">
             <input ref={fileInputRef} type="file" accept="video/*" onChange={handleFileSelect} className="hidden" />
             <div className="flex justify-center">
