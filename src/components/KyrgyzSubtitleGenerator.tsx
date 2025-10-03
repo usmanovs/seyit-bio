@@ -860,7 +860,7 @@ export const KyrgyzSubtitleGenerator = () => {
 
               {/* Right side - Video Player */}
               <div className="space-y-2">
-                <div className="p-2 h-[650px] flex flex-col">
+                <div className="p-2 h-[800px] flex flex-col">
                   <div className="flex-1 flex items-center justify-center overflow-auto">
                     <video key={subtitleBlobUrl || 'no-vtt'} ref={videoRef} src={videoUrl} controls className="rounded max-w-full max-h-full object-contain" crossOrigin="anonymous" onLoadedMetadata={() => {
                   if (videoRef.current) {
