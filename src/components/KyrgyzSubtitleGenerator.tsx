@@ -887,6 +887,19 @@ export const KyrgyzSubtitleGenerator = () => {
             </div>}
       </CardContent>
     </Card>
+
+    {/* How it works section */}
+    <Card className="max-w-4xl mx-auto mt-6">
+      <CardHeader>
+        <CardTitle className="text-lg">How Editing Works</CardTitle>
+        <CardDescription>See an example of the subtitle editing interface</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="rounded-lg overflow-hidden border">
+          <img src={editingExample} alt="Example of subtitle editing interface showing caption styles, emoji toggle, subtitle editor, and video preview" className="w-full h-auto" />
+        </div>
+      </CardContent>
+    </Card>
     
     {/* AI Content Generators */}
     {transcription && (
@@ -1010,19 +1023,6 @@ export const KyrgyzSubtitleGenerator = () => {
                 </p>
               </div>
             )}
-          </CardContent>
-        </Card>
-
-        {/* How it works section */}
-        <Card className="max-w-4xl mx-auto mt-6">
-          <CardHeader>
-            <CardTitle className="text-lg">How Editing Works</CardTitle>
-            <CardDescription>See an example of the subtitle editing interface</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-lg overflow-hidden border">
-              <img src={editingExample} alt="Example of subtitle editing interface showing caption styles, emoji toggle, subtitle editor, and video preview" className="w-full h-auto" />
-            </div>
           </CardContent>
         </Card>
       </div>
