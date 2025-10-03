@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Upload, Loader2, Download, Video } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 export const KyrgyzSubtitleGenerator = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -28,6 +30,7 @@ export const KyrgyzSubtitleGenerator = () => {
   const [processingProgress, setProcessingProgress] = useState<number>(0);
   const [processingStartTime, setProcessingStartTime] = useState<number>(0);
   const [captionStyle, setCaptionStyle] = useState<string>('default');
+  const [addEmojis, setAddEmojis] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
@@ -227,7 +230,8 @@ export const KyrgyzSubtitleGenerator = () => {
         error
       } = await supabase.functions.invoke('generate-kyrgyz-subtitles', {
         body: {
-          videoPath: path
+          videoPath: path,
+          addEmojis: addEmojis
         },
         headers: (await supabase.auth.getSession()).data.session?.access_token ? {
           Authorization: `Bearer ${(await supabase.auth.getSession()).data.session!.access_token}`
@@ -472,6 +476,25 @@ export const KyrgyzSubtitleGenerator = () => {
             </Button>
             {isUploading && <Progress value={uploadProgress} className="w-full" />}
           </div>
+
+          {/* Emoji Toggle */}
+          {videoUrl && !subtitles && (
+            <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
+              <div className="space-y-0.5">
+                <Label htmlFor="emoji-toggle" className="text-sm font-medium">
+                  Add Emojis to Captions
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Enhance captions with relevant emojis
+                </p>
+              </div>
+              <Switch
+                id="emoji-toggle"
+                checked={addEmojis}
+                onCheckedChange={setAddEmojis}
+              />
+            </div>
+          )}
 
           {/* Caption Style Selector */}
           {videoUrl && subtitles && <div className="space-y-2">

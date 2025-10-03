@@ -93,11 +93,13 @@ serve(async (req) => {
       throw new Error('ELEVENLABS_API_KEY is not set');
     }
 
-    const { videoPath } = await req.json();
+    const { videoPath, addEmojis = false } = await req.json();
 
     if (!videoPath) {
       throw new Error('Video path is required');
     }
+    
+    console.log('[KYRGYZ-SUBTITLES] addEmojis flag:', addEmojis);
 
     console.log('[KYRGYZ-SUBTITLES] Processing video:', videoPath);
 
@@ -143,7 +145,44 @@ serve(async (req) => {
     console.log('[KYRGYZ-SUBTITLES] Transcription received');
 
     // Generate SRT subtitle file
-    const srtContent = generateSRT(transcription);
+    let srtContent = generateSRT(transcription);
+    
+    // Add emojis if requested
+    if (addEmojis) {
+      console.log('[KYRGYZ-SUBTITLES] Adding emojis to subtitles...');
+      try {
+        const geminiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('OPENROUTER_API_KEY')}`,
+            'HTTP-Referer': Deno.env.get('SUPABASE_URL') || '',
+            'X-Title': 'Kyrgyz Subtitle Generator'
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash-lite',
+            messages: [{
+              role: 'user',
+              content: `Add relevant emojis to these subtitles. Keep the exact SRT format (including line numbers and timestamps). Only add 1-2 relevant emojis per subtitle line where appropriate. Keep the Kyrgyz text exactly as is.\n\nSubtitles:\n${srtContent}`
+            }]
+          })
+        });
+        
+        if (geminiResponse.ok) {
+          const geminiData = await geminiResponse.json();
+          const enhancedContent = geminiData.choices[0]?.message?.content;
+          if (enhancedContent) {
+            srtContent = enhancedContent;
+            console.log('[KYRGYZ-SUBTITLES] Emojis added successfully');
+          }
+        } else {
+          console.error('[KYRGYZ-SUBTITLES] Failed to add emojis:', await geminiResponse.text());
+        }
+      } catch (emojiError) {
+        console.error('[KYRGYZ-SUBTITLES] Error adding emojis:', emojiError);
+        // Continue with original subtitles if emoji addition fails
+      }
+    }
 
     // Save subtitle to database only for authenticated users
     if (userId) {
