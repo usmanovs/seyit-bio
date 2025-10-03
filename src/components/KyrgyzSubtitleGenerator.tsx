@@ -274,6 +274,47 @@ export const KyrgyzSubtitleGenerator = () => {
       setSubtitleBlobUrl(blobUrl);
       console.log('[KyrgyzSubtitleGenerator] Subtitles generated, cues:', parsedCues.length);
       toast.success("Kyrgyz subtitles generated successfully");
+      
+      // Auto-generate titles and summaries
+      if (data.transcription) {
+        console.log('[KyrgyzSubtitleGenerator] Auto-generating titles and summaries...');
+        
+        // Generate titles
+        setIsGeneratingTitles(true);
+        try {
+          const { data: titleData, error: titleError } = await supabase.functions.invoke('generate-title-variations', {
+            body: { transcription: data.transcription }
+          });
+          
+          if (!titleError && titleData?.titles) {
+            setTitleVariations(titleData.titles);
+            console.log('[KyrgyzSubtitleGenerator] Titles generated automatically');
+          }
+        } catch (err) {
+          console.error('[KyrgyzSubtitleGenerator] Auto title generation failed:', err);
+        } finally {
+          setIsGeneratingTitles(false);
+        }
+        
+        // Generate summaries
+        setIsGeneratingSummaries(true);
+        try {
+          const { data: summaryData, error: summaryError } = await supabase.functions.invoke('generate-video-summary', {
+            body: { transcription: data.transcription }
+          });
+          
+          if (!summaryError && summaryData?.summaries) {
+            setSummaries(summaryData.summaries);
+            console.log('[KyrgyzSubtitleGenerator] Summaries generated automatically');
+          }
+        } catch (err) {
+          console.error('[KyrgyzSubtitleGenerator] Auto summary generation failed:', err);
+        } finally {
+          setIsGeneratingSummaries(false);
+        }
+        
+        toast.success("AI content generated!");
+      }
     } catch (error: any) {
       console.error("[KyrgyzSubtitleGenerator] Full error:", error);
       console.error("[KyrgyzSubtitleGenerator] Error context:", {
