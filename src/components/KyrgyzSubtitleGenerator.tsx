@@ -478,14 +478,14 @@ export const KyrgyzSubtitleGenerator = () => {
           </div>
 
           {/* Emoji Toggle */}
-          {videoUrl && !subtitles && (
+          {videoUrl && (
             <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
               <div className="space-y-0.5">
                 <Label htmlFor="emoji-toggle" className="text-sm font-medium">
                   Add Emojis to Captions
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Enhance captions with relevant emojis
+                  {subtitles ? "Toggle for next video" : "Enhance captions with relevant emojis"}
                 </p>
               </div>
               <Switch
