@@ -239,7 +239,7 @@ export const KyrgyzSubtitleGenerator = () => {
     setIsGenerating(true);
     let responseData: any = null;
     try {
-      console.log('[KyrgyzSubtitleGenerator] Calling edge function with videoPath:', path);
+      console.log('[KyrgyzSubtitleGenerator] Calling edge function with videoPath:', path, 'addEmojis:', addEmojis);
       const {
         data,
         error
@@ -532,14 +532,32 @@ export const KyrgyzSubtitleGenerator = () => {
                       Add Emojis to Captions
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      {subtitles ? "Toggle for next video" : "Enhance captions with relevant emojis"}
+                      {subtitles
+                        ? (addEmojis
+                            ? "Emojis ON — click Regenerate to apply to current captions"
+                            : "Turn on and click Regenerate to apply to current captions")
+                        : (addEmojis
+                            ? "Emojis will be added on generation"
+                            : "Enhance captions with relevant emojis")}
                     </p>
                   </div>
-                  <Switch
-                    id="emoji-toggle"
-                    checked={addEmojis}
-                    onCheckedChange={setAddEmojis}
-                  />
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="emoji-toggle"
+                      checked={addEmojis}
+                      onCheckedChange={setAddEmojis}
+                    />
+                    {subtitles && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => videoPath && generateSubtitlesForPath(videoPath)}
+                        disabled={isGenerating}
+                      >
+                        {isGenerating ? 'Regenerating...' : 'Regenerate'}
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Subtitle Editor */}
