@@ -130,76 +130,22 @@ serve(async (req) => {
       throw new Error(`Failed to get video URL: ${signedUrlError?.message || 'No URL returned'}`);
     }
 
-    console.log('[KYRGYZ-SUBTITLES] Got signed URL, checking video size...');
+    console.log('[KYRGYZ-SUBTITLES] Sending signed URL to ElevenLabs ASR...');
 
-    // First, do a HEAD request to check file size without downloading
-    let contentLength: number = 0;
-    try {
-      const headResponse = await fetch(signedUrlData.signedUrl, { method: 'HEAD' });
-      const sizeHeader = headResponse.headers.get('content-length');
-      contentLength = sizeHeader ? parseInt(sizeHeader, 10) : 0;
-      console.log('[KYRGYZ-SUBTITLES] Video size:', contentLength, 'bytes (', Math.round(contentLength / 1024 / 1024), 'MB)');
-      
-      // Edge functions have ~150MB memory limit, so cap at 100MB to be safe
-      const MAX_SIZE = 100 * 1024 * 1024; // 100MB
-      if (contentLength > MAX_SIZE) {
-        throw new Error(`Video file is too large (${Math.round(contentLength / 1024 / 1024)}MB). Please compress it to under 100MB to avoid memory issues.`);
-      }
-    } catch (e) {
-      if (e instanceof Error && e.message.includes('too large')) {
-        throw e; // Re-throw our size error
-      }
-      console.warn('[KYRGYZ-SUBTITLES] Could not check file size, proceeding with download');
-    }
-
-    // Now fetch the actual video with streaming
-    console.log('[KYRGYZ-SUBTITLES] Downloading video...');
-    let videoResponse;
-    try {
-      // Increase timeout for larger files: 120s base + 30s per 50MB
-      const timeoutMs = 120000 + Math.floor(contentLength / (50 * 1024 * 1024)) * 30000;
-      console.log('[KYRGYZ-SUBTITLES] Timeout set to:', Math.round(timeoutMs / 1000), 'seconds');
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-      
-      videoResponse = await fetch(signedUrlData.signedUrl, {
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!videoResponse.ok) {
-        console.error('[KYRGYZ-SUBTITLES] Video fetch failed:', videoResponse.status, videoResponse.statusText);
-        throw new Error(`Failed to fetch video: ${videoResponse.status} ${videoResponse.statusText}`);
-      }
-    } catch (e) {
-      console.error('[KYRGYZ-SUBTITLES] Exception fetching video:', e);
-      if (e instanceof Error && e.name === 'AbortError') {
-        throw new Error('Video download timeout - file may be too large');
-      }
-      throw new Error(`Failed to download video: ${e instanceof Error ? e.message : String(e)}`);
-    }
-
-    const videoBlob = await videoResponse.blob();
-    console.log('[KYRGYZ-SUBTITLES] Video downloaded, size:', videoBlob.size, 'bytes');
-
-    // Prepare form data for ElevenLabs ASR
-    const formData = new FormData();
-    formData.append('file', videoBlob, 'video.mp4');
-    formData.append('model_id', 'scribe_v1');
-    formData.append('language_code', 'ky'); // Kyrgyz language code
-
-    console.log('[KYRGYZ-SUBTITLES] Sending to ElevenLabs ASR...');
-
+    // Pass the signed URL directly to ElevenLabs - no memory constraints!
     const response = await fetch(
       'https://api.elevenlabs.io/v1/speech-to-text',
       {
         method: 'POST',
         headers: {
           'xi-api-key': ELEVENLABS_API_KEY,
+          'Content-Type': 'application/json',
         },
-        body: formData,
+        body: JSON.stringify({
+          audio_url: signedUrlData.signedUrl,
+          model_id: 'scribe_v1',
+          language_code: 'ky', // Kyrgyz language code
+        }),
       }
     );
 
