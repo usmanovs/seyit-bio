@@ -9,6 +9,13 @@ import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import editingExample from "@/assets/editing-example.png";
+
+// Detect if user is on mobile device
+const isMobileDevice = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+};
+
 export const KyrgyzSubtitleGenerator = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -301,7 +308,8 @@ export const KyrgyzSubtitleGenerator = () => {
       const userId = user?.id || 'guest';
       const fileName = `${userId}/${Date.now()}_${file.name}`;
       
-      console.log('[Upload] Starting upload:', fileName, 'Size:', file.size, 'bytes');
+      const isMobile = isMobileDevice();
+      console.log('[Upload] Starting upload:', fileName, 'Size:', file.size, 'bytes', 'Device:', isMobile ? 'Mobile' : 'Desktop');
       
       // Add timeout wrapper for upload
       const uploadPromise = supabase.storage.from('videos').upload(fileName, file, {
@@ -309,9 +317,11 @@ export const KyrgyzSubtitleGenerator = () => {
         upsert: false
       });
 
-      // Set timeout based on file size: 30s base + 10s per MB (more generous for phone uploads)
-      const timeoutMs = 30000 + (file.size / (1024 * 1024)) * 10000;
-      console.log('[Upload] Timeout set to:', Math.round(timeoutMs / 1000), 'seconds');
+      // Set timeout based on file size and device: 30s base + more per MB for mobile
+      // Mobile devices get 20s per MB vs 10s per MB for desktop
+      const secondsPerMB = isMobile ? 20 : 10;
+      const timeoutMs = 30000 + (file.size / (1024 * 1024)) * secondsPerMB * 1000;
+      console.log('[Upload] Timeout set to:', Math.round(timeoutMs / 1000), 'seconds', `(${secondsPerMB}s per MB)`);
 
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Upload timeout - please check your connection and try again')), timeoutMs)
@@ -371,11 +381,13 @@ export const KyrgyzSubtitleGenerator = () => {
       // Auto-generate subtitles after upload
       await generateSubtitlesForPath(fileName);
     } catch (error: any) {
+      const isMobile = isMobileDevice();
       console.error("[Upload] Upload failed:", error);
       console.error("[Upload] Error details:", {
         message: error.message,
         status: error.status,
-        statusCode: error.statusCode
+        statusCode: error.statusCode,
+        device: isMobile ? 'Mobile' : 'Desktop'
       });
       
       // Always clear progress timer on error
@@ -383,15 +395,19 @@ export const KyrgyzSubtitleGenerator = () => {
       setIsUploading(false);
       setUploadProgress(0);
       
-      // Provide helpful error message
+      // Provide helpful, device-specific error message
       let errorMessage = "Failed to upload video";
       if (error.message?.includes('timeout') || error.message?.includes('Timeout')) {
-        errorMessage = "Upload timed out. Please check your internet connection and try again with a smaller video.";
+        if (isMobile) {
+          errorMessage = "Upload timed out. Mobile uploads can be slower. Try: 1) Switch to WiFi, 2) Use a smaller video, 3) Move to a location with better signal.";
+        } else {
+          errorMessage = "Upload timed out. Please check your internet connection and try again with a smaller video.";
+        }
       } else if (error.message) {
-        errorMessage = error.message;
+        errorMessage = isMobile ? `${error.message} (Mobile device detected - try WiFi for better stability)` : error.message;
       }
       
-      toast.error(errorMessage);
+      toast.error(errorMessage, { duration: 6000 }); // Longer duration for mobile tips
     }
   };
   const generateSubtitlesForPath = async (path: string) => {

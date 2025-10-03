@@ -139,6 +139,12 @@ serve(async (req) => {
     formData.append('language_code', 'ky'); // Kyrgyz language code
     formData.append('cloud_storage_url', signedUrlData.signedUrl);
 
+    // Log FormData contents for debugging (especially mobile issues)
+    console.log('[KYRGYZ-SUBTITLES] FormData fields:');
+    for (const [key, value] of formData.entries()) {
+      console.log(`  ${key}:`, typeof value === 'string' ? value.substring(0, 100) : value);
+    }
+
     const response = await fetch(
       'https://api.elevenlabs.io/v1/speech-to-text',
       {
