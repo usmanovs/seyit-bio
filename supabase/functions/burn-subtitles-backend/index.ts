@@ -78,7 +78,13 @@ serve(async (req) => {
     console.log('[BURN-SUBTITLES] Video URL:', publicUrl);
 
     // Create a temporary SRT file content - normalize spacing to avoid extra gaps
-    const srtContent = subtitles
+    // First, clean any markdown code fences from the subtitles
+    let cleanSubtitles = subtitles.trim();
+    if (cleanSubtitles.startsWith('```')) {
+      cleanSubtitles = cleanSubtitles.replace(/^```[a-z]*\n/, '').replace(/\n?```$/, '');
+    }
+    
+    const srtContent = cleanSubtitles
       .split('\n')
       .map((line: string) => {
         const isTiming = /^\d+:\d+:\d+[,.]\d+\s+-->\s+\d+:\d+:\d+[,.]\d+/.test(line);
