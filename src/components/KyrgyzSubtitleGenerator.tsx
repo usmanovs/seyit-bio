@@ -591,24 +591,32 @@ export const KyrgyzSubtitleGenerator = () => {
                       </Button>}
                     <Button 
                       onClick={downloadVideoWithSubtitles} 
+                      size="lg"
                       className={`
                         ${hasUnsavedChanges ? "flex-1" : "w-full"}
-                        bg-primary hover:bg-primary/90
-                        text-primary-foreground font-medium
-                        shadow-md hover:shadow-lg
-                        transition-all duration-200
+                        relative overflow-hidden
+                        bg-gradient-to-br from-primary to-primary/80
+                        hover:from-primary/90 hover:to-primary/70
+                        text-primary-foreground font-semibold
+                        shadow-lg hover:shadow-xl hover:shadow-primary/25
+                        transition-all duration-300
+                        border-0
+                        group
                       `}
                       disabled={isProcessingVideo}
                     >
-                      {isProcessingVideo ? <div className="w-full space-y-2">
-                            <div className="flex items-center justify-center">
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              <span>Processing ({processingStatus}) - {Math.round(processingProgress)}%</span>
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                      {isProcessingVideo ? <div className="w-full space-y-2 relative z-10">
+                            <div className="flex items-center justify-center gap-2">
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                              <span className="text-sm">{processingStatus} - {Math.round(processingProgress)}%</span>
                             </div>
-                            <Progress value={processingProgress} className="w-full" />
+                            <Progress value={processingProgress} className="w-full h-2" />
                           </div> : <>
-                          <Download className="w-4 h-4 mr-2" />
-                          Download Video + SRT
+                          <div className="relative z-10 flex items-center gap-2">
+                            <Download className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:-translate-y-0.5" />
+                            <span>Download Video + SRT</span>
+                          </div>
                         </>}
                     </Button>
                   </div>
