@@ -106,7 +106,7 @@ serve(async (req) => {
         version: 'fofr/smart-ffmpeg',
         input: {
           files: [publicUrl, srtUrl],
-          prompt: `Burn the subtitles from the SRT file onto the video at the bottom center. Style: ${body.stylePrompt || 'white text with yellow glow, bold font, black background'}. Use 18px font size with a semi-transparent background box for readability. Add a subtle shadow to make text pop.`,
+          prompt: `Burn the subtitles from the SRT file onto the video positioned at the lower bottom area (80-90% down from top). Style: ${body.stylePrompt || 'white text with yellow glow, bold font, black background'}. Use 18px font size with a semi-transparent background box for readability. Add a subtle shadow to make text pop. Position the subtitles low enough to match standard video player subtitle positioning.`,
           max_attempts: 3,
         },
       } as any);
