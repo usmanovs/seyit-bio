@@ -284,10 +284,16 @@ export const KyrgyzSubtitleGenerator = () => {
       const fileName = `${userId}/${Date.now()}_${file.name}`;
       const {
         error: uploadError
-      } = await supabase.storage.from('videos').upload(fileName, file);
+      } = await supabase.storage.from('videos').upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
       clearInterval(progressTimer);
       setUploadProgress(100);
       if (uploadError) throw uploadError;
+
+      // Show 100% completion briefly before continuing
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Get public URL
       const {
@@ -299,12 +305,16 @@ export const KyrgyzSubtitleGenerator = () => {
       setVideoPath(fileName);
       toast.success("Video uploaded successfully");
 
+      // Reset upload progress before generating subtitles
+      setUploadProgress(0);
+      setIsUploading(false);
+
       // Auto-generate subtitles after upload
       await generateSubtitlesForPath(fileName);
     } catch (error: any) {
       console.error("Error uploading video:", error);
       toast.error(error.message || "Failed to upload video");
-    } finally {
+      clearInterval(progressTimer);
       setIsUploading(false);
       setUploadProgress(0);
     }
