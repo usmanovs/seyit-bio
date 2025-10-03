@@ -66,20 +66,18 @@ export const KyrgyzSubtitleGenerator = () => {
     prompt: 'bright green text with green border box and glow effect, bold font, solid black background'
   }];
   const currentStyle = captionStyles.find(s => s.id === captionStyle) || captionStyles[0];
-  
+
   // Check TikTok authentication status on mount
   useEffect(() => {
     checkTikTokAuth();
   }, []);
-  
   const checkTikTokAuth = async () => {
     setIsCheckingTikTokAuth(true);
     try {
-      const { data, error } = await supabase
-        .from('tiktok_credentials')
-        .select('expires_at')
-        .single();
-      
+      const {
+        data,
+        error
+      } = await supabase.from('tiktok_credentials').select('expires_at').single();
       if (!error && data) {
         const expiresAt = new Date(data.expires_at);
         setIsTikTokConnected(expiresAt > new Date());
@@ -92,17 +90,17 @@ export const KyrgyzSubtitleGenerator = () => {
       setIsCheckingTikTokAuth(false);
     }
   };
-  
   const connectTikTok = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('tiktok-auth');
-      
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('tiktok-auth');
       if (error) throw error;
-      
       if (data?.authUrl) {
         window.open(data.authUrl, '_blank');
         toast.info("Please complete TikTok authorization in the new window");
-        
+
         // Check auth status after a delay
         setTimeout(() => checkTikTokAuth(), 3000);
       }
@@ -111,39 +109,35 @@ export const KyrgyzSubtitleGenerator = () => {
       toast.error(error.message || "Failed to connect to TikTok");
     }
   };
-  
   const publishToTikTok = async () => {
     if (!videoPath) {
       toast.error("No video available to publish");
       return;
     }
-    
     if (!isTikTokConnected) {
       toast.error("Please connect to TikTok first");
       return;
     }
-    
+
     // Get title from first title variation or use default
     const title = titleVariations[0] || "My Video";
     const description = summaries[0] || "";
-    
     setIsPublishingToTikTok(true);
-    
     try {
-      const { data, error } = await supabase.functions.invoke('publish-to-tiktok', {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('publish-to-tiktok', {
         body: {
           videoPath,
           title,
           description
         }
       });
-      
       if (error) throw error;
-      
       if (data?.error) {
         throw new Error(data.error);
       }
-      
       toast.success("Video published to TikTok successfully!");
     } catch (error: any) {
       console.error('TikTok publish error:', error);
@@ -152,7 +146,6 @@ export const KyrgyzSubtitleGenerator = () => {
       setIsPublishingToTikTok(false);
     }
   };
-  
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !subtitleBlobUrl) return;
@@ -255,7 +248,6 @@ export const KyrgyzSubtitleGenerator = () => {
     setProcessingStatus('');
     setProcessingProgress(0);
     setHasUnsavedChanges(false);
-    
     setIsUploading(true);
     setUploadProgress(0);
 
@@ -340,16 +332,13 @@ export const KyrgyzSubtitleGenerator = () => {
       });
       console.log('[KyrgyzSubtitleGenerator] Response data:', data);
       console.log('[KyrgyzSubtitleGenerator] Response error:', error);
-      
       responseData = data;
-      
+
       // Check for error in response data first (edge function returned error details)
       if (data?.error) {
         throw new Error(data.error);
       }
-      
       if (error) throw error;
-      
       setSubtitles(data.subtitles);
       setEditedSubtitles(data.subtitles);
       setHasUnsavedChanges(false);
@@ -366,18 +355,22 @@ export const KyrgyzSubtitleGenerator = () => {
       setSubtitleBlobUrl(blobUrl);
       console.log('[KyrgyzSubtitleGenerator] Subtitles generated, cues:', parsedCues.length);
       toast.success("Kyrgyz subtitles generated successfully");
-      
+
       // Auto-generate titles and summaries
       if (data.transcription) {
         console.log('[KyrgyzSubtitleGenerator] Auto-generating titles and summaries...');
-        
+
         // Generate titles
         setIsGeneratingTitles(true);
         try {
-          const { data: titleData, error: titleError } = await supabase.functions.invoke('generate-title-variations', {
-            body: { transcription: data.transcription }
+          const {
+            data: titleData,
+            error: titleError
+          } = await supabase.functions.invoke('generate-title-variations', {
+            body: {
+              transcription: data.transcription
+            }
           });
-          
           if (!titleError && titleData?.titles) {
             setTitleVariations(titleData.titles);
             console.log('[KyrgyzSubtitleGenerator] Titles generated automatically');
@@ -387,14 +380,18 @@ export const KyrgyzSubtitleGenerator = () => {
         } finally {
           setIsGeneratingTitles(false);
         }
-        
+
         // Generate summaries
         setIsGeneratingSummaries(true);
         try {
-          const { data: summaryData, error: summaryError } = await supabase.functions.invoke('generate-video-summary', {
-            body: { transcription: data.transcription }
+          const {
+            data: summaryData,
+            error: summaryError
+          } = await supabase.functions.invoke('generate-video-summary', {
+            body: {
+              transcription: data.transcription
+            }
           });
-          
           if (!summaryError && summaryData?.summaries) {
             setSummaries(summaryData.summaries);
             console.log('[KyrgyzSubtitleGenerator] Summaries generated automatically');
@@ -404,7 +401,6 @@ export const KyrgyzSubtitleGenerator = () => {
         } finally {
           setIsGeneratingSummaries(false);
         }
-        
         toast.success("AI content generated!");
       }
     } catch (error: any) {
@@ -413,15 +409,14 @@ export const KyrgyzSubtitleGenerator = () => {
         message: error.message,
         context: error.context
       });
-      
+
       // Extract the actual error message
       let errorMessage = error.message || "Failed to generate subtitles";
-      
+
       // Check for specific "audio too short" error
       if (errorMessage.includes("audio_too_short") || errorMessage.includes("Audio is too short")) {
         errorMessage = "The video is too short for subtitle generation. Please upload a longer video (at least 10 seconds).";
       }
-      
       toast.error(errorMessage);
     } finally {
       setIsGenerating(false);
@@ -590,27 +585,26 @@ export const KyrgyzSubtitleGenerator = () => {
       setProcessingStartTime(0);
     }
   };
-  
   const generateTitleVariations = async () => {
     if (!transcription) {
       toast.error("No transcription available. Please generate subtitles first.");
       return;
     }
-    
     setIsGeneratingTitles(true);
     setTitleVariations([]);
-    
     try {
-      const { data, error } = await supabase.functions.invoke('generate-title-variations', {
-        body: { transcription }
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('generate-title-variations', {
+        body: {
+          transcription
+        }
       });
-      
       if (error) throw error;
-      
       if (data?.error) {
         throw new Error(data.error);
       }
-      
       if (data?.titles) {
         setTitleVariations(data.titles);
         toast.success("Title variations generated!");
@@ -622,27 +616,26 @@ export const KyrgyzSubtitleGenerator = () => {
       setIsGeneratingTitles(false);
     }
   };
-  
   const generateSummaries = async () => {
     if (!transcription) {
       toast.error("No transcription available. Please generate subtitles first.");
       return;
     }
-    
     setIsGeneratingSummaries(true);
     setSummaries([]);
-    
     try {
-      const { data, error } = await supabase.functions.invoke('generate-video-summary', {
-        body: { transcription }
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('generate-video-summary', {
+        body: {
+          transcription
+        }
       });
-      
       if (error) throw error;
-      
       if (data?.error) {
         throw new Error(data.error);
       }
-      
       if (data?.summaries) {
         setSummaries(data.summaries);
         toast.success("Summaries generated!");
@@ -654,7 +647,6 @@ export const KyrgyzSubtitleGenerator = () => {
       setIsGeneratingSummaries(false);
     }
   };
-  
   return <>
       <style>{`
         video::cue {
@@ -669,43 +661,36 @@ export const KyrgyzSubtitleGenerator = () => {
         <CardContent className="space-y-3">
           <div className="space-y-2">
             <input ref={fileInputRef} type="file" accept="video/*" onChange={handleFileSelect} className="hidden" />
-            <div 
-              className={`relative border-2 border-dashed rounded-lg p-8 transition-all ${
-                isDragOver 
-                  ? 'border-primary bg-primary/5 scale-[1.02]' 
-                  : 'border-muted-foreground/25 hover:border-primary/50'
-              }`}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsDragOver(true);
-              }}
-              onDragEnter={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsDragOver(true);
-              }}
-              onDragLeave={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsDragOver(false);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsDragOver(false);
-                
-                const files = e.dataTransfer.files;
-                if (files && files[0]) {
-                  const file = files[0];
-                  if (file.type.startsWith('video/')) {
-                    handleFileSelect({ target: { files } } as any);
-                  } else {
-                    toast.error('Please drop a video file');
+            <div className={`relative border-2 border-dashed rounded-lg p-8 transition-all ${isDragOver ? 'border-primary bg-primary/5 scale-[1.02]' : 'border-muted-foreground/25 hover:border-primary/50'}`} onDragOver={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOver(true);
+          }} onDragEnter={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOver(true);
+          }} onDragLeave={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOver(false);
+          }} onDrop={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOver(false);
+            const files = e.dataTransfer.files;
+            if (files && files[0]) {
+              const file = files[0];
+              if (file.type.startsWith('video/')) {
+                handleFileSelect({
+                  target: {
+                    files
                   }
-                }
-              }}
-            >
+                } as any);
+              } else {
+                toast.error('Please drop a video file');
+              }
+            }
+          }}>
               <div className="flex flex-col items-center gap-3">
                 <div className={`transition-transform ${isDragOver ? 'scale-110' : ''}`}>
                   <Upload className="w-12 h-12 text-muted-foreground" />
@@ -715,12 +700,7 @@ export const KyrgyzSubtitleGenerator = () => {
                     {isDragOver ? 'Drop your video here' : 'Drag & drop your video'}
                   </p>
                   <p className="text-sm text-muted-foreground mb-4">or</p>
-                  <Button 
-                    onClick={() => fileInputRef.current?.click()} 
-                    disabled={isUploading} 
-                    size="lg" 
-                    className="text-lg px-8 py-6 font-semibold shadow-lg hover:shadow-xl transition-all"
-                  >
+                  <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading} size="lg" className="text-lg px-8 py-6 font-semibold shadow-lg hover:shadow-xl transition-all">
                     {isUploading ? <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Uploading... {Math.round(uploadProgress)}%
@@ -754,15 +734,7 @@ export const KyrgyzSubtitleGenerator = () => {
                     return '';
                 }
               };
-              return <button 
-                key={style.id} 
-                onClick={() => setCaptionStyle(style.id)} 
-                className={`p-3 rounded-lg transition-all relative bg-muted hover:bg-muted/80 border-2 ${
-                  captionStyle === style.id 
-                    ? 'border-primary scale-105 shadow-lg' 
-                    : 'border-transparent hover:border-border'
-                }`}
-              >
+              return <button key={style.id} onClick={() => setCaptionStyle(style.id)} className={`p-3 rounded-lg transition-all relative bg-muted hover:bg-muted/80 border-2 ${captionStyle === style.id ? 'border-primary scale-105 shadow-lg' : 'border-transparent hover:border-border'}`}>
                 <div className="text-sm font-medium mb-2 text-foreground">
                   {style.name}
                 </div>
@@ -784,31 +756,14 @@ export const KyrgyzSubtitleGenerator = () => {
                       Add Emojis to Captions
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      {subtitles
-                        ? (addEmojis
-                            ? "Emojis ON — click Regenerate to apply to current captions"
-                            : "Turn on and click Regenerate to apply to current captions")
-                        : (addEmojis
-                            ? "Emojis will be added on generation"
-                            : "Enhance captions with relevant emojis")}
+                      {subtitles ? addEmojis ? "Emojis ON — click Regenerate to apply to current captions" : "Turn on and click Regenerate to apply to current captions" : addEmojis ? "Emojis will be added on generation" : "Enhance captions with relevant emojis"}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Switch
-                      id="emoji-toggle"
-                      checked={addEmojis}
-                      onCheckedChange={setAddEmojis}
-                    />
-                    {subtitles && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => videoPath && generateSubtitlesForPath(videoPath)}
-                        disabled={isGenerating}
-                      >
+                    <Switch id="emoji-toggle" checked={addEmojis} onCheckedChange={setAddEmojis} />
+                    {subtitles && <Button size="sm" variant="secondary" onClick={() => videoPath && generateSubtitlesForPath(videoPath)} disabled={isGenerating}>
                         {isGenerating ? 'Regenerating...' : 'Regenerate'}
-                      </Button>
-                    )}
+                      </Button>}
                   </div>
                 </div>
 
@@ -852,18 +807,13 @@ export const KyrgyzSubtitleGenerator = () => {
                        {hasUnsavedChanges && <Button onClick={applySubtitleChanges} className="flex-1">
                            Update Captions
                          </Button>}
-                       <Button 
-                        onClick={downloadVideoWithSubtitles}
-                      size="lg"
-                      className={`
+                       <Button onClick={downloadVideoWithSubtitles} size="lg" className={`
                         ${hasUnsavedChanges ? "flex-1" : "w-full"}
                         bg-blue-600 hover:bg-blue-700
                         text-white font-semibold
                         shadow-lg hover:shadow-xl
                         transition-all duration-300
-                      `}
-                      disabled={isProcessingVideo}
-                    >
+                      `} disabled={isProcessingVideo}>
                       {isProcessingVideo ? <div className="w-full space-y-2">
                             <div className="flex items-center justify-center gap-2">
                               <Loader2 className="w-5 h-5 animate-spin" />
@@ -873,7 +823,9 @@ export const KyrgyzSubtitleGenerator = () => {
                           </div> : <>
                           <div className="flex items-center gap-2">
                             <Download className="w-5 h-5" />
-                            <span>Download Video + SRT</span>
+                            <span>Download Video
+
+                        </span>
                           </div>
                          </>}
                      </Button>
@@ -881,45 +833,23 @@ export const KyrgyzSubtitleGenerator = () => {
                      
                      {/* TikTok Publishing */}
                      <div className="flex gap-2">
-                       {!isTikTokConnected ? (
-                         <Button
-                           onClick={connectTikTok}
-                           disabled={isCheckingTikTokAuth}
-                           className="w-full bg-gradient-to-r from-[#00f2ea] to-[#ff0050] hover:opacity-90 text-white font-semibold shadow-lg"
-                           size="lg"
-                         >
-                           {isCheckingTikTokAuth ? (
-                             <>
+                       {!isTikTokConnected ? <Button onClick={connectTikTok} disabled={isCheckingTikTokAuth} className="w-full bg-gradient-to-r from-[#00f2ea] to-[#ff0050] hover:opacity-90 text-white font-semibold shadow-lg" size="lg">
+                           {isCheckingTikTokAuth ? <>
                                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                                Checking...
-                             </>
-                           ) : (
-                             <>
+                             </> : <>
                                <Share2 className="w-5 h-5 mr-2" />
                                Connect TikTok
-                             </>
-                           )}
-                         </Button>
-                       ) : (
-                         <Button
-                           onClick={publishToTikTok}
-                           disabled={isPublishingToTikTok}
-                           className="w-full bg-gradient-to-r from-[#00f2ea] to-[#ff0050] hover:opacity-90 text-white font-semibold shadow-lg"
-                           size="lg"
-                         >
-                           {isPublishingToTikTok ? (
-                             <>
+                             </>}
+                         </Button> : <Button onClick={publishToTikTok} disabled={isPublishingToTikTok} className="w-full bg-gradient-to-r from-[#00f2ea] to-[#ff0050] hover:opacity-90 text-white font-semibold shadow-lg" size="lg">
+                           {isPublishingToTikTok ? <>
                                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                                Publishing...
-                             </>
-                           ) : (
-                             <>
+                             </> : <>
                                <Share2 className="w-5 h-5 mr-2" />
                                Publish to TikTok
-                             </>
-                           )}
-                         </Button>
-                       )}
+                             </>}
+                         </Button>}
                      </div>
                    </div>
                  </div>}
@@ -968,8 +898,7 @@ export const KyrgyzSubtitleGenerator = () => {
     </Card>
     
     {/* AI Content Generators */}
-    {transcription && (
-      <div className="grid md:grid-cols-2 gap-6 mt-6">
+    {transcription && <div className="grid md:grid-cols-2 gap-6 mt-6">
         {/* Title Variations Generator */}
         <Card className="border-2 border-primary/20">
           <CardHeader>
@@ -982,37 +911,22 @@ export const KyrgyzSubtitleGenerator = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button 
-              onClick={generateTitleVariations}
-              disabled={isGeneratingTitles}
-              className="w-full"
-              size="lg"
-            >
-              {isGeneratingTitles ? (
-                <>
+            <Button onClick={generateTitleVariations} disabled={isGeneratingTitles} className="w-full" size="lg">
+              {isGeneratingTitles ? <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   Generating Titles...
-                </>
-              ) : (
-                <>
+                </> : <>
                   <Sparkles className="w-5 h-5 mr-2" />
                   Generate Title Variations
-                </>
-              )}
+                </>}
             </Button>
             
-            {titleVariations.length > 0 && (
-              <div className="space-y-3 mt-4">
+            {titleVariations.length > 0 && <div className="space-y-3 mt-4">
                 <h3 className="font-semibold text-sm text-muted-foreground">Generated Titles:</h3>
-                {titleVariations.map((title, index) => (
-                  <div 
-                    key={index}
-                    className="p-4 rounded-lg bg-muted/50 border border-border hover:border-primary/50 transition-colors cursor-pointer group"
-                    onClick={() => {
-                      navigator.clipboard.writeText(title);
-                      toast.success("Title copied to clipboard!");
-                    }}
-                  >
+                {titleVariations.map((title, index) => <div key={index} className="p-4 rounded-lg bg-muted/50 border border-border hover:border-primary/50 transition-colors cursor-pointer group" onClick={() => {
+              navigator.clipboard.writeText(title);
+              toast.success("Title copied to clipboard!");
+            }}>
                     <div className="flex items-start gap-3">
                       <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-sm font-semibold flex items-center justify-center">
                         {index + 1}
@@ -1021,13 +935,11 @@ export const KyrgyzSubtitleGenerator = () => {
                         {title}
                       </p>
                     </div>
-                  </div>
-                ))}
+                  </div>)}
                 <p className="text-xs text-muted-foreground text-center">
                   Click any title to copy to clipboard
                 </p>
-              </div>
-            )}
+              </div>}
           </CardContent>
         </Card>
 
@@ -1043,37 +955,22 @@ export const KyrgyzSubtitleGenerator = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button 
-              onClick={generateSummaries}
-              disabled={isGeneratingSummaries}
-              className="w-full"
-              size="lg"
-            >
-              {isGeneratingSummaries ? (
-                <>
+            <Button onClick={generateSummaries} disabled={isGeneratingSummaries} className="w-full" size="lg">
+              {isGeneratingSummaries ? <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   Generating Summaries...
-                </>
-              ) : (
-                <>
+                </> : <>
                   <Sparkles className="w-5 h-5 mr-2" />
                   Create Summary
-                </>
-              )}
+                </>}
             </Button>
             
-            {summaries.length > 0 && (
-              <div className="space-y-3 mt-4">
+            {summaries.length > 0 && <div className="space-y-3 mt-4">
                 <h3 className="font-semibold text-sm text-muted-foreground">Generated Summaries:</h3>
-                {summaries.map((summary, index) => (
-                  <div 
-                    key={index}
-                    className="p-4 rounded-lg bg-secondary/10 border border-secondary/30 hover:border-secondary/50 transition-colors cursor-pointer group"
-                    onClick={() => {
-                      navigator.clipboard.writeText(summary);
-                      toast.success("Summary copied to clipboard!");
-                    }}
-                  >
+                {summaries.map((summary, index) => <div key={index} className="p-4 rounded-lg bg-secondary/10 border border-secondary/30 hover:border-secondary/50 transition-colors cursor-pointer group" onClick={() => {
+              navigator.clipboard.writeText(summary);
+              toast.success("Summary copied to clipboard!");
+            }}>
                     <div className="flex items-start gap-3">
                       <span className="flex-shrink-0 w-6 h-6 rounded-full bg-secondary/20 text-secondary-foreground text-sm font-semibold flex items-center justify-center">
                         {index + 1}
@@ -1082,16 +979,13 @@ export const KyrgyzSubtitleGenerator = () => {
                         {summary}
                       </p>
                     </div>
-                  </div>
-                ))}
+                  </div>)}
                 <p className="text-xs text-muted-foreground text-center">
                   Click any summary to copy to clipboard
                 </p>
-              </div>
-            )}
+              </div>}
           </CardContent>
         </Card>
-      </div>
-    )}
+      </div>}
     </>;
 };
