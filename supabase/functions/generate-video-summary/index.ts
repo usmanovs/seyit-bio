@@ -35,11 +35,11 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a creative copywriter specializing in viral social media content. Generate catchy, clickbaity summaries in Kyrgyz language that will grab attention and make people want to watch the video. Use emojis and make it compelling.'
+            content: 'You are a creative copywriter specializing in viral social media content. Generate detailed, engaging summaries in Kyrgyz language (3-5 sentences each) that capture the key points and hook viewers. Use emojis strategically and make it compelling. Include specific details from the content to make it informative yet catchy.'
           },
           {
             role: 'user',
-            content: `Based on this video transcription, generate 2 catchy, clickbaity summaries in Kyrgyz language:\n\n${transcription}`
+            content: `Based on this video transcription, generate 2 detailed, catchy summaries in Kyrgyz language. Each summary should be 3-5 sentences long and include key details from the video:\n\n${transcription}`
           }
         ],
         tools: [
