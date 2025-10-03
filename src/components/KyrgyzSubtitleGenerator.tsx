@@ -594,27 +594,22 @@ export const KyrgyzSubtitleGenerator = () => {
                       size="lg"
                       className={`
                         ${hasUnsavedChanges ? "flex-1" : "w-full"}
-                        relative overflow-hidden
-                        bg-gradient-to-br from-primary to-primary/80
-                        hover:from-primary/90 hover:to-primary/70
-                        text-primary-foreground font-semibold
-                        shadow-lg hover:shadow-xl hover:shadow-primary/25
+                        bg-blue-600 hover:bg-blue-700
+                        text-white font-semibold
+                        shadow-lg hover:shadow-xl
                         transition-all duration-300
-                        border-0
-                        group
                       `}
                       disabled={isProcessingVideo}
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                      {isProcessingVideo ? <div className="w-full space-y-2 relative z-10">
+                      {isProcessingVideo ? <div className="w-full space-y-2">
                             <div className="flex items-center justify-center gap-2">
                               <Loader2 className="w-5 h-5 animate-spin" />
                               <span className="text-sm">{processingStatus} - {Math.round(processingProgress)}%</span>
                             </div>
                             <Progress value={processingProgress} className="w-full h-2" />
                           </div> : <>
-                          <div className="relative z-10 flex items-center gap-2">
-                            <Download className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:-translate-y-0.5" />
+                          <div className="flex items-center gap-2">
+                            <Download className="w-5 h-5" />
                             <span>Download Video + SRT</span>
                           </div>
                         </>}
