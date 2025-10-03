@@ -599,16 +599,31 @@ export const KyrgyzSubtitleGenerator = () => {
                     {hasUnsavedChanges && <Button onClick={applySubtitleChanges} className="flex-1">
                         Update Captions
                       </Button>}
-                    <Button onClick={downloadVideoWithSubtitles} variant="outline" className={hasUnsavedChanges ? "flex-1" : "w-full"} disabled={isProcessingVideo}>
+                    <Button 
+                      onClick={downloadVideoWithSubtitles} 
+                      className={`
+                        ${hasUnsavedChanges ? "flex-1" : "w-full"}
+                        relative overflow-hidden
+                        bg-gradient-to-r from-primary via-primary/90 to-primary/80
+                        hover:from-primary/90 hover:via-primary/80 hover:to-primary/70
+                        text-primary-foreground font-semibold
+                        shadow-lg hover:shadow-xl
+                        transition-all duration-300
+                        border-0
+                        group
+                      `}
+                      disabled={isProcessingVideo}
+                    >
                       {isProcessingVideo ? <div className="w-full space-y-2">
                             <div className="flex items-center justify-center">
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              <span>Processing ({processingStatus}) - {Math.round(processingProgress)}%</span>
+                              <span className="font-medium">Processing ({processingStatus}) - {Math.round(processingProgress)}%</span>
                             </div>
                             <Progress value={processingProgress} className="w-full" />
                           </div> : <>
-                          <Download className="w-4 h-4 mr-2" />
-                          Download Video + SRT
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                          <Download className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
+                          <span className="relative">Download Video + SRT</span>
                         </>}
                     </Button>
                   </div>
