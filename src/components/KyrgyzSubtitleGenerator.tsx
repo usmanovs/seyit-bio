@@ -33,6 +33,8 @@ export const KyrgyzSubtitleGenerator = () => {
   const [addEmojis, setAddEmojis] = useState<boolean>(false);
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
   const [titleVariations, setTitleVariations] = useState<string[]>([]);
+  const [isGeneratingSummaries, setIsGeneratingSummaries] = useState(false);
+  const [summaries, setSummaries] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
@@ -488,6 +490,38 @@ export const KyrgyzSubtitleGenerator = () => {
     }
   };
   
+  const generateSummaries = async () => {
+    if (!transcription) {
+      toast.error("No transcription available. Please generate subtitles first.");
+      return;
+    }
+    
+    setIsGeneratingSummaries(true);
+    setSummaries([]);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-video-summary', {
+        body: { transcription }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+      
+      if (data?.summaries) {
+        setSummaries(data.summaries);
+        toast.success("Summaries generated!");
+      }
+    } catch (error: any) {
+      console.error('[KyrgyzSubtitleGenerator] Summary generation failed:', error);
+      toast.error(error.message || "Failed to generate summaries");
+    } finally {
+      setIsGeneratingSummaries(false);
+    }
+  };
+  
   return <>
       <style>{`
         video::cue {
@@ -677,67 +711,132 @@ export const KyrgyzSubtitleGenerator = () => {
       </CardContent>
     </Card>
     
-    {/* Title Variations Generator */}
+    {/* AI Content Generators */}
     {transcription && (
-      <Card className="mt-6 border-2 border-primary/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
-            AI Title Generator
-          </CardTitle>
-          <CardDescription>
-            Generate creative title variations for your video using AI
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Button 
-            onClick={generateTitleVariations}
-            disabled={isGeneratingTitles}
-            className="w-full"
-            size="lg"
-          >
-            {isGeneratingTitles ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Generating Titles...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-5 h-5 mr-2" />
-                Generate Title Variations
-              </>
-            )}
-          </Button>
-          
-          {titleVariations.length > 0 && (
-            <div className="space-y-3 mt-4">
-              <h3 className="font-semibold text-sm text-muted-foreground">Generated Titles:</h3>
-              {titleVariations.map((title, index) => (
-                <div 
-                  key={index}
-                  className="p-4 rounded-lg bg-muted/50 border border-border hover:border-primary/50 transition-colors cursor-pointer group"
-                  onClick={() => {
-                    navigator.clipboard.writeText(title);
-                    toast.success("Title copied to clipboard!");
-                  }}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-sm font-semibold flex items-center justify-center">
-                      {index + 1}
-                    </span>
-                    <p className="flex-1 text-sm leading-relaxed group-hover:text-primary transition-colors">
-                      {title}
-                    </p>
+      <div className="grid md:grid-cols-2 gap-6 mt-6">
+        {/* Title Variations Generator */}
+        <Card className="border-2 border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              AI Title Generator
+            </CardTitle>
+            <CardDescription>
+              Generate creative title variations for your video
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button 
+              onClick={generateTitleVariations}
+              disabled={isGeneratingTitles}
+              className="w-full"
+              size="lg"
+            >
+              {isGeneratingTitles ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Generating Titles...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  Generate Title Variations
+                </>
+              )}
+            </Button>
+            
+            {titleVariations.length > 0 && (
+              <div className="space-y-3 mt-4">
+                <h3 className="font-semibold text-sm text-muted-foreground">Generated Titles:</h3>
+                {titleVariations.map((title, index) => (
+                  <div 
+                    key={index}
+                    className="p-4 rounded-lg bg-muted/50 border border-border hover:border-primary/50 transition-colors cursor-pointer group"
+                    onClick={() => {
+                      navigator.clipboard.writeText(title);
+                      toast.success("Title copied to clipboard!");
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-sm font-semibold flex items-center justify-center">
+                        {index + 1}
+                      </span>
+                      <p className="flex-1 text-sm leading-relaxed group-hover:text-primary transition-colors">
+                        {title}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
-              <p className="text-xs text-muted-foreground text-center">
-                Click any title to copy to clipboard
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+                <p className="text-xs text-muted-foreground text-center">
+                  Click any title to copy to clipboard
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Summary Generator */}
+        <Card className="border-2 border-secondary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-secondary" />
+              Video Summary Generator
+            </CardTitle>
+            <CardDescription>
+              Create catchy, clickbaity summaries in Kyrgyz
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button 
+              onClick={generateSummaries}
+              disabled={isGeneratingSummaries}
+              className="w-full"
+              size="lg"
+              variant="secondary"
+            >
+              {isGeneratingSummaries ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Generating Summaries...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  Create Summary
+                </>
+              )}
+            </Button>
+            
+            {summaries.length > 0 && (
+              <div className="space-y-3 mt-4">
+                <h3 className="font-semibold text-sm text-muted-foreground">Generated Summaries:</h3>
+                {summaries.map((summary, index) => (
+                  <div 
+                    key={index}
+                    className="p-4 rounded-lg bg-secondary/10 border border-secondary/30 hover:border-secondary/50 transition-colors cursor-pointer group"
+                    onClick={() => {
+                      navigator.clipboard.writeText(summary);
+                      toast.success("Summary copied to clipboard!");
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-secondary/20 text-secondary-foreground text-sm font-semibold flex items-center justify-center">
+                        {index + 1}
+                      </span>
+                      <p className="flex-1 text-sm leading-relaxed group-hover:text-secondary transition-colors">
+                        {summary}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                <p className="text-xs text-muted-foreground text-center">
+                  Click any summary to copy to clipboard
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     )}
     </>;
 };
