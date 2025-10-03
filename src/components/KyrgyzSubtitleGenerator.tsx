@@ -489,13 +489,13 @@ export const KyrgyzSubtitleGenerator = () => {
               const getStyleClasses = () => {
                 switch (style.id) {
                   case 'outline':
-                    return 'bg-white/90 text-black font-bold border-2 border-gray-300';
+                    return 'bg-transparent text-white font-bold border-2 border-white/50 [text-shadow:-2px_-2px_0_#000,2px_-2px_0_#000,-2px_2px_0_#000,2px_2px_0_#000]';
                   case 'minimal':
-                    return 'bg-black/40 text-white font-normal';
+                    return 'bg-black/70 text-white/90 font-light border border-white/20';
                   case 'green':
-                    return 'bg-transparent text-black font-black';
+                    return 'bg-transparent text-black font-black border-2 border-yellow-400 [text-shadow:0_0_8px_rgba(234,179,8,0.9),-1px_-1px_0_#fff,1px_-1px_0_#fff,-1px_1px_0_#fff,1px_1px_0_#fff]';
                   case 'boxed':
-                    return 'bg-black text-green-500 font-bold border-4 border-green-500';
+                    return 'bg-black text-green-500 font-bold border-4 border-green-500 [text-shadow:0_0_10px_#00ff00]';
                   default:
                     return '';
                 }
