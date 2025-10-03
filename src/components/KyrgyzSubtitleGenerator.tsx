@@ -254,18 +254,19 @@ export const KyrgyzSubtitleGenerator = () => {
     // Simulate upload progress based on file size
     const simulateProgress = () => {
       const fileSize = file.size;
-      const estimatedTime = Math.min(fileSize / (1024 * 1024) * 1000, 30000); // ~1s per MB, max 30s
-      const interval = 100;
-      const increment = 100 / (estimatedTime / interval) * 1.5; // Faster at start
+      // Estimate ~1.5s per MB, cap at 5 minutes for very large files
+      const estimatedTime = Math.min((fileSize / (1024 * 1024)) * 1500, 300000);
+      const interval = 200; // update less frequently to reduce jank
+      const increment = (100 / (estimatedTime / interval)) * 1.4; // slightly faster at start
 
       const timer = setInterval(() => {
-        setUploadProgress(prev => {
-          const next = prev + increment;
-          if (next >= 95) {
-            clearInterval(timer);
-            return 95; // Stop at 95%, complete when upload finishes
+        setUploadProgress((prev) => {
+          // Ramp to 95 normally, then "trickle" slowly up to 99% while finalizing
+          if (prev < 95) {
+            return Math.min(prev + increment, 95);
           }
-          return next;
+          // Trickle at ~0.05% per tick while waiting for the real upload to finish
+          return Math.min(prev + 0.05, 99);
         });
       }, interval);
       return timer;
@@ -722,7 +723,14 @@ export const KyrgyzSubtitleGenerator = () => {
                 </div>
               </div>
             </div>
-            {isUploading && <Progress value={uploadProgress} className="w-full" />}
+            {isUploading && (
+              <div className="w-full">
+                <Progress value={uploadProgress} className="w-full" />
+                {uploadProgress >= 95 && uploadProgress < 100 && (
+                  <p className="mt-1 text-xs text-muted-foreground">Finalizing upload… Large files on mobile can take a few minutes.</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Caption Style Selector */}
