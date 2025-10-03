@@ -30,6 +30,7 @@ export const KyrgyzSubtitleGenerator = () => {
   const [processingStatus, setProcessingStatus] = useState<string>('');
   const [processingProgress, setProcessingProgress] = useState<number>(0);
   const [processingStartTime, setProcessingStartTime] = useState<number>(0);
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number>(0);
   const [captionStyle, setCaptionStyle] = useState<string>('outline');
   const [addEmojis, setAddEmojis] = useState<boolean>(false);
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
@@ -66,6 +67,15 @@ export const KyrgyzSubtitleGenerator = () => {
     prompt: 'bright green text with green border box and glow effect, bold font, solid black background'
   }];
   const currentStyle = captionStyles.find(s => s.id === captionStyle) || captionStyles[0];
+
+  // Helper function to format time remaining
+  const formatTimeRemaining = (seconds: number): string => {
+    if (seconds <= 0) return "almost done";
+    if (seconds < 60) return `${Math.round(seconds)}s`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.round(seconds % 60);
+    return `${minutes}m ${remainingSeconds}s`;
+  };
 
   // Check TikTok authentication status on mount
   useEffect(() => {
@@ -202,6 +212,7 @@ export const KyrgyzSubtitleGenerator = () => {
   useEffect(() => {
     if (!isProcessingVideo || processingStartTime === 0) {
       setProcessingProgress(0);
+      setEstimatedTimeRemaining(0);
       return;
     }
     const interval = setInterval(() => {
@@ -216,6 +227,10 @@ export const KyrgyzSubtitleGenerator = () => {
         progress = progress * 1.2;
       }
       setProcessingProgress(Math.min(progress, 95));
+
+      // Calculate estimated time remaining
+      const timeRemaining = Math.max(estimatedTotal - elapsed, 0);
+      setEstimatedTimeRemaining(timeRemaining);
     }, 500);
     return () => clearInterval(interval);
   }, [isProcessingVideo, processingStartTime]);
@@ -835,7 +850,10 @@ export const KyrgyzSubtitleGenerator = () => {
                       {isProcessingVideo ? <div className="w-full space-y-2">
                             <div className="flex items-center justify-center gap-2">
                               <Loader2 className="w-5 h-5 animate-spin" />
-                              <span className="text-sm">{processingStatus} - {Math.round(processingProgress)}%</span>
+                              <span className="text-sm">
+                                {processingStatus} - {Math.round(processingProgress)}%
+                                {estimatedTimeRemaining > 0 && ` • ~${formatTimeRemaining(estimatedTimeRemaining)} left`}
+                              </span>
                             </div>
                             <Progress value={processingProgress} className="w-full h-2" />
                           </div> : <>
