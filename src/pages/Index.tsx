@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { User } from "@supabase/supabase-js";
 import napsterLogo from "@/assets/napster-logo.png";
+import { KyrgyzSubtitleGenerator } from "@/components/KyrgyzSubtitleGenerator";
 const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
@@ -263,6 +264,14 @@ const Index = () => {
                 <i>(First 10 days FREE! Access exclusive community & downloadable files 🎁)</i>
               </p>
             </div>
+          </div>
+
+          <hr className="border-2 border-foreground my-6" />
+
+          <h2 className="text-2xl font-bold mb-4">🎬 Kyrgyz Video Subtitle Generator</h2>
+          
+          <div className="mb-8">
+            <KyrgyzSubtitleGenerator />
           </div>
 
           <hr className="border-2 border-foreground my-6" />
