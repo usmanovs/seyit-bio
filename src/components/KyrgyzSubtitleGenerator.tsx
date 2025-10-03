@@ -753,7 +753,7 @@ export const KyrgyzSubtitleGenerator = () => {
                 <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
                   <div className="space-y-0.5">
                     <Label htmlFor="emoji-toggle" className="text-sm font-medium">
-                      Add Emojis to Captions
+                      😊 Add Emojis to Captions
                     </Label>
                     <p className="text-xs text-muted-foreground">
                       {subtitles ? addEmojis ? "Emojis ON — click Regenerate to apply to current captions" : "Turn on and click Regenerate to apply to current captions" : addEmojis ? "Emojis will be added on generation" : "Enhance captions with relevant emojis"}
