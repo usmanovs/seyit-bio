@@ -477,25 +477,6 @@ export const KyrgyzSubtitleGenerator = () => {
             {isUploading && <Progress value={uploadProgress} className="w-full" />}
           </div>
 
-          {/* Emoji Toggle */}
-          {videoUrl && (
-            <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
-              <div className="space-y-0.5">
-                <Label htmlFor="emoji-toggle" className="text-sm font-medium">
-                  Add Emojis to Captions
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  {subtitles ? "Toggle for next video" : "Enhance captions with relevant emojis"}
-                </p>
-              </div>
-              <Switch
-                id="emoji-toggle"
-                checked={addEmojis}
-                onCheckedChange={setAddEmojis}
-              />
-            </div>
-          )}
-
           {/* Caption Style Selector */}
           {videoUrl && subtitles && <div className="space-y-2">
               <label className="text-sm font-semibold">Caption Style</label>
@@ -527,8 +508,27 @@ export const KyrgyzSubtitleGenerator = () => {
             </div>}
 
           {videoUrl && <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Left side - Subtitle Editor */}
-              {subtitles && <div className="space-y-2">
+              {/* Left side - Controls and Subtitle Editor */}
+              <div className="space-y-3">
+                {/* Emoji Toggle */}
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="emoji-toggle" className="text-sm font-medium">
+                      Add Emojis to Captions
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {subtitles ? "Toggle for next video" : "Enhance captions with relevant emojis"}
+                    </p>
+                  </div>
+                  <Switch
+                    id="emoji-toggle"
+                    checked={addEmojis}
+                    onCheckedChange={setAddEmojis}
+                  />
+                </div>
+
+                {/* Subtitle Editor */}
+                {subtitles && <div className="space-y-2">
                   <div className="flex items-center justify-between p-3 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
@@ -580,6 +580,7 @@ export const KyrgyzSubtitleGenerator = () => {
                     </Button>
                   </div>
                 </div>}
+              </div>
 
               {/* Right side - Video Player */}
               <div className="space-y-2">
