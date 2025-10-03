@@ -470,7 +470,7 @@ export const KyrgyzSubtitleGenerator = () => {
         <CardContent className="space-y-3">
           <div className="space-y-2">
             <input ref={fileInputRef} type="file" accept="video/*" onChange={handleFileSelect} className="hidden" />
-            <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="w-full">
+            <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="w-fit mx-auto">
               {isUploading ? <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Uploading... {uploadProgress}%
