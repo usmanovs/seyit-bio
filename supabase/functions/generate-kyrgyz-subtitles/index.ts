@@ -130,13 +130,35 @@ serve(async (req) => {
       throw new Error(`Failed to get video URL: ${signedUrlError?.message || 'No URL returned'}`);
     }
 
-    console.log('[KYRGYZ-SUBTITLES] Got signed URL, fetching video...');
+    console.log('[KYRGYZ-SUBTITLES] Got signed URL, checking video size...');
 
-    // Stream video directly to ElevenLabs with timeout
+    // First, do a HEAD request to check file size without downloading
+    let contentLength: number;
+    try {
+      const headResponse = await fetch(signedUrlData.signedUrl, { method: 'HEAD' });
+      const sizeHeader = headResponse.headers.get('content-length');
+      contentLength = sizeHeader ? parseInt(sizeHeader, 10) : 0;
+      console.log('[KYRGYZ-SUBTITLES] Video size:', contentLength, 'bytes (', Math.round(contentLength / 1024 / 1024), 'MB)');
+      
+      // Edge functions have ~150MB memory limit. With overhead, we need to stay well below
+      // Limit to 100MB to be safe
+      const MAX_SIZE = 100 * 1024 * 1024; // 100MB
+      if (contentLength > MAX_SIZE) {
+        throw new Error(`Video file is too large (${Math.round(contentLength / 1024 / 1024)}MB). Please compress it to under 100MB or use a shorter video.`);
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message.includes('too large')) {
+        throw e; // Re-throw our size error
+      }
+      console.warn('[KYRGYZ-SUBTITLES] Could not check file size, proceeding with download');
+    }
+
+    // Now fetch the actual video
+    console.log('[KYRGYZ-SUBTITLES] Downloading video...');
     let videoResponse;
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout for larger files
       
       videoResponse = await fetch(signedUrlData.signedUrl, {
         signal: controller.signal
@@ -157,7 +179,7 @@ serve(async (req) => {
     }
 
     const videoBlob = await videoResponse.blob();
-    console.log('[KYRGYZ-SUBTITLES] Video fetched successfully, size:', videoBlob.size, 'bytes');
+    console.log('[KYRGYZ-SUBTITLES] Video downloaded, preparing for transcription...');
 
     // Prepare form data for ElevenLabs ASR
     const formData = new FormData();
