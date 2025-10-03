@@ -489,16 +489,14 @@ export const KyrgyzSubtitleGenerator = () => {
                 {captionStyles.map(style => {
               const getStyleClasses = () => {
                 switch (style.id) {
-                  case 'default':
-                    return 'bg-black text-white font-bold shadow-[0_0_10px_rgba(255,215,0,0.8)]';
                   case 'outline':
-                    return 'bg-gray-900 text-white font-bold';
+                    return 'bg-white/10 text-white font-bold border-2 border-white/30';
                   case 'minimal':
-                    return 'bg-black/60 text-white font-normal shadow-sm';
+                    return 'bg-black/40 text-white font-normal';
                   case 'green':
-                    return 'bg-green-600 text-white font-bold shadow-md';
+                    return 'bg-green-500 text-white font-bold';
                   case 'boxed':
-                    return 'bg-black text-white font-bold border-2 border-white shadow-lg';
+                    return 'bg-black text-white font-bold border-2 border-white';
                   default:
                     return '';
                 }
