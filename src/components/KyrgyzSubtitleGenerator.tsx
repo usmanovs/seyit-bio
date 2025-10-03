@@ -492,20 +492,18 @@ export const KyrgyzSubtitleGenerator = () => {
                   case 'default':
                     return 'bg-black text-white font-bold shadow-[0_0_10px_rgba(255,215,0,0.8)]';
                   case 'outline':
-                    return 'bg-transparent text-white font-bold [text-shadow:-2px_-2px_0_#000,2px_-2px_0_#000,-2px_2px_0_#000,2px_2px_0_#000]';
+                    return 'bg-gray-900 text-white font-bold';
                   case 'minimal':
-                    return 'bg-black/50 text-white font-normal shadow-sm';
-                  case 'yellow':
-                    return 'text-black font-bold' + ' ' + 'bg-[rgb(255,255,0)]';
+                    return 'bg-black/60 text-white font-normal shadow-sm';
                   case 'green':
-                    return 'text-white font-bold shadow-[2px_2px_4px_rgba(0,0,0,0.8)] bg-[rgb(34,197,94)]';
+                    return 'bg-green-600 text-white font-bold shadow-md';
                   case 'boxed':
-                    return 'bg-black text-white font-bold border-[3px] border-white';
+                    return 'bg-black text-white font-bold border-2 border-white shadow-lg';
                   default:
                     return '';
                 }
               };
-              return <button key={style.id} onClick={() => setCaptionStyle(style.id)} className={`p-3 rounded-lg transition-all text-sm relative ${getStyleClasses()} ${captionStyle === style.id ? 'ring-4 ring-primary ring-offset-2 ring-offset-background scale-105' : 'hover:scale-102'}`}>
+              return <button key={style.id} onClick={() => setCaptionStyle(style.id)} className={`p-4 rounded-lg transition-all text-base relative ${getStyleClasses()} ${captionStyle === style.id ? 'ring-4 ring-primary ring-offset-2 ring-offset-background scale-105' : 'hover:scale-102'}`}>
                       {style.name}
                     </button>;
             })}
