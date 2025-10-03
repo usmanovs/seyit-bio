@@ -130,7 +130,7 @@ serve(async (req) => {
         model: 'fofr/smart-ffmpeg',
         input: {
           files: [publicUrl, srtUrl],
-          prompt: `Burn the subtitles from the SRT file onto the video at the VERY BOTTOM with only small padding from bottom edge (92-96% from top). Style: ${enhancedPrompt}. CRITICAL: Text must be clearly readable and visible. Use appropriate font size (16-20px). Background should be semi-transparent if present, never fully opaque. Ensure high contrast between text and any background. Subtitles must be positioned at the absolute bottom like standard video players, with minimal margin from bottom edge. Ensure normal spacing between words (no extra gaps).`,
+          prompt: `Burn the subtitles from the SRT file onto the video at the VERY BOTTOM with only small padding from bottom edge (92-96% from top). Style: ${enhancedPrompt}. CRITICAL: Text must be clearly readable and visible. Use appropriate font size (16-20px). Background should be semi-transparent if present, never fully opaque. Ensure high contrast between text and any background. Subtitles must be positioned at the absolute bottom like standard video players, with minimal margin from bottom edge. Ensure normal spacing between words (no extra gaps). IMPORTANT: Copy the audio stream from the original video without modification - preserve all audio tracks and quality.`,
           max_attempts: 3,
         },
       } as any);
