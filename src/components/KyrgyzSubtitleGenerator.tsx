@@ -833,7 +833,6 @@ export const KyrgyzSubtitleGenerator = () => {
               disabled={isGeneratingSummaries}
               className="w-full"
               size="lg"
-              variant="secondary"
             >
               {isGeneratingSummaries ? (
                 <>
