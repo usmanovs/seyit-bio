@@ -839,15 +839,15 @@ export const KyrgyzSubtitleGenerator = () => {
                                Checking...
                              </> : <>
                                <Share2 className="w-5 h-5 mr-2" />
-                               Connect TikTok
+                               Export to TikTok
                              </>}
                          </Button> : <Button onClick={publishToTikTok} disabled={isPublishingToTikTok} className="w-full bg-gradient-to-r from-[#00f2ea] to-[#ff0050] hover:opacity-90 text-white font-semibold shadow-lg" size="lg">
                            {isPublishingToTikTok ? <>
                                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                               Publishing...
+                               Exporting...
                              </> : <>
                                <Share2 className="w-5 h-5 mr-2" />
-                               Publish to TikTok
+                               Export to TikTok
                              </>}
                          </Button>}
                      </div>
