@@ -101,12 +101,20 @@ serve(async (req) => {
 
     console.log('[BURN-SUBTITLES] SRT URL:', srtUrl);
 
+      // Ensure style prompt creates visible, non-obstructive subtitles
+      let enhancedPrompt = body.stylePrompt || 'white text with black outline, bold font';
+      
+      // Fix common issues with style prompts
+      if (enhancedPrompt.includes('solid black background')) {
+        enhancedPrompt = enhancedPrompt.replace('solid black background', 'semi-transparent dark background (70% opacity)');
+      }
+      
       // Start Replicate job using predictions API so we can poll from the client
       const prediction = await replicate.predictions.create({
         version: 'fofr/smart-ffmpeg',
         input: {
           files: [publicUrl, srtUrl],
-          prompt: `Burn the subtitles from the SRT file onto the video positioned at the lower bottom area (80-90% down from top). Style: ${body.stylePrompt || 'white text with yellow glow, bold font, black background'}. Use 18px font size with a semi-transparent background box for readability. Add a subtle shadow to make text pop. Position the subtitles low enough to match standard video player subtitle positioning.`,
+          prompt: `Burn the subtitles from the SRT file onto the video positioned at the bottom (85-90% from top). Style: ${enhancedPrompt}. CRITICAL: Text must be clearly readable and visible. Use appropriate font size (16-20px). Background should be semi-transparent if present, never fully opaque. Ensure high contrast between text and any background. Position subtitles at standard video subtitle location near bottom.`,
           max_attempts: 3,
         },
       } as any);
