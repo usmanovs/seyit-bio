@@ -84,7 +84,7 @@ export const KyrgyzSubtitleGenerator = () => {
       if (t) t.removeEventListener('load', showTracks as any);
       clearTimeout(id);
     };
-  }, [subtitleBlobUrl]);
+  }, [subtitleBlobUrl, captionStyle]);
   useEffect(() => {
     const video = videoRef.current;
     if (!video || parsedCues.length === 0) {
