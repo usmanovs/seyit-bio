@@ -39,6 +39,7 @@ export const KyrgyzSubtitleGenerator = () => {
   const [isTikTokConnected, setIsTikTokConnected] = useState(false);
   const [isCheckingTikTokAuth, setIsCheckingTikTokAuth] = useState(true);
   const [isPublishingToTikTok, setIsPublishingToTikTok] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
@@ -668,16 +669,68 @@ export const KyrgyzSubtitleGenerator = () => {
         <CardContent className="space-y-3">
           <div className="space-y-2">
             <input ref={fileInputRef} type="file" accept="video/*" onChange={handleFileSelect} className="hidden" />
-            <div className="flex justify-center">
-              <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading} size="lg" className="text-lg px-8 py-6 font-semibold shadow-lg hover:shadow-xl transition-all">
-              {isUploading ? <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Uploading... {Math.round(uploadProgress)}%
-                </> : <>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload Video
-                </>}
-              </Button>
+            <div 
+              className={`relative border-2 border-dashed rounded-lg p-8 transition-all ${
+                isDragOver 
+                  ? 'border-primary bg-primary/5 scale-[1.02]' 
+                  : 'border-muted-foreground/25 hover:border-primary/50'
+              }`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDragOver(true);
+              }}
+              onDragEnter={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDragOver(true);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDragOver(false);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDragOver(false);
+                
+                const files = e.dataTransfer.files;
+                if (files && files[0]) {
+                  const file = files[0];
+                  if (file.type.startsWith('video/')) {
+                    handleFileSelect({ target: { files } } as any);
+                  } else {
+                    toast.error('Please drop a video file');
+                  }
+                }
+              }}
+            >
+              <div className="flex flex-col items-center gap-3">
+                <div className={`transition-transform ${isDragOver ? 'scale-110' : ''}`}>
+                  <Upload className="w-12 h-12 text-muted-foreground" />
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-semibold mb-1">
+                    {isDragOver ? 'Drop your video here' : 'Drag & drop your video'}
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-4">or</p>
+                  <Button 
+                    onClick={() => fileInputRef.current?.click()} 
+                    disabled={isUploading} 
+                    size="lg" 
+                    className="text-lg px-8 py-6 font-semibold shadow-lg hover:shadow-xl transition-all"
+                  >
+                    {isUploading ? <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Uploading... {Math.round(uploadProgress)}%
+                    </> : <>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Choose Video
+                    </>}
+                  </Button>
+                </div>
+              </div>
             </div>
             {isUploading && <Progress value={uploadProgress} className="w-full" />}
           </div>
