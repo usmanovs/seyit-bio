@@ -87,6 +87,21 @@ const Index = () => {
         </div>
       </header>
 
+      {/* Generator Section */}
+      <section id="generator-section" className="container mx-auto px-4 lg:px-8 pt-20 pb-16 scroll-mt-20">
+        <div className="text-center mb-12 space-y-4">
+          <h2 className="text-4xl lg:text-5xl font-bold">
+            Try It Free
+          </h2>
+          <p className="text-xl text-muted-foreground font-light">
+            Experience the power of AI subtitle generation
+          </p>
+        </div>
+        <div className="animate-fade-in">
+          <KyrgyzSubtitleGenerator />
+        </div>
+      </section>
+
       {/* Hero Section */}
       <section className="container mx-auto px-4 lg:px-8 pt-20 pb-16">
         <div className="max-w-5xl mx-auto text-center space-y-8 animate-fade-in">
@@ -180,21 +195,6 @@ const Index = () => {
                 </div>
               </div>)}
           </div>
-        </div>
-      </section>
-
-      {/* Generator Section */}
-      <section id="generator-section" className="container mx-auto px-4 lg:px-8 py-16 scroll-mt-20">
-        <div className="text-center mb-12 space-y-4">
-          <h2 className="text-4xl lg:text-5xl font-bold">
-            Try It Free
-          </h2>
-          <p className="text-xl text-muted-foreground font-light">
-            Experience the power of AI subtitle generation
-          </p>
-        </div>
-        <div className="animate-fade-in">
-          <KyrgyzSubtitleGenerator />
         </div>
       </section>
 
