@@ -105,26 +105,59 @@ serve(async (req) => {
     console.log('[KYRGYZ-SUBTITLES] Processing video:', videoPath);
 
     // Get a signed URL for direct access (avoids loading entire file into memory)
-    const { data: signedUrlData, error: signedUrlError } = await supabaseClient
-      .storage
-      .from('videos')
-      .createSignedUrl(videoPath, 3600); // 1 hour expiry
+    let signedUrlData, signedUrlError;
+    try {
+      const result = await supabaseClient
+        .storage
+        .from('videos')
+        .createSignedUrl(videoPath, 3600); // 1 hour expiry
+      
+      signedUrlData = result.data;
+      signedUrlError = result.error;
+      
+      console.log('[KYRGYZ-SUBTITLES] Signed URL result:', { 
+        hasData: !!signedUrlData, 
+        hasError: !!signedUrlError,
+        errorMessage: signedUrlError?.message 
+      });
+    } catch (e) {
+      console.error('[KYRGYZ-SUBTITLES] Exception creating signed URL:', e);
+      throw new Error(`Exception creating signed URL: ${e.message}`);
+    }
 
     if (signedUrlError || !signedUrlData?.signedUrl) {
       console.error('[KYRGYZ-SUBTITLES] Signed URL error:', signedUrlError);
-      throw new Error(`Failed to get video URL: ${signedUrlError?.message}`);
+      throw new Error(`Failed to get video URL: ${signedUrlError?.message || 'No URL returned'}`);
     }
 
     console.log('[KYRGYZ-SUBTITLES] Got signed URL, fetching video...');
 
-    // Stream video directly to ElevenLabs without loading into memory
-    const videoResponse = await fetch(signedUrlData.signedUrl);
-    if (!videoResponse.ok) {
-      throw new Error(`Failed to fetch video: ${videoResponse.statusText}`);
+    // Stream video directly to ElevenLabs with timeout
+    let videoResponse;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+      
+      videoResponse = await fetch(signedUrlData.signedUrl, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!videoResponse.ok) {
+        console.error('[KYRGYZ-SUBTITLES] Video fetch failed:', videoResponse.status, videoResponse.statusText);
+        throw new Error(`Failed to fetch video: ${videoResponse.status} ${videoResponse.statusText}`);
+      }
+    } catch (e) {
+      console.error('[KYRGYZ-SUBTITLES] Exception fetching video:', e);
+      if (e.name === 'AbortError') {
+        throw new Error('Video download timeout - file may be too large');
+      }
+      throw new Error(`Failed to download video: ${e.message}`);
     }
 
     const videoBlob = await videoResponse.blob();
-    console.log('[KYRGYZ-SUBTITLES] Video fetched, size:', videoBlob.size);
+    console.log('[KYRGYZ-SUBTITLES] Video fetched successfully, size:', videoBlob.size, 'bytes');
 
     // Prepare form data for ElevenLabs ASR
     const formData = new FormData();
