@@ -37,22 +37,22 @@ export const KyrgyzSubtitleGenerator = () => {
   const subtitleRefs = useRef<(HTMLDivElement | null)[]>([]);
   const captionStyles = [{
     id: 'outline',
-    name: 'Outline',
+    name: 'Stroke',
     css: 'background-color: transparent; color: white; font-weight: bold; text-shadow: -3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, -3px 0 0 #000, 3px 0 0 #000, 0 -3px 0 #000, 0 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;',
     prompt: 'white text with extra thick black outline, no background, bold font, very high contrast'
   }, {
     id: 'minimal',
-    name: 'Minimal',
+    name: 'Subtle',
     css: 'background-color: rgba(0, 0, 0, 0.5); color: white; font-weight: normal; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);',
     prompt: 'white text, normal weight, semi-transparent black background, minimal shadow'
   }, {
     id: 'green',
-    name: 'Green',
+    name: 'Highlight',
     css: 'background-color: rgb(34, 197, 94); color: white; font-weight: bold; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);',
     prompt: 'white text on bright green background, bold font, with dark shadow for readability'
   }, {
     id: 'boxed',
-    name: 'Boxed',
+    name: 'Framed',
     css: 'background-color: rgba(0, 0, 0, 0.9); color: white; font-weight: bold; border: 3px solid white; text-shadow: none;',
     prompt: 'white text with white border box, bold font, solid black background'
   }];
