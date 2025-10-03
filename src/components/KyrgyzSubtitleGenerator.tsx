@@ -474,7 +474,7 @@ export const KyrgyzSubtitleGenerator = () => {
               <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading} size="lg" className="text-lg px-8 py-6 font-semibold shadow-lg hover:shadow-xl transition-all">
               {isUploading ? <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Uploading... {uploadProgress}%
+                  Uploading... {Math.round(uploadProgress)}%
                 </> : <>
                   <Upload className="w-4 h-4 mr-2" />
                   Upload Video
