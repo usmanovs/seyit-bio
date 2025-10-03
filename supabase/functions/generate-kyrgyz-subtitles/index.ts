@@ -132,20 +132,21 @@ serve(async (req) => {
 
     console.log('[KYRGYZ-SUBTITLES] Sending signed URL to ElevenLabs ASR...');
 
-    // Pass the signed URL directly to ElevenLabs - no memory constraints!
+    // Pass the signed URL directly to ElevenLabs using cloud_storage_url
+    // This avoids memory constraints by not downloading the file
+    const formData = new FormData();
+    formData.append('model_id', 'scribe_v1');
+    formData.append('language_code', 'ky'); // Kyrgyz language code
+    formData.append('cloud_storage_url', signedUrlData.signedUrl);
+
     const response = await fetch(
       'https://api.elevenlabs.io/v1/speech-to-text',
       {
         method: 'POST',
         headers: {
           'xi-api-key': ELEVENLABS_API_KEY,
-          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          audio_url: signedUrlData.signedUrl,
-          model_id: 'scribe_v1',
-          language_code: 'ky', // Kyrgyz language code
-        }),
+        body: formData,
       }
     );
 
