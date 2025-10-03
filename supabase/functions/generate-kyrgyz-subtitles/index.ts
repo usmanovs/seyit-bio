@@ -84,7 +84,7 @@ serve(async (req) => {
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       authHeader ? { global: { headers: { Authorization: authHeader } } } : {}
     );
 
@@ -104,22 +104,31 @@ serve(async (req) => {
 
     console.log('[KYRGYZ-SUBTITLES] Processing video:', videoPath);
 
-    // Download video from storage
-    const { data: videoData, error: downloadError } = await supabaseClient
+    // Get a signed URL for direct access (avoids loading entire file into memory)
+    const { data: signedUrlData, error: signedUrlError } = await supabaseClient
       .storage
       .from('videos')
-      .download(videoPath);
+      .createSignedUrl(videoPath, 3600); // 1 hour expiry
 
-    if (downloadError) {
-      console.error('[KYRGYZ-SUBTITLES] Download error:', downloadError);
-      throw new Error(`Failed to download video: ${downloadError.message}`);
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+      console.error('[KYRGYZ-SUBTITLES] Signed URL error:', signedUrlError);
+      throw new Error(`Failed to get video URL: ${signedUrlError?.message}`);
     }
 
-    console.log('[KYRGYZ-SUBTITLES] Video downloaded, size:', videoData.size);
+    console.log('[KYRGYZ-SUBTITLES] Got signed URL, fetching video...');
+
+    // Stream video directly to ElevenLabs without loading into memory
+    const videoResponse = await fetch(signedUrlData.signedUrl);
+    if (!videoResponse.ok) {
+      throw new Error(`Failed to fetch video: ${videoResponse.statusText}`);
+    }
+
+    const videoBlob = await videoResponse.blob();
+    console.log('[KYRGYZ-SUBTITLES] Video fetched, size:', videoBlob.size);
 
     // Prepare form data for ElevenLabs ASR
     const formData = new FormData();
-    formData.append('file', videoData, 'video.mp4');
+    formData.append('file', videoBlob, 'video.mp4');
     formData.append('model_id', 'scribe_v1');
     formData.append('language_code', 'ky'); // Kyrgyz language code
 
