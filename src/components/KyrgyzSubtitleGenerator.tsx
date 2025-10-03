@@ -299,14 +299,30 @@ export const KyrgyzSubtitleGenerator = () => {
       // Generate unique file name (works for both authenticated and guest users)
       const userId = user?.id || 'guest';
       const fileName = `${userId}/${Date.now()}_${file.name}`;
-      const {
-        error: uploadError
-      } = await supabase.storage.from('videos').upload(fileName, file, {
+      
+      console.log('[Upload] Starting upload:', fileName, 'Size:', file.size, 'bytes');
+      
+      // Add timeout wrapper for upload
+      const uploadPromise = supabase.storage.from('videos').upload(fileName, file, {
         cacheControl: '3600',
         upsert: false
       });
+      
+      // Set timeout based on file size: 30s base + 10s per MB (more generous for phone uploads)
+      const timeoutMs = 30000 + (file.size / (1024 * 1024)) * 10000;
+      console.log('[Upload] Timeout set to:', Math.round(timeoutMs / 1000), 'seconds');
+      
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Upload timeout - please check your connection and try again')), timeoutMs)
+      );
+      
+      const { error: uploadError } = await Promise.race([uploadPromise, timeoutPromise]) as any;
+      
       clearInterval(progressTimer);
       setUploadProgress(100);
+      
+      console.log('[Upload] Upload completed, error:', uploadError);
+      
       if (uploadError) throw uploadError;
 
       // Show 100% completion briefly before continuing
@@ -329,11 +345,27 @@ export const KyrgyzSubtitleGenerator = () => {
       // Auto-generate subtitles after upload
       await generateSubtitlesForPath(fileName);
     } catch (error: any) {
-      console.error("Error uploading video:", error);
-      toast.error(error.message || "Failed to upload video");
+      console.error("[Upload] Upload failed:", error);
+      console.error("[Upload] Error details:", {
+        message: error.message,
+        status: error.status,
+        statusCode: error.statusCode
+      });
+      
+      // Always clear progress timer on error
       clearInterval(progressTimer);
       setIsUploading(false);
       setUploadProgress(0);
+      
+      // Provide helpful error message
+      let errorMessage = "Failed to upload video";
+      if (error.message?.includes('timeout') || error.message?.includes('Timeout')) {
+        errorMessage = "Upload timed out. Please check your internet connection and try again with a smaller video.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
     }
   };
   const generateSubtitlesForPath = async (path: string) => {
