@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Loader2, Download, Video, Sparkles } from "lucide-react";
+import { Upload, Loader2, Download, Video, Sparkles, Share2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
@@ -35,6 +35,9 @@ export const KyrgyzSubtitleGenerator = () => {
   const [titleVariations, setTitleVariations] = useState<string[]>([]);
   const [isGeneratingSummaries, setIsGeneratingSummaries] = useState(false);
   const [summaries, setSummaries] = useState<string[]>([]);
+  const [isTikTokConnected, setIsTikTokConnected] = useState(false);
+  const [isCheckingTikTokAuth, setIsCheckingTikTokAuth] = useState(true);
+  const [isPublishingToTikTok, setIsPublishingToTikTok] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
@@ -61,6 +64,93 @@ export const KyrgyzSubtitleGenerator = () => {
     prompt: 'bright green text with green border box and glow effect, bold font, solid black background'
   }];
   const currentStyle = captionStyles.find(s => s.id === captionStyle) || captionStyles[0];
+  
+  // Check TikTok authentication status on mount
+  useEffect(() => {
+    checkTikTokAuth();
+  }, []);
+  
+  const checkTikTokAuth = async () => {
+    setIsCheckingTikTokAuth(true);
+    try {
+      const { data, error } = await supabase
+        .from('tiktok_credentials')
+        .select('expires_at')
+        .single();
+      
+      if (!error && data) {
+        const expiresAt = new Date(data.expires_at);
+        setIsTikTokConnected(expiresAt > new Date());
+      } else {
+        setIsTikTokConnected(false);
+      }
+    } catch (err) {
+      setIsTikTokConnected(false);
+    } finally {
+      setIsCheckingTikTokAuth(false);
+    }
+  };
+  
+  const connectTikTok = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('tiktok-auth');
+      
+      if (error) throw error;
+      
+      if (data?.authUrl) {
+        window.open(data.authUrl, '_blank');
+        toast.info("Please complete TikTok authorization in the new window");
+        
+        // Check auth status after a delay
+        setTimeout(() => checkTikTokAuth(), 3000);
+      }
+    } catch (error: any) {
+      console.error('TikTok auth error:', error);
+      toast.error(error.message || "Failed to connect to TikTok");
+    }
+  };
+  
+  const publishToTikTok = async () => {
+    if (!videoPath) {
+      toast.error("No video available to publish");
+      return;
+    }
+    
+    if (!isTikTokConnected) {
+      toast.error("Please connect to TikTok first");
+      return;
+    }
+    
+    // Get title from first title variation or use default
+    const title = titleVariations[0] || "My Video";
+    const description = summaries[0] || "";
+    
+    setIsPublishingToTikTok(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('publish-to-tiktok', {
+        body: {
+          videoPath,
+          title,
+          description
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+      
+      toast.success("Video published to TikTok successfully!");
+    } catch (error: any) {
+      console.error('TikTok publish error:', error);
+      toast.error(error.message || "Failed to publish to TikTok");
+    } finally {
+      setIsPublishingToTikTok(false);
+    }
+  };
+  
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !subtitleBlobUrl) return;
@@ -689,13 +779,14 @@ export const KyrgyzSubtitleGenerator = () => {
                         </div>
                         <Textarea value={cue.text} onChange={e => handleCueTextChange(index, e.target.value)} className="min-h-[50px] text-sm resize-none bg-transparent border-0 p-0 focus-visible:ring-0 font-medium" placeholder="Enter subtitle text..." />
                       </div>)}
-                  </div>
-                  <div className="flex gap-2">
-                    {hasUnsavedChanges && <Button onClick={applySubtitleChanges} className="flex-1">
-                        Update Captions
-                      </Button>}
-                    <Button 
-                      onClick={downloadVideoWithSubtitles} 
+                   </div>
+                   <div className="space-y-2">
+                     <div className="flex gap-2">
+                       {hasUnsavedChanges && <Button onClick={applySubtitleChanges} className="flex-1">
+                           Update Captions
+                         </Button>}
+                       <Button 
+                        onClick={downloadVideoWithSubtitles}
                       size="lg"
                       className={`
                         ${hasUnsavedChanges ? "flex-1" : "w-full"}
@@ -717,10 +808,54 @@ export const KyrgyzSubtitleGenerator = () => {
                             <Download className="w-5 h-5" />
                             <span>Download Video + SRT</span>
                           </div>
-                        </>}
-                    </Button>
-                  </div>
-                </div>}
+                         </>}
+                     </Button>
+                     </div>
+                     
+                     {/* TikTok Publishing */}
+                     <div className="flex gap-2">
+                       {!isTikTokConnected ? (
+                         <Button
+                           onClick={connectTikTok}
+                           disabled={isCheckingTikTokAuth}
+                           className="w-full bg-gradient-to-r from-[#00f2ea] to-[#ff0050] hover:opacity-90 text-white font-semibold shadow-lg"
+                           size="lg"
+                         >
+                           {isCheckingTikTokAuth ? (
+                             <>
+                               <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                               Checking...
+                             </>
+                           ) : (
+                             <>
+                               <Share2 className="w-5 h-5 mr-2" />
+                               Connect TikTok
+                             </>
+                           )}
+                         </Button>
+                       ) : (
+                         <Button
+                           onClick={publishToTikTok}
+                           disabled={isPublishingToTikTok}
+                           className="w-full bg-gradient-to-r from-[#00f2ea] to-[#ff0050] hover:opacity-90 text-white font-semibold shadow-lg"
+                           size="lg"
+                         >
+                           {isPublishingToTikTok ? (
+                             <>
+                               <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                               Publishing...
+                             </>
+                           ) : (
+                             <>
+                               <Share2 className="w-5 h-5 mr-2" />
+                               Publish to TikTok
+                             </>
+                           )}
+                         </Button>
+                       )}
+                     </div>
+                   </div>
+                 </div>}
               </div>
 
               {/* Right side - Video Player */}
