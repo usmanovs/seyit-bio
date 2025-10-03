@@ -308,23 +308,48 @@ export const KyrgyzSubtitleGenerator = () => {
         cacheControl: '3600',
         upsert: false
       });
-      
+
       // Set timeout based on file size: 30s base + 10s per MB (more generous for phone uploads)
       const timeoutMs = 30000 + (file.size / (1024 * 1024)) * 10000;
       console.log('[Upload] Timeout set to:', Math.round(timeoutMs / 1000), 'seconds');
-      
+
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Upload timeout - please check your connection and try again')), timeoutMs)
       );
-      
-      const { error: uploadError } = await Promise.race([uploadPromise, timeoutPromise]) as any;
-      
+
+      // Fallback: if the SDK upload promise hangs, poll storage to detect if the file actually exists
+      const pollFileExists = async (): Promise<'exists'> => {
+        const folder = fileName.split('/')[0];
+        const target = fileName.split('/').pop();
+        const started = Date.now();
+        while (Date.now() - started < timeoutMs) {
+          try {
+            const { data } = await supabase.storage.from('videos').list(folder);
+            if (data?.some((o: any) => o.name === target)) {
+              console.log('[Upload] File detected in storage via polling');
+              return 'exists';
+            }
+          } catch (e) {
+            // ignore transient errors and keep polling
+          }
+          await new Promise((r) => setTimeout(r, 3000));
+        }
+        throw new Error('Upload verification timed out');
+      };
+
+      const existsPromise = pollFileExists();
+
+      const winner: any = await Promise.race([uploadPromise, existsPromise, timeoutPromise]);
+
       clearInterval(progressTimer);
       setUploadProgress(100);
-      
-      console.log('[Upload] Upload completed, error:', uploadError);
-      
-      if (uploadError) throw uploadError;
+
+      // If the race winner is the polling result, treat as success; otherwise check SDK response error
+      if (winner !== 'exists' && winner?.error) {
+        throw winner.error;
+      }
+
+      console.log('[Upload] Upload completed (winner):', winner);
 
       // Show 100% completion briefly before continuing
       await new Promise(resolve => setTimeout(resolve, 500));
