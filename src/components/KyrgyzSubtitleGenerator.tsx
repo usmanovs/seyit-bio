@@ -492,7 +492,7 @@ export const KyrgyzSubtitleGenerator = () => {
               const getStyleClasses = () => {
                 switch (style.id) {
                   case 'outline':
-                    return 'bg-white/10 text-white font-bold border-2 border-white/30';
+                    return 'bg-white/90 text-black font-bold border-2 border-gray-300';
                   case 'minimal':
                     return 'bg-black/40 text-white font-normal';
                   case 'green':
