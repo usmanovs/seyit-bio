@@ -48,8 +48,8 @@ export const KyrgyzSubtitleGenerator = () => {
   }, {
     id: 'green',
     name: 'Highlight',
-    css: 'background-color: rgb(234, 179, 8); color: white; font-weight: 900; font-size: 1.8em; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9), 0 0 2px rgba(0, 0, 0, 0.9); padding: 0.4em 1em; border-radius: 8px;',
-    prompt: 'white text on bright yellow/gold background, extra bold font, strong shadow for readability'
+    css: 'color: black; font-weight: 900; text-shadow: 0 0 6px rgba(234, 179, 8, 0.95), 0 0 14px rgba(234, 179, 8, 0.85), -2px -2px 0 #ffffff, 2px -2px 0 #ffffff, -2px 2px 0 #ffffff, 2px 2px 0 #ffffff;',
+    prompt: 'black text with strong yellow glow and white outline, extra bold, highly distinct from stroke'
   }, {
     id: 'boxed',
     name: 'Framed',
@@ -457,9 +457,6 @@ export const KyrgyzSubtitleGenerator = () => {
       <style>{`
         video::cue {
           ${currentStyle.css}
-          font-size: 1.5em;
-          padding: 0.2em 0.5em;
-          border-radius: 4px;
         }
       `}</style>
       <Card className="max-w-4xl mx-auto">
@@ -496,7 +493,7 @@ export const KyrgyzSubtitleGenerator = () => {
                   case 'minimal':
                     return 'bg-black/40 text-white font-normal';
                   case 'green':
-                    return 'bg-yellow-500 text-white font-extrabold';
+                    return 'bg-transparent text-black font-black';
                   case 'boxed':
                     return 'bg-black text-green-500 font-bold border-4 border-green-500';
                   default:
