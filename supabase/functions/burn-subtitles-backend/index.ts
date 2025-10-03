@@ -77,8 +77,18 @@ serve(async (req) => {
 
     console.log('[BURN-SUBTITLES] Video URL:', publicUrl);
 
-    // Create a temporary SRT file content
-    const srtContent = subtitles;
+    // Create a temporary SRT file content - normalize spacing to avoid extra gaps
+    const srtContent = subtitles
+      .split('\n')
+      .map((line: string) => {
+        const isTiming = /^\d+:\d+:\d+[,.]\d+\s+-->\s+\d+:\d+:\d+[,.]\d+/.test(line);
+        if (isTiming) return line.trim();
+        return line
+          .replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, ' ') // exotic spaces to normal
+          .replace(/[ \t]{2,}/g, ' ') // collapse multiple spaces/tabs
+          .trimEnd();
+      })
+      .join('\n');
     const srtBlob = new Blob([srtContent], { type: 'text/plain' });
     const srtFileName = `subtitles_${Date.now()}.srt`;
     
@@ -108,13 +118,15 @@ serve(async (req) => {
       if (enhancedPrompt.includes('solid black background')) {
         enhancedPrompt = enhancedPrompt.replace('solid black background', 'semi-transparent dark background (70% opacity)');
       }
+      // Enforce normal spacing between words and letters
+      enhancedPrompt += ', no extra word spacing or letter spacing (word-spacing: 0px; letter-spacing: 0px; kerning: normal)';
       
       // Start Replicate job using predictions API so we can poll from the client
       const prediction = await replicate.predictions.create({
         version: 'fofr/smart-ffmpeg',
         input: {
           files: [publicUrl, srtUrl],
-          prompt: `Burn the subtitles from the SRT file onto the video at the VERY BOTTOM with only small padding from bottom edge (92-96% from top). Style: ${enhancedPrompt}. CRITICAL: Text must be clearly readable and visible. Use appropriate font size (16-20px). Background should be semi-transparent if present, never fully opaque. Ensure high contrast between text and any background. Subtitles must be positioned at the absolute bottom like standard video players, with minimal margin from bottom edge.`,
+          prompt: `Burn the subtitles from the SRT file onto the video at the VERY BOTTOM with only small padding from bottom edge (92-96% from top). Style: ${enhancedPrompt}. CRITICAL: Text must be clearly readable and visible. Use appropriate font size (16-20px). Background should be semi-transparent if present, never fully opaque. Ensure high contrast between text and any background. Subtitles must be positioned at the absolute bottom like standard video players, with minimal margin from bottom edge. Absolutely do NOT increase spacing between words or letters; spacing must remain normal (word-spacing: 0px; letter-spacing: 0px).`,
           max_attempts: 3,
         },
       } as any);
