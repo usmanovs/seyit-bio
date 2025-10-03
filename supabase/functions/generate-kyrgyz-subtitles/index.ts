@@ -34,8 +34,8 @@ function generateSRT(transcription: any): string {
       
       currentChunk.push(word);
       
-      // Create subtitle after 10 words or if sentence ends
-      if (currentChunk.length >= 10 || word.text?.match(/[.!?]$/) || i === transcription.words.length - 1) {
+      // Create subtitle after 5 words or if sentence ends (reduced from 10 to prevent long lines)
+      if (currentChunk.length >= 5 || word.text?.match(/[.!?]$/) || i === transcription.words.length - 1) {
         const endTime = word.end || word.start || 0;
         const text = currentChunk.map(w => (w.text || '').trim()).filter(t => t).join(' ');
         
@@ -122,7 +122,7 @@ serve(async (req) => {
       });
     } catch (e) {
       console.error('[KYRGYZ-SUBTITLES] Exception creating signed URL:', e);
-      throw new Error(`Exception creating signed URL: ${e.message}`);
+      throw new Error(`Exception creating signed URL: ${e instanceof Error ? e.message : String(e)}`);
     }
 
     if (signedUrlError || !signedUrlData?.signedUrl) {
@@ -150,10 +150,10 @@ serve(async (req) => {
       }
     } catch (e) {
       console.error('[KYRGYZ-SUBTITLES] Exception fetching video:', e);
-      if (e.name === 'AbortError') {
+      if (e instanceof Error && e.name === 'AbortError') {
         throw new Error('Video download timeout - file may be too large');
       }
-      throw new Error(`Failed to download video: ${e.message}`);
+      throw new Error(`Failed to download video: ${e instanceof Error ? e.message : String(e)}`);
     }
 
     const videoBlob = await videoResponse.blob();
