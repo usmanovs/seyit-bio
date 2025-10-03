@@ -37,7 +37,7 @@ function generateSRT(transcription: any): string {
       // Create subtitle after 10 words or if sentence ends
       if (currentChunk.length >= 10 || word.text?.match(/[.!?]$/) || i === transcription.words.length - 1) {
         const endTime = word.end || word.start || 0;
-        const text = currentChunk.map(w => w.text).join(' ');
+        const text = currentChunk.map(w => (w.text || '').trim()).filter(t => t).join(' ');
         
         srtContent += `${index}\n`;
         srtContent += `${formatTimestamp(chunkStartTime)} --> ${formatTimestamp(endTime)}\n`;
