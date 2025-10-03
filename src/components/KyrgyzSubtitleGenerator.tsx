@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 
 export const KyrgyzSubtitleGenerator = () => {
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoPath, setVideoPath] = useState<string | null>(null);
@@ -134,6 +135,31 @@ export const KyrgyzSubtitleGenerator = () => {
     }
 
     setIsUploading(true);
+    setUploadProgress(0);
+    
+    // Simulate upload progress based on file size
+    const simulateProgress = () => {
+      const fileSize = file.size;
+      const estimatedTime = Math.min(fileSize / (1024 * 1024) * 1000, 30000); // ~1s per MB, max 30s
+      const interval = 100;
+      const increment = (100 / (estimatedTime / interval)) * 1.5; // Faster at start
+      
+      const timer = setInterval(() => {
+        setUploadProgress(prev => {
+          const next = prev + increment;
+          if (next >= 95) {
+            clearInterval(timer);
+            return 95; // Stop at 95%, complete when upload finishes
+          }
+          return next;
+        });
+      }, interval);
+      
+      return timer;
+    };
+    
+    const progressTimer = simulateProgress();
+    
     try {
       // Check if user is authenticated (optional for guest uploads)
       const { data: { user } } = await supabase.auth.getUser();
@@ -145,6 +171,9 @@ export const KyrgyzSubtitleGenerator = () => {
       const { error: uploadError } = await supabase.storage
         .from('videos')
         .upload(fileName, file);
+
+      clearInterval(progressTimer);
+      setUploadProgress(100);
 
       if (uploadError) throw uploadError;
 
@@ -164,6 +193,7 @@ export const KyrgyzSubtitleGenerator = () => {
       toast.error(error.message || "Failed to upload video");
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -402,7 +432,7 @@ export const KyrgyzSubtitleGenerator = () => {
               {isUploading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Uploading...
+                  Uploading... {uploadProgress}%
                 </>
               ) : (
                 <>
@@ -411,6 +441,9 @@ export const KyrgyzSubtitleGenerator = () => {
                 </>
               )}
             </Button>
+            {isUploading && (
+              <Progress value={uploadProgress} className="w-full" />
+            )}
           </div>
 
           {/* Caption Style Selector */}
