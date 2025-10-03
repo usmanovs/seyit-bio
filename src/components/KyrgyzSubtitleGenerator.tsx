@@ -740,23 +740,36 @@ export const KyrgyzSubtitleGenerator = () => {
               <label className="text-sm font-semibold">Caption Style</label>
               <div className="grid grid-cols-4 gap-2">
                 {captionStyles.map(style => {
-              const getStyleClasses = () => {
+              const getPreviewClasses = () => {
                 switch (style.id) {
                   case 'outline':
-                    return 'bg-transparent text-white font-bold border-2 border-white/50 [text-shadow:-2px_-2px_0_#000,2px_-2px_0_#000,-2px_2px_0_#000,2px_2px_0_#000]';
+                    return 'bg-transparent text-white font-bold [text-shadow:-2px_-2px_0_#000,2px_-2px_0_#000,-2px_2px_0_#000,2px_2px_0_#000]';
                   case 'minimal':
-                    return 'bg-black/70 text-white/90 font-light border border-white/20';
+                    return 'bg-black/70 text-white/90 font-light';
                   case 'green':
-                    return 'bg-transparent text-black font-black border-2 border-yellow-400 [text-shadow:0_0_8px_rgba(234,179,8,0.9),-1px_-1px_0_#fff,1px_-1px_0_#fff,-1px_1px_0_#fff,1px_1px_0_#fff]';
+                    return 'bg-transparent text-black font-black [text-shadow:0_0_8px_rgba(234,179,8,0.9),-1px_-1px_0_#fff,1px_-1px_0_#fff,-1px_1px_0_#fff,1px_1px_0_#fff]';
                   case 'boxed':
-                    return 'bg-black text-green-500 font-bold border-4 border-green-500 [text-shadow:0_0_10px_#00ff00]';
+                    return 'bg-black text-green-500 font-bold border-2 border-green-500 [text-shadow:0_0_10px_#00ff00]';
                   default:
                     return '';
                 }
               };
-              return <button key={style.id} onClick={() => setCaptionStyle(style.id)} className={`p-4 rounded-lg transition-all text-base relative ${getStyleClasses()} ${captionStyle === style.id ? 'ring-4 ring-primary ring-offset-2 ring-offset-background scale-105' : 'hover:scale-102'}`}>
-                      {style.name}
-                    </button>;
+              return <button 
+                key={style.id} 
+                onClick={() => setCaptionStyle(style.id)} 
+                className={`p-3 rounded-lg transition-all relative bg-muted hover:bg-muted/80 border-2 ${
+                  captionStyle === style.id 
+                    ? 'border-primary scale-105 shadow-lg' 
+                    : 'border-transparent hover:border-border'
+                }`}
+              >
+                <div className="text-sm font-medium mb-2 text-foreground">
+                  {style.name}
+                </div>
+                <div className={`text-xs px-2 py-1 rounded ${getPreviewClasses()}`}>
+                  Preview
+                </div>
+              </button>;
             })}
               </div>
             </div>}
