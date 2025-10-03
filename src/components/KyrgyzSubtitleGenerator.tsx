@@ -739,11 +739,13 @@ export const KyrgyzSubtitleGenerator = () => {
               </div>
             </div>
             {isUploading && (
-              <div className="w-full">
+              <div className="w-full space-y-1">
                 <Progress value={uploadProgress} className="w-full" />
-                {uploadProgress >= 95 && uploadProgress < 100 && (
-                  <p className="mt-1 text-xs text-muted-foreground">Finalizing upload… Large files on mobile can take a few minutes.</p>
-                )}
+                <p className="text-xs text-muted-foreground">
+                  {uploadProgress < 95 
+                    ? "Uploading and generating captions... This may take a few minutes for large files."
+                    : "Finalizing upload and caption generation... Large files on mobile can take a few minutes."}
+                </p>
               </div>
             )}
           </div>
