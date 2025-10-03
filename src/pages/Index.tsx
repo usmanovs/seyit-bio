@@ -3,8 +3,10 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { User } from "@supabase/supabase-js";
-import napsterLogo from "@/assets/napster-logo.png";
 import { KyrgyzSubtitleGenerator } from "@/components/KyrgyzSubtitleGenerator";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { CheckCircle2, Globe, Zap, Shield, Video, Languages } from "lucide-react";
 const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
@@ -47,316 +49,217 @@ const Index = () => {
     await supabase.auth.signOut();
     toast.success("Logged out successfully");
   };
-  return <div className="min-h-screen bg-background">
-      {/* Header Banner */}
-      <div className="bg-accent border-4 border-double border-foreground py-3 text-center relative">
-        <p className="text-2xl font-bold">🌐 Welcome to Seyitbek's Homepage 🌐</p>
-        <div className="absolute right-4 top-1/2 -translate-y-1/2">
-          {!loading && (user ? <div className="flex items-center gap-2">
-                <span className="text-sm">👤 {user.email}</span>
-                <button onClick={handleLogout} className="bg-primary text-primary-foreground border-2 border-foreground px-3 py-1 text-sm font-bold hover:bg-accent hover:text-accent-foreground">
+  const scrollToGenerator = () => {
+    const element = document.getElementById('generator-section');
+    element?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted">
+      {/* Header */}
+      <header className="border-b sticky top-0 bg-background/95 backdrop-blur-sm z-50">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <Video className="w-6 h-6 text-primary" />
+            <h1 className="text-xl font-bold">Kyrgyz Subtitle Pro</h1>
+          </div>
+          <div className="flex items-center gap-4">
+            {!loading && (user ? (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">{user.email}</span>
+                <Button onClick={handleLogout} variant="outline" size="sm">
                   Logout
-                </button>
-              </div> : <button onClick={() => navigate('/auth')} className="bg-primary text-primary-foreground border-2 border-foreground px-4 py-2 font-bold hover:bg-accent hover:text-accent-foreground">
-                🔐 Login / Sign Up
-              </button>)}
+                </Button>
+              </div>
+            ) : (
+              <Button onClick={() => navigate('/auth')} variant="default">
+                Sign In
+              </Button>
+            ))}
+          </div>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-8 max-w-3xl">
-        <center>
-          <h1 className="text-4xl font-bold mb-4 underline">Seyitbek Usmanov</h1>
-          
-          <img src={napsterLogo} alt="Napster" className="my-4" width="200" />
-
-          <hr className="border-2 border-foreground my-6" />
-
-          <h2 className="text-2xl font-bold mb-3 mx-[6px]">📋 About Seyitbek</h2>
-        </center>
-
-        <div className="bg-card border-4 border-foreground p-6 mb-6">
-          <p className="mb-4 mx-0 text-lg">
-            <b>Welcome to my personal homepage!</b> I am a Salesforce expert, researcher, educator, and content creator.
+      {/* Hero Section */}
+      <section className="container mx-auto px-4 py-20 text-center">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="inline-block px-4 py-2 bg-primary/10 rounded-full mb-4">
+            <span className="text-sm font-semibold text-primary">✨ AI-Powered Translation</span>
+          </div>
+          <h1 className="text-5xl md:text-6xl font-bold leading-tight">
+            Add <span className="text-primary">Kyrgyz Subtitles</span> to Your Videos in Minutes
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Transform your videos with professional Kyrgyz subtitles. Powered by advanced AI, 
+            our tool delivers accurate translations with multiple styling options.
           </p>
-          <p className="text-lg">
-            I love sharing inspirational ideas about Salesforce, real estate and personal finance and how this can 10x your life!
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
+            <Button size="lg" onClick={scrollToGenerator} className="text-lg px-8">
+              Try It Free Now
+            </Button>
+            <Button size="lg" variant="outline" onClick={() => navigate('/auth')} className="text-lg px-8">
+              Learn More
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground pt-2">
+            No credit card required • Free to start
           </p>
         </div>
+      </section>
 
-        <center>
-          <h2 className="text-2xl font-bold mb-4">🎯 What I Do</h2>
-        </center>
-
-        <table className="w-full border-4 border-foreground mb-6" cellPadding="10">
-          <tbody>
-            <tr className="bg-primary text-primary-foreground">
-              <td className="border-2 border-foreground">
-                <b>📝 Content Creation</b>
-                <br />
-                Creator of "Profit with Salesforce" on Substack with over 1,000 subscribers. 
-                Running the Salesforce Chef YouTube channel.
-              </td>
-            </tr>
-            <tr className="bg-card">
-              <td className="border-2 border-foreground">
-                <b>🎓 Research & Academia</b>
-                <br />
-                Head of Research at the Central Asian Free Market Institute. 
-                Professor at Montgomery College.
-              </td>
-            </tr>
-            <tr className="bg-accent">
-              <td className="border-2 border-foreground">
-                <b>💼 Salesforce Expertise</b>
-                <br />
-                Helping professionals master Salesforce and accelerate their careers 
-                through practical insights and real-world strategies.
-              </td>
-            </tr>
-            <tr className="bg-card">
-              <td className="border-2 border-foreground">
-                <b>🤝 Advisory & Consulting</b>
-                <br />
-                Senior Research Associate at CognoLink Limited. 
-                Advisory Board member at Lifeboat Foundation.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <center>
-          <h2 className="text-2xl font-bold mb-4">🔗 Links</h2>
-          
-          <div className="bg-card border-4 border-foreground p-6 mb-6 inline-block">
-            <p className="mb-3">
-              <a href="https://sfchef.substack.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline text-lg">
-                📰 Read My Newsletter
-              </a>
-            </p>
-            <p className="mb-3">
-              <a href="https://www.youtube.com/c/SalesforceChief" target="_blank" rel="noopener noreferrer" className="text-primary underline text-lg">
-                📺 Visit My YouTube Channel
-              </a>
-            </p>
-            <p className="mb-3">
-              <a href="https://www.linkedin.com/in/seyitbek" target="_blank" rel="noopener noreferrer" className="text-primary underline text-lg">
-                💼 Connect on LinkedIn
-              </a>
-            </p>
-            <p>
-              <a href="mailto:contact@seyitbek.com" className="text-primary underline text-lg">
-                📧 Send Me Email
-              </a>
-            </p>
-          </div>
-
-          <hr className="border-2 border-foreground my-6" />
-
-          <h2 className="text-2xl font-bold mb-4">💼 Hire Me</h2>
-
-          <div className="bg-card border-4 border-foreground p-6 mb-6 inline-block">
-            <p className="text-lg mb-4">
-              <b>Need expert Salesforce consulting?</b> Book a session with me:
-            </p>
-            
-            <div className="flex flex-col gap-4">
-              <button onClick={async () => {
-              try {
-                const {
-                  data,
-                  error
-                } = await supabase.functions.invoke('create-payment', {
-                  body: {
-                    priceId: 'price_1SCsw3LJqhOyuCVBPkoNGeWN'
-                  }
-                });
-                if (error) throw error;
-                if (data.url) {
-                  window.open(data.url, '_blank');
-                }
-              } catch (error) {
-                toast.error('Failed to create payment session');
-                console.error(error);
-              }
-            }} className="bg-primary text-primary-foreground border-4 border-foreground px-6 py-3 font-bold hover:bg-accent hover:text-accent-foreground cursor-pointer text-lg">
-                📅 1 Hour Session - $200
-              </button>
-              
-              <button onClick={async () => {
-              try {
-                const {
-                  data,
-                  error
-                } = await supabase.functions.invoke('create-payment', {
-                  body: {
-                    priceId: 'price_1SCswKLJqhOyuCVBuIP84sT9'
-                  }
-                });
-                if (error) throw error;
-                if (data.url) {
-                  window.open(data.url, '_blank');
-                }
-              } catch (error) {
-                toast.error('Failed to create payment session');
-                console.error(error);
-              }
-            }} className="bg-secondary text-secondary-foreground border-4 border-foreground px-6 py-3 font-bold hover:bg-accent hover:text-accent-foreground cursor-pointer text-lg">
-                📅 2 Hour Session - $300 (Save $100!)
-              </button>
-
-              <hr className="border-2 border-foreground my-2" />
-
-              <button onClick={async () => {
-              try {
-                const {
-                  data,
-                  error
-                } = await supabase.functions.invoke('create-payment', {
-                  body: {
-                    priceId: 'price_1SCsyFLJqhOyuCVBagDoYlCq'
-                  }
-                });
-                if (error) throw error;
-                if (data.url) {
-                  window.open(data.url, '_blank');
-                }
-              } catch (error) {
-                toast.error('Failed to create payment session');
-                console.error(error);
-              }
-            }} className="bg-accent text-accent-foreground border-4 border-foreground px-6 py-3 font-bold hover:bg-secondary hover:text-secondary-foreground cursor-pointer text-lg">
-                ☕ Buy Seyit a Coffee - $5
-              </button>
-              <p className="text-sm text-center">
-                <i>(Fuel my Salesforce wisdom with caffeine! ☕💡)</i>
+      {/* Features Section */}
+      <section className="container mx-auto px-4 py-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Choose Our Subtitle Generator?</h2>
+          <p className="text-muted-foreground text-lg">Everything you need to create perfect Kyrgyz subtitles</p>
+        </div>
+        
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          <Card className="border-2">
+            <CardContent className="p-6">
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                <Zap className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Lightning Fast</h3>
+              <p className="text-muted-foreground">
+                Generate accurate Kyrgyz subtitles in minutes, not hours. AI-powered processing delivers results instantly.
               </p>
+            </CardContent>
+          </Card>
 
-              <hr className="border-2 border-foreground my-4" />
-
-              <button onClick={async () => {
-              if (!user) {
-                toast.error('Please sign in to join the family');
-                navigate('/auth');
-                return;
-              }
-              try {
-                const {
-                  data,
-                  error
-                } = await supabase.functions.invoke('create-subscription-checkout', {
-                  body: {
-                    priceId: 'price_1SD2vxLJqhOyuCVBNKCjdl2T'
-                  }
-                });
-                if (error) throw error;
-                if (data.url) {
-                  window.open(data.url, '_blank');
-                }
-              } catch (error) {
-                toast.error('Failed to create subscription');
-                console.error(error);
-              }
-            }} className="bg-primary text-primary-foreground border-4 border-foreground px-6 py-3 font-bold hover:bg-accent hover:text-accent-foreground cursor-pointer text-lg animate-pulse">
-                👨‍👩‍👧‍👦 Join My Family - $10/month
-              </button>
-              <p className="text-sm text-center">
-                <i>(First 10 days FREE! Access exclusive community & downloadable files 🎁)</i>
+          <Card className="border-2">
+            <CardContent className="p-6">
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                <Languages className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Native Translation</h3>
+              <p className="text-muted-foreground">
+                High-quality Kyrgyz translations that maintain context and cultural nuances perfectly.
               </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2">
+            <CardContent className="p-6">
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                <Globe className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">6 Style Options</h3>
+              <p className="text-muted-foreground">
+                Choose from Classic, Outline, Minimal, Yellow, Green, or Boxed caption styles to match your brand.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2">
+            <CardContent className="p-6">
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                <CheckCircle2 className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Edit & Refine</h3>
+              <p className="text-muted-foreground">
+                Full subtitle editor with real-time preview. Perfect every word before exporting.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2">
+            <CardContent className="p-6">
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                <Video className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Burn-In Subtitles</h3>
+              <p className="text-muted-foreground">
+                Download videos with permanently embedded subtitles for maximum compatibility.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2">
+            <CardContent className="p-6">
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                <Shield className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Secure & Private</h3>
+              <p className="text-muted-foreground">
+                Your videos are processed securely and never stored permanently. Your privacy matters.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="container mx-auto px-4 py-16 bg-muted/50 rounded-2xl my-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
+          <p className="text-muted-foreground text-lg">Three simple steps to professional subtitles</p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-2xl font-bold mx-auto">
+              1
             </div>
+            <h3 className="text-xl font-bold">Upload Your Video</h3>
+            <p className="text-muted-foreground">
+              Select any video file from your device. We support all major formats.
+            </p>
           </div>
 
-          <hr className="border-2 border-foreground my-6" />
-
-          <h2 className="text-2xl font-bold mb-4">🎬 Kyrgyz Video Subtitle Generator</h2>
-          
-          <div className="mb-8">
-            <KyrgyzSubtitleGenerator />
-          </div>
-
-          <hr className="border-2 border-foreground my-6" />
-
-          <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExY3c2bWN2Mzk3dGF4YW1tOXAxemljamxsMXBjdGdtMzQ5MjEwZWgyNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JIX9t2j0ZTN9S/giphy.gif" alt="Under Construction" className="my-4" width="150" />
-
-          <hr className="border-2 border-foreground my-6" />
-
-          <h2 className="text-2xl font-bold mb-4">📬 Contact Me</h2>
-
-          <div className="bg-card border-4 border-foreground p-6 mb-6 inline-block w-full max-w-md">
-            <form onSubmit={async e => {
-            e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            const name = formData.get('name') as string;
-            const email = formData.get('email') as string;
-            const message = formData.get('message') as string;
-            const {
-              error
-            } = await supabase.from('contact_submissions').insert({
-              name,
-              email,
-              message
-            });
-            if (error) {
-              toast.error("Failed to send message. Please try again.");
-            } else {
-              toast.success(`Thank you ${name}! I'll get back to you soon.`);
-              e.currentTarget.reset();
-            }
-          }}>
-              <table className="w-full" cellPadding="8">
-                <tbody>
-                  <tr>
-                    <td className="text-left"><b>Name:</b></td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <input type="text" name="name" required className="w-full border-2 border-foreground p-2 bg-background" />
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="text-left"><b>Email:</b></td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <input type="email" name="email" required className="w-full border-2 border-foreground p-2 bg-background" />
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="text-left"><b>Message:</b></td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <textarea name="message" required rows={5} className="w-full border-2 border-foreground p-2 bg-background" />
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="text-center pt-4">
-                      <button type="submit" className="bg-primary text-primary-foreground border-4 border-foreground px-6 py-2 font-bold hover:bg-accent cursor-pointer">
-                        📤 SEND MESSAGE
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </form>
-          </div>
-
-          <p className="text-sm mt-6">
-            <i>Last Updated: {new Date().toLocaleDateString()}</i>
-          </p>
-          
-          <p className="text-sm mt-2">
-            <b>Best viewed in Netscape Navigator 2.0 or higher</b>
-          </p>
-
-          <div className="mt-6 flex items-center justify-center gap-2">
-            <span className="text-xs">Visitor count:</span>
-            <div className="bg-foreground text-background px-3 py-1 font-mono border-2 border-foreground">
-              000042
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-2xl font-bold mx-auto">
+              2
             </div>
+            <h3 className="text-xl font-bold">AI Generates Subtitles</h3>
+            <p className="text-muted-foreground">
+              Our AI transcribes and translates your content to Kyrgyz automatically.
+            </p>
           </div>
-        </center>
-      </div>
-    </div>;
+
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-2xl font-bold mx-auto">
+              3
+            </div>
+            <h3 className="text-xl font-bold">Download & Share</h3>
+            <p className="text-muted-foreground">
+              Edit, style, and download your video with perfect Kyrgyz subtitles.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Generator Section */}
+      <section id="generator-section" className="container mx-auto px-4 py-16">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Try It Now</h2>
+          <p className="text-muted-foreground text-lg">Start adding Kyrgyz subtitles to your videos</p>
+        </div>
+        <KyrgyzSubtitleGenerator />
+      </section>
+
+      {/* CTA Section */}
+      <section className="container mx-auto px-4 py-16">
+        <Card className="border-2 bg-gradient-to-r from-primary/10 to-primary/5">
+          <CardContent className="p-12 text-center">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Get Started?</h2>
+            <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
+              Join content creators who are reaching Kyrgyz-speaking audiences with professional subtitles.
+            </p>
+            <Button size="lg" onClick={scrollToGenerator} className="text-lg px-8">
+              Start Creating Subtitles
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t mt-16">
+        <div className="container mx-auto px-4 py-8 text-center text-sm text-muted-foreground">
+          <p>© 2025 Kyrgyz Subtitle Pro. Made with ❤️ for the Kyrgyz community.</p>
+        </div>
+      </footer>
+    </div>
+  );
 };
 export default Index;
