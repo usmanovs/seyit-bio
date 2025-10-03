@@ -48,8 +48,8 @@ export const KyrgyzSubtitleGenerator = () => {
   }, {
     id: 'green',
     name: 'Highlight',
-    css: 'background-color: rgb(234, 179, 8); color: black; font-weight: bold; text-shadow: none;',
-    prompt: 'black text on bright yellow/gold background, bold font, high visibility'
+    css: 'background-color: rgb(234, 179, 8); color: white; font-weight: bold; text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);',
+    prompt: 'white text on bright yellow/gold background, bold font, high visibility with text shadow'
   }, {
     id: 'boxed',
     name: 'Framed',
@@ -494,7 +494,7 @@ export const KyrgyzSubtitleGenerator = () => {
                   case 'minimal':
                     return 'bg-black/40 text-white font-normal';
                   case 'green':
-                    return 'bg-yellow-500 text-black font-bold';
+                    return 'bg-yellow-500 text-white font-bold';
                   case 'boxed':
                     return 'bg-black text-white font-bold border-2 border-white';
                   default:
