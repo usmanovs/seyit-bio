@@ -29,18 +29,13 @@ export const KyrgyzSubtitleGenerator = () => {
   const [processingStatus, setProcessingStatus] = useState<string>('');
   const [processingProgress, setProcessingProgress] = useState<number>(0);
   const [processingStartTime, setProcessingStartTime] = useState<number>(0);
-  const [captionStyle, setCaptionStyle] = useState<string>('default');
+  const [captionStyle, setCaptionStyle] = useState<string>('outline');
   const [addEmojis, setAddEmojis] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
   const subtitleRefs = useRef<(HTMLDivElement | null)[]>([]);
   const captionStyles = [{
-    id: 'default',
-    name: 'Classic',
-    css: 'background-color: rgba(0, 0, 0, 0.8); color: white; font-weight: bold; text-shadow: 2px 2px 4px rgba(255, 215, 0, 0.8);',
-    prompt: 'white text with yellow glow, bold font, black background'
-  }, {
     id: 'outline',
     name: 'Outline',
     css: 'background-color: transparent; color: white; font-weight: bold; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;',
@@ -50,11 +45,6 @@ export const KyrgyzSubtitleGenerator = () => {
     name: 'Minimal',
     css: 'background-color: rgba(0, 0, 0, 0.5); color: white; font-weight: normal; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);',
     prompt: 'white text, normal weight, semi-transparent black background, minimal shadow'
-  }, {
-    id: 'yellow',
-    name: 'Yellow',
-    css: 'background-color: rgb(255, 255, 0); color: black; font-weight: bold; text-shadow: none;',
-    prompt: 'black text on bright solid yellow background, bold font, high contrast'
   }, {
     id: 'green',
     name: 'Green',
