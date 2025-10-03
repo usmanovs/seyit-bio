@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Loader2, Download, Video } from "lucide-react";
+import { Upload, Loader2, Download, Video, Sparkles } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
@@ -31,6 +31,8 @@ export const KyrgyzSubtitleGenerator = () => {
   const [processingStartTime, setProcessingStartTime] = useState<number>(0);
   const [captionStyle, setCaptionStyle] = useState<string>('outline');
   const [addEmojis, setAddEmojis] = useState<boolean>(false);
+  const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
+  const [titleVariations, setTitleVariations] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
@@ -453,6 +455,39 @@ export const KyrgyzSubtitleGenerator = () => {
       setProcessingStartTime(0);
     }
   };
+  
+  const generateTitleVariations = async () => {
+    if (!transcription) {
+      toast.error("No transcription available. Please generate subtitles first.");
+      return;
+    }
+    
+    setIsGeneratingTitles(true);
+    setTitleVariations([]);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-title-variations', {
+        body: { transcription }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+      
+      if (data?.titles) {
+        setTitleVariations(data.titles);
+        toast.success("Title variations generated!");
+      }
+    } catch (error: any) {
+      console.error('[KyrgyzSubtitleGenerator] Title generation failed:', error);
+      toast.error(error.message || "Failed to generate title variations");
+    } finally {
+      setIsGeneratingTitles(false);
+    }
+  };
+  
   return <>
       <style>{`
         video::cue {
@@ -641,5 +676,68 @@ export const KyrgyzSubtitleGenerator = () => {
             </div>}
       </CardContent>
     </Card>
+    
+    {/* Title Variations Generator */}
+    {transcription && (
+      <Card className="mt-6 border-2 border-primary/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            AI Title Generator
+          </CardTitle>
+          <CardDescription>
+            Generate creative title variations for your video using AI
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button 
+            onClick={generateTitleVariations}
+            disabled={isGeneratingTitles}
+            className="w-full"
+            size="lg"
+          >
+            {isGeneratingTitles ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Generating Titles...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-5 h-5 mr-2" />
+                Generate Title Variations
+              </>
+            )}
+          </Button>
+          
+          {titleVariations.length > 0 && (
+            <div className="space-y-3 mt-4">
+              <h3 className="font-semibold text-sm text-muted-foreground">Generated Titles:</h3>
+              {titleVariations.map((title, index) => (
+                <div 
+                  key={index}
+                  className="p-4 rounded-lg bg-muted/50 border border-border hover:border-primary/50 transition-colors cursor-pointer group"
+                  onClick={() => {
+                    navigator.clipboard.writeText(title);
+                    toast.success("Title copied to clipboard!");
+                  }}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-sm font-semibold flex items-center justify-center">
+                      {index + 1}
+                    </span>
+                    <p className="flex-1 text-sm leading-relaxed group-hover:text-primary transition-colors">
+                      {title}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground text-center">
+                Click any title to copy to clipboard
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    )}
     </>;
 };
