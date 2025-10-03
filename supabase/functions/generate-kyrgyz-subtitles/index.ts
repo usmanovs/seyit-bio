@@ -133,18 +133,17 @@ serve(async (req) => {
     console.log('[KYRGYZ-SUBTITLES] Got signed URL, checking video size...');
 
     // First, do a HEAD request to check file size without downloading
-    let contentLength: number;
+    let contentLength: number = 0;
     try {
       const headResponse = await fetch(signedUrlData.signedUrl, { method: 'HEAD' });
       const sizeHeader = headResponse.headers.get('content-length');
       contentLength = sizeHeader ? parseInt(sizeHeader, 10) : 0;
       console.log('[KYRGYZ-SUBTITLES] Video size:', contentLength, 'bytes (', Math.round(contentLength / 1024 / 1024), 'MB)');
       
-      // Edge functions have ~150MB memory limit. With overhead, we need to stay well below
-      // Limit to 100MB to be safe
-      const MAX_SIZE = 100 * 1024 * 1024; // 100MB
+      // Allow up to 200MB
+      const MAX_SIZE = 200 * 1024 * 1024; // 200MB
       if (contentLength > MAX_SIZE) {
-        throw new Error(`Video file is too large (${Math.round(contentLength / 1024 / 1024)}MB). Please compress it to under 100MB or use a shorter video.`);
+        throw new Error(`Video file is too large (${Math.round(contentLength / 1024 / 1024)}MB). Please compress it to under 200MB.`);
       }
     } catch (e) {
       if (e instanceof Error && e.message.includes('too large')) {
@@ -153,12 +152,16 @@ serve(async (req) => {
       console.warn('[KYRGYZ-SUBTITLES] Could not check file size, proceeding with download');
     }
 
-    // Now fetch the actual video
+    // Now fetch the actual video with streaming
     console.log('[KYRGYZ-SUBTITLES] Downloading video...');
     let videoResponse;
     try {
+      // Increase timeout for larger files: 120s base + 30s per 50MB
+      const timeoutMs = 120000 + Math.floor(contentLength / (50 * 1024 * 1024)) * 30000;
+      console.log('[KYRGYZ-SUBTITLES] Timeout set to:', Math.round(timeoutMs / 1000), 'seconds');
+      
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout for larger files
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       
       videoResponse = await fetch(signedUrlData.signedUrl, {
         signal: controller.signal
@@ -179,7 +182,7 @@ serve(async (req) => {
     }
 
     const videoBlob = await videoResponse.blob();
-    console.log('[KYRGYZ-SUBTITLES] Video downloaded, preparing for transcription...');
+    console.log('[KYRGYZ-SUBTITLES] Video downloaded, size:', videoBlob.size, 'bytes');
 
     // Prepare form data for ElevenLabs ASR
     const formData = new FormData();
