@@ -21,7 +21,7 @@ const Index = () => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       setLoading(false);
-      
+
       // Redirect authenticated users to dashboard
       if (currentUser) {
         navigate('/dashboard');
@@ -37,7 +37,7 @@ const Index = () => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       setLoading(false);
-      
+
       // Redirect authenticated users to dashboard
       if (currentUser) {
         navigate('/dashboard');
@@ -51,11 +51,12 @@ const Index = () => {
   };
   const scrollToGenerator = () => {
     const element = document.getElementById('generator-section');
-    element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    element?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
   };
-
-  return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+  return <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Gradient Background */}
       <div className="fixed inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5 -z-10" />
       <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent -z-10" />
@@ -73,18 +74,14 @@ const Index = () => {
               </span>
             </div>
             <div className="flex items-center gap-4">
-              {!loading && (user ? (
-                <div className="flex items-center gap-3">
+              {!loading && (user ? <div className="flex items-center gap-3">
                   <span className="text-sm text-muted-foreground hidden sm:inline">{user.email}</span>
                   <Button onClick={handleLogout} variant="ghost" size="sm" className="rounded-full">
                     Sign Out
                   </Button>
-                </div>
-              ) : (
-                <Button onClick={() => navigate('/auth')} className="rounded-full px-6">
+                </div> : <Button onClick={() => navigate('/auth')} className="rounded-full px-6">
                   Get Started
-                </Button>
-              ))}
+                </Button>)}
             </div>
           </div>
         </div>
@@ -111,20 +108,11 @@ const Index = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-            <Button 
-              size="lg" 
-              onClick={scrollToGenerator} 
-              className="text-lg px-8 h-14 rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all group"
-            >
+            <Button size="lg" onClick={scrollToGenerator} className="text-lg px-8 h-14 rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all group">
               Start Creating Free
               <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              onClick={() => navigate('/auth')} 
-              className="text-lg px-8 h-14 rounded-full border-2"
-            >
+            <Button size="lg" variant="outline" onClick={() => navigate('/auth')} className="text-lg px-8 h-14 rounded-full border-2">
               View Demo
             </Button>
           </div>
@@ -147,73 +135,7 @@ const Index = () => {
       </section>
 
       {/* Features Section */}
-      <section className="container mx-auto px-4 lg:px-8 py-16">
-        <div className="text-center mb-16 space-y-4">
-          <h2 className="text-4xl lg:text-5xl font-bold">
-            Everything You Need
-          </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-light">
-            Professional tools for perfect Kyrgyz subtitles
-          </p>
-        </div>
-        
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-          {[
-            {
-              icon: Zap,
-              title: "Lightning Fast",
-              description: "Generate accurate Kyrgyz subtitles in minutes, not hours. AI-powered processing delivers results instantly.",
-              gradient: "from-amber-500/10 to-orange-500/10"
-            },
-            {
-              icon: Languages,
-              title: "Native Translation",
-              description: "High-quality Kyrgyz translations that maintain context and cultural nuances perfectly.",
-              gradient: "from-blue-500/10 to-cyan-500/10"
-            },
-            {
-              icon: Globe,
-              title: "6 Style Options",
-              description: "Choose from Classic, Outline, Minimal, Yellow, Green, or Boxed caption styles to match your brand.",
-              gradient: "from-purple-500/10 to-pink-500/10"
-            },
-            {
-              icon: CheckCircle2,
-              title: "Edit & Refine",
-              description: "Full subtitle editor with real-time preview. Perfect every word before exporting.",
-              gradient: "from-green-500/10 to-emerald-500/10"
-            },
-            {
-              icon: Video,
-              title: "Burn-In Subtitles",
-              description: "Download videos with permanently embedded subtitles for maximum compatibility.",
-              gradient: "from-red-500/10 to-rose-500/10"
-            },
-            {
-              icon: Shield,
-              title: "Secure & Private",
-              description: "Your videos are processed securely and never stored permanently. Your privacy matters.",
-              gradient: "from-indigo-500/10 to-violet-500/10"
-            }
-          ].map((feature, index) => (
-            <Card 
-              key={index}
-              className="relative overflow-hidden border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 group"
-            >
-              <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-              <CardContent className="p-8 relative">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <feature.icon className="w-7 h-7 text-primary" />
-                </div>
-                <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  {feature.description}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
+      
 
       {/* How It Works */}
       <section className="container mx-auto px-4 lg:px-8 py-16">
@@ -231,24 +153,19 @@ const Index = () => {
             {/* Connecting lines */}
             <div className="hidden md:block absolute top-12 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50" />
             
-            {[
-              {
-                number: "01",
-                title: "Upload Your Video",
-                description: "Select any video file from your device. We support all major formats including MP4, MOV, and AVI."
-              },
-              {
-                number: "02",
-                title: "AI Generates Subtitles",
-                description: "Our advanced AI transcribes audio and translates to Kyrgyz with perfect timing and accuracy."
-              },
-              {
-                number: "03",
-                title: "Download & Share",
-                description: "Edit subtitles if needed, choose your style, and download your video ready to share."
-              }
-            ].map((step, index) => (
-              <div key={index} className="relative">
+            {[{
+            number: "01",
+            title: "Upload Your Video",
+            description: "Select any video file from your device. We support all major formats including MP4, MOV, and AVI."
+          }, {
+            number: "02",
+            title: "AI Generates Subtitles",
+            description: "Our advanced AI transcribes audio and translates to Kyrgyz with perfect timing and accuracy."
+          }, {
+            number: "03",
+            title: "Download & Share",
+            description: "Edit subtitles if needed, choose your style, and download your video ready to share."
+          }].map((step, index) => <div key={index} className="relative">
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="relative">
                     <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-2xl shadow-primary/25 relative z-10">
@@ -261,8 +178,7 @@ const Index = () => {
                     {step.description}
                   </p>
                 </div>
-              </div>
-            ))}
+              </div>)}
           </div>
         </div>
       </section>
@@ -297,11 +213,7 @@ const Index = () => {
                 Join content creators reaching Kyrgyz-speaking audiences worldwide with professional AI-powered subtitles.
               </p>
               <div className="pt-6">
-                <Button 
-                  size="lg" 
-                  onClick={scrollToGenerator}
-                  className="bg-background text-foreground hover:bg-background/90 text-lg px-10 h-14 rounded-full shadow-2xl group"
-                >
+                <Button size="lg" onClick={scrollToGenerator} className="bg-background text-foreground hover:bg-background/90 text-lg px-10 h-14 rounded-full shadow-2xl group">
                   Start Creating Now
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
@@ -330,7 +242,6 @@ const Index = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
 export default Index;
