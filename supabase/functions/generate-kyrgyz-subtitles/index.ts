@@ -140,10 +140,10 @@ serve(async (req) => {
       contentLength = sizeHeader ? parseInt(sizeHeader, 10) : 0;
       console.log('[KYRGYZ-SUBTITLES] Video size:', contentLength, 'bytes (', Math.round(contentLength / 1024 / 1024), 'MB)');
       
-      // Allow up to 200MB
-      const MAX_SIZE = 200 * 1024 * 1024; // 200MB
+      // Edge functions have ~150MB memory limit, so cap at 100MB to be safe
+      const MAX_SIZE = 100 * 1024 * 1024; // 100MB
       if (contentLength > MAX_SIZE) {
-        throw new Error(`Video file is too large (${Math.round(contentLength / 1024 / 1024)}MB). Please compress it to under 200MB.`);
+        throw new Error(`Video file is too large (${Math.round(contentLength / 1024 / 1024)}MB). Please compress it to under 100MB to avoid memory issues.`);
       }
     } catch (e) {
       if (e instanceof Error && e.message.includes('too large')) {
