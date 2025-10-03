@@ -151,16 +151,20 @@ serve(async (req) => {
     if (addEmojis) {
       console.log('[KYRGYZ-SUBTITLES] Adding emojis to subtitles...');
       try {
-        const geminiResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+        if (!LOVABLE_API_KEY) {
+          console.error('[KYRGYZ-SUBTITLES] LOVABLE_API_KEY not found');
+          throw new Error('LOVABLE_API_KEY is not configured');
+        }
+
+        const geminiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get('OPENROUTER_API_KEY')}`,
-            'HTTP-Referer': Deno.env.get('SUPABASE_URL') || '',
-            'X-Title': 'Kyrgyz Subtitle Generator'
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash-lite',
+            model: 'google/gemini-2.5-flash',
             messages: [{
               role: 'user',
               content: `Add relevant emojis to these subtitles. Keep the exact SRT format (including line numbers and timestamps). Only add 1-2 relevant emojis per subtitle line where appropriate. Keep the Kyrgyz text exactly as is.\n\nSubtitles:\n${srtContent}`
@@ -176,7 +180,8 @@ serve(async (req) => {
             console.log('[KYRGYZ-SUBTITLES] Emojis added successfully');
           }
         } else {
-          console.error('[KYRGYZ-SUBTITLES] Failed to add emojis:', await geminiResponse.text());
+          const errorText = await geminiResponse.text();
+          console.error('[KYRGYZ-SUBTITLES] Failed to add emojis:', geminiResponse.status, errorText);
         }
       } catch (emojiError) {
         console.error('[KYRGYZ-SUBTITLES] Error adding emojis:', emojiError);
