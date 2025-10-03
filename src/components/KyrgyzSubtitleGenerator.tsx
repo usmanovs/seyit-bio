@@ -463,7 +463,7 @@ export const KyrgyzSubtitleGenerator = () => {
         }
       `}</style>
       <Card>
-        <CardHeader>
+        <CardHeader className="text-center">
           <CardTitle>Kyrgyz Video Subtitle Generator</CardTitle>
           <CardDescription>Upload a video and generate Kyrgyz subtitles</CardDescription>
         </CardHeader>
