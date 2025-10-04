@@ -4,9 +4,13 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { KyrgyzSubtitleGenerator } from "@/components/KyrgyzSubtitleGenerator";
+import { BenefitsGrid } from "@/components/landing/BenefitsGrid";
+import { SocialProofBar } from "@/components/landing/SocialProofBar";
+import { Testimonials } from "@/components/landing/Testimonials";
+import { Pricing } from "@/components/landing/Pricing";
+import { FAQ } from "@/components/landing/FAQ";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Globe, Zap, Shield, Video, Languages, Sparkles, ArrowRight } from "lucide-react";
+import { CheckCircle2, Video, Sparkles, ArrowRight, Shield } from "lucide-react";
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -63,41 +67,6 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Generator Section */}
-      <section id="generator-section" className="container mx-auto px-4 lg:px-8 pt-20 pb-16 scroll-mt-20">
-        {/* Flip Counter */}
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <Video className="w-5 h-5 text-primary" />
-          <div className="flex items-center gap-2">
-            <div className="flex gap-1">
-              {['0', '1', '5', '8', '7'].map((digit, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-center w-10 h-12 bg-gray-900 dark:bg-gray-800 rounded border border-gray-700 shadow-sm"
-                >
-                  <span className="text-2xl font-bold text-white">{digit}</span>
-                </div>
-              ))}
-            </div>
-            <span className="text-sm font-medium text-muted-foreground ml-1">
-              videos processed
-            </span>
-          </div>
-        </div>
-
-        <div className="text-center mb-12 space-y-4">
-          <h2 className="text-4xl lg:text-5xl font-bold">
-            Try It Free
-          </h2>
-          <p className="text-xl text-muted-foreground font-light">
-            Experience the power of AI subtitle generation
-          </p>
-        </div>
-        <div className="animate-fade-in">
-          <KyrgyzSubtitleGenerator />
-        </div>
-      </section>
-
       {/* Hero Section */}
       <section className="container mx-auto px-4 lg:px-8 pt-20 pb-16">
         <div className="max-w-5xl mx-auto text-center space-y-8 animate-fade-in">
@@ -142,8 +111,20 @@ const Index = () => {
               <span>Cancel anytime</span>
             </div>
           </div>
+
+          {/* Trust Badge */}
+          <div className="flex items-center justify-center gap-2 pt-4 px-4 py-2 rounded-full bg-muted/50 border border-border/40 backdrop-blur-sm">
+            <Shield className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">Trusted by 10,000+ creators worldwide</span>
+          </div>
         </div>
       </section>
+
+      {/* Social Proof Bar */}
+      <SocialProofBar />
+
+      {/* Benefits Grid */}
+      <BenefitsGrid />
 
       {/* Demo Video Section */}
       <section className="container mx-auto px-4 lg:px-8 py-16">
@@ -170,15 +151,50 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Generator Section */}
+      <section id="generator-section" className="container mx-auto px-4 lg:px-8 py-16 scroll-mt-20 bg-muted/30">
+        {/* Flip Counter */}
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <Video className="w-5 h-5 text-primary" />
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1">
+              {['0', '1', '5', '8', '7'].map((digit, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-center w-10 h-12 bg-gray-900 dark:bg-gray-800 rounded border border-gray-700 shadow-sm"
+                >
+                  <span className="text-2xl font-bold text-white">{digit}</span>
+                </div>
+              ))}
+            </div>
+            <span className="text-sm font-medium text-muted-foreground ml-1">
+              videos processed
+            </span>
+          </div>
+        </div>
+
+        <div className="text-center mb-12 space-y-4">
+          <h2 className="text-4xl lg:text-5xl font-bold">
+            Try It Free - No Signup Required
+          </h2>
+          <p className="text-xl text-muted-foreground font-light">
+            Experience the power of AI subtitle generation instantly
+          </p>
+        </div>
+        <div className="animate-fade-in">
+          <KyrgyzSubtitleGenerator />
+        </div>
+      </section>
+
       {/* How It Works */}
       <section className="container mx-auto px-4 lg:px-8 py-16">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16 space-y-4">
             <h2 className="text-4xl lg:text-5xl font-bold">
-              Simple Three-Step Process
+              How It Works
             </h2>
             <p className="text-xl text-muted-foreground font-light">
-              From upload to download in minutes
+              Three simple steps to professional subtitles
             </p>
           </div>
 
@@ -188,26 +204,26 @@ const Index = () => {
             
             {[{
             number: "01",
-            title: "Upload Your Video",
-            description: "Select any video file from your device. We support all major formats including MP4, MOV, and AVI."
+            title: "Upload",
+            description: "Drop your video and our AI instantly starts processing"
           }, {
             number: "02",
-            title: "AI Generates Subtitles",
-            description: "Our advanced AI transcribes audio and translates to Kyrgyz with perfect timing and accuracy."
+            title: "AI Magic",
+            description: "Advanced AI generates perfect Kyrgyz subtitles in minutes"
           }, {
             number: "03",
-            title: "Download & Share",
-            description: "Edit subtitles if needed, choose your style, and download your video ready to share."
+            title: "Download",
+            description: "Get your professional video ready to share with the world"
           }].map((step, index) => <div key={index} className="relative">
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="relative">
-                    <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-2xl shadow-primary/25 relative z-10">
-                      <span className="text-3xl font-bold text-primary-foreground">{step.number}</span>
+                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-xl shadow-primary/25 relative z-10">
+                      <span className="text-2xl font-bold text-primary-foreground">{step.number}</span>
                     </div>
-                    <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary to-primary/60 blur-xl opacity-40 animate-pulse" />
+                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary to-primary/60 blur-xl opacity-40" />
                   </div>
-                  <h3 className="text-2xl font-bold">{step.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed">
+                  <h3 className="text-xl font-bold">{step.title}</h3>
+                  <p className="text-muted-foreground leading-relaxed text-sm">
                     {step.description}
                   </p>
                 </div>
@@ -216,7 +232,16 @@ const Index = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Testimonials */}
+      <Testimonials />
+
+      {/* Pricing */}
+      <Pricing />
+
+      {/* FAQ */}
+      <FAQ />
+
+      {/* Final CTA Section */}
       <section className="container mx-auto px-4 lg:px-8 py-16">
         <div className="relative overflow-hidden rounded-3xl">
           <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-secondary" />
@@ -224,18 +249,30 @@ const Index = () => {
           
           <div className="relative p-12 lg:p-20 text-center">
             <div className="max-w-3xl mx-auto space-y-6">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm mb-4">
+                <Sparkles className="w-4 h-4 text-white" />
+                <span className="text-sm font-medium text-white">Limited Time: 24-Hour Free Trial</span>
+              </div>
+              
               <h2 className="text-4xl lg:text-5xl font-bold text-primary-foreground">
-                Ready to Transform Your Videos?
+                Start Creating Professional Subtitles Today
               </h2>
               <p className="text-xl text-primary-foreground/90 font-light">
-                Join content creators reaching Kyrgyz-speaking audiences worldwide with professional AI-powered subtitles.
+                Join 10,000+ creators who've already transformed their content. No credit card required.
               </p>
-              <div className="pt-6">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
                 <Button size="lg" onClick={scrollToGenerator} className="bg-background text-foreground hover:bg-background/90 text-lg px-10 h-14 rounded-full shadow-2xl group">
-                  Start Creating Now
+                  Try It Free Now
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
+                <Button size="lg" variant="outline" onClick={() => navigate('/auth')} className="text-lg px-8 h-14 rounded-full border-2 border-white/30 text-white hover:bg-white/10">
+                  View Pricing
+                </Button>
               </div>
+              
+              <p className="text-sm text-primary-foreground/70 pt-4">
+                ✓ No credit card required  •  ✓ Cancel anytime  •  ✓ 99% satisfaction rate
+              </p>
             </div>
           </div>
         </div>
