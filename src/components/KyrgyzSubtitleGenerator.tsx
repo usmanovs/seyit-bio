@@ -115,6 +115,7 @@ export const KyrgyzSubtitleGenerator = () => {
   useEffect(() => {
     const loadFFmpeg = async () => {
       try {
+        console.log('[FFmpeg] Starting to load FFmpeg...');
         const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
         const ffmpeg = ffmpegRef.current;
         ffmpeg.on('log', ({ message }) => {
@@ -125,10 +126,11 @@ export const KyrgyzSubtitleGenerator = () => {
           wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
         });
         setFfmpegLoaded(true);
-        console.log('FFmpeg loaded successfully');
+        console.log('[FFmpeg] FFmpeg loaded successfully');
+        toast.success('Video processor ready!');
       } catch (error) {
-        console.error('Failed to load FFmpeg:', error);
-        toast.error('Failed to load video processor');
+        console.error('[FFmpeg] Failed to load FFmpeg:', error);
+        toast.error('Failed to load video processor. Please refresh the page.');
       }
     };
     loadFFmpeg();
@@ -1272,8 +1274,11 @@ export const KyrgyzSubtitleGenerator = () => {
                         text-white font-semibold
                         shadow-lg hover:shadow-xl
                         transition-all duration-300
-                      `} disabled={isProcessingVideo}>
-                      {isProcessingVideo ? <div className="w-full space-y-2">
+                      `} disabled={isProcessingVideo || !ffmpegLoaded}>
+                      {!ffmpegLoaded ? <div className="flex items-center gap-2">
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span>Loading processor...</span>
+                          </div> : isProcessingVideo ? <div className="w-full space-y-2">
                             <div className="flex items-center justify-center gap-2">
                               <Loader2 className="w-5 h-5 animate-spin" />
                                <span className="text-sm">
@@ -1285,9 +1290,7 @@ export const KyrgyzSubtitleGenerator = () => {
                           </div> : <>
                           <div className="flex items-center gap-2">
                             <Download className="w-5 h-5" />
-                            <span>Download Video
-
-                        </span>
+                            <span>Download Video</span>
                           </div>
                          </>}
                      </Button>
