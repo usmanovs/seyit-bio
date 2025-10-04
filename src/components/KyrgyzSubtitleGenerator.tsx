@@ -919,7 +919,7 @@ export const KyrgyzSubtitleGenerator = () => {
       }
 
       // Build subtitle style based on user selection
-      let subtitleFilter = 'subtitles=subtitles.srt:fontsdir=.:force_style=';
+      let subtitleFilter = 'subtitles=subtitles.srt:charenc=UTF-8:fontsdir=.:force_style=';
       const styleOptions = [];
 
       if (currentStyle.prompt.includes('yellow') || currentStyle.prompt.includes('Highlight')) {
@@ -934,7 +934,7 @@ export const KyrgyzSubtitleGenerator = () => {
       }
       
       // Use DejaVu Sans which supports emojis better than Arial
-      styleOptions.push('FontSize=18', 'Alignment=2', 'MarginV=20', 'FontName=DejaVu Sans');
+      styleOptions.push('FontSize=18', 'Alignment=2', 'MarginV=20', 'FontName=Symbola');
       subtitleFilter += styleOptions.join(',');
 
       console.log(`[${requestId}] Running FFmpeg with filter: ${subtitleFilter}`);
