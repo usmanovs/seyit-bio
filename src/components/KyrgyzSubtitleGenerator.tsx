@@ -1312,29 +1312,8 @@ export const KyrgyzSubtitleGenerator = () => {
                           </div>
                          </>}
                      </Button>
-                     </div>
-                     
-                     {/* TikTok Publishing */}
-                     <div className="flex gap-2">
-                       {!isTikTokConnected ? <Button onClick={connectTikTok} disabled={isCheckingTikTokAuth} className="w-full bg-gradient-to-r from-[#00f2ea] to-[#ff0050] hover:opacity-90 text-white font-semibold shadow-lg" size="lg">
-                           {isCheckingTikTokAuth ? <>
-                               <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                               Checking...
-                             </> : <>
-                               <Share2 className="w-5 h-5 mr-2" />
-                               Export to TikTok
-                             </>}
-                         </Button> : <Button onClick={publishToTikTok} disabled={isPublishingToTikTok} className="w-full bg-gradient-to-r from-[#00f2ea] to-[#ff0050] hover:opacity-90 text-white font-semibold shadow-lg" size="lg">
-                           {isPublishingToTikTok ? <>
-                               <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                               Exporting...
-                             </> : <>
-                               <Share2 className="w-5 h-5 mr-2" />
-                               Export to TikTok
-                             </>}
-                         </Button>}
-                     </div>
-                   </div>
+                      </div>
+                    </div>
                  </div>}
               </div>
 
