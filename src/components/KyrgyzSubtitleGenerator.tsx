@@ -135,7 +135,7 @@ export const KyrgyzSubtitleGenerator = () => {
     setFfmpegError(null);
     console.log('[FFmpeg] Starting to load FFmpeg...');
 
-    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('FFmpeg load timed out')), 20000));
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('FFmpeg load timed out')), 60000));
 
     try {
       // Try primary CDN (unpkg) with correct version
