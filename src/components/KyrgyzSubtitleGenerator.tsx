@@ -49,6 +49,7 @@ export const KyrgyzSubtitleGenerator = () => {
   const [isCheckingTikTokAuth, setIsCheckingTikTokAuth] = useState(true);
   const [isPublishingToTikTok, setIsPublishingToTikTok] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [videosProcessedCount, setVideosProcessedCount] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
@@ -88,7 +89,29 @@ export const KyrgyzSubtitleGenerator = () => {
   // Check TikTok authentication status on mount
   useEffect(() => {
     checkTikTokAuth();
+    fetchVideosProcessedCount();
   }, []);
+
+  // Fetch the user's videos processed count
+  const fetchVideosProcessedCount = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('videos_processed_count')
+          .eq('id', user.id)
+          .single();
+        
+        if (!error && data) {
+          setVideosProcessedCount(data.videos_processed_count || 0);
+        }
+      }
+    } catch (err) {
+      console.error('[KyrgyzSubtitleGenerator] Failed to fetch videos processed count:', err);
+    }
+  };
+
   const checkTikTokAuth = async () => {
     setIsCheckingTikTokAuth(true);
     try {
@@ -243,29 +266,6 @@ export const KyrgyzSubtitleGenerator = () => {
     return () => clearInterval(interval);
   }, [isProcessingVideo, processingStartTime]);
 
-  // Helper function to send error notifications
-  const sendErrorNotification = async (errorType: string, error: any, additionalContext?: Record<string, any>) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      await supabase.functions.invoke('send-error-notification', {
-        body: {
-          errorType,
-          errorMessage: error.message || String(error),
-          errorStack: error.stack,
-          userEmail: user?.email,
-          userId: user?.id,
-          deviceType: isMobileDevice() ? 'Mobile' : 'Desktop',
-          fileName: videoPath?.split('/').pop(),
-          fileSize: videoUrl ? undefined : additionalContext?.fileSize,
-          filePath: videoPath,
-          additionalContext
-        }
-      });
-    } catch (notifError) {
-      console.error('[Error Notification] Failed to send error notification:', notifError);
-    }
-  };
-
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -414,15 +414,6 @@ export const KyrgyzSubtitleGenerator = () => {
         device: isMobile ? 'Mobile' : 'Desktop'
       });
       
-      // Send error notification email
-      await sendErrorNotification('Video Upload Failure', error, {
-        fileSize: file.size,
-        fileName: file.name,
-        fileType: file.type,
-        errorStatus: error.status,
-        errorStatusCode: error.statusCode
-      });
-      
       // Always clear progress timer on error
       clearInterval(progressTimer);
       setIsUploading(false);
@@ -543,14 +534,6 @@ export const KyrgyzSubtitleGenerator = () => {
       console.error("[KyrgyzSubtitleGenerator] Error context:", {
         message: error.message,
         context: error.context
-      });
-
-      // Send error notification email
-      await sendErrorNotification('Subtitle Generation Failure', error, {
-        videoPath: path,
-        addEmojis,
-        correctSpelling,
-        errorContext: error.context
       });
 
       // Extract the actual error message
@@ -720,23 +703,27 @@ export const KyrgyzSubtitleGenerator = () => {
         videoLink.href = window.URL.createObjectURL(processedVideoBlob);
         videoLink.download = 'video_with_subtitles.mp4';
         document.body.appendChild(videoLink);
-        videoLink.click();
-        document.body.removeChild(videoLink);
-        window.URL.revokeObjectURL(videoLink.href);
-        toast.success("Video with burned subtitles downloaded successfully!");
-        return;
+            videoLink.click();
+            document.body.removeChild(videoLink);
+            window.URL.revokeObjectURL(videoLink.href);
+            
+            // Increment the videos processed count
+            try {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                await supabase.rpc('increment_video_processing_count', { user_uuid: user.id });
+                setVideosProcessedCount(prev => prev + 1);
+              }
+            } catch (countError) {
+              console.error('[KyrgyzSubtitleGenerator] Failed to increment count:', countError);
+            }
+            
+            toast.success("Video with burned subtitles downloaded successfully!");
+            return;
       }
       throw new Error(data?.error || "Failed to start video processing");
     } catch (error: any) {
       console.error('[KyrgyzSubtitleGenerator] Backend processing failed:', error);
-      
-      // Send error notification email
-      await sendErrorNotification('Video Processing Failure', error, {
-        predictionId,
-        processingStatus: lastStatus,
-        selectedStyle: currentStyle.name,
-        subtitlesLength: editedSubtitles?.length
-      });
       
       toast.error("Processing failed: " + (error?.message || 'Unknown error'));
     } finally {
@@ -818,6 +805,16 @@ export const KyrgyzSubtitleGenerator = () => {
         <CardHeader className="text-center">
           <CardTitle>Kyrgyz Video Subtitle Generator</CardTitle>
           <CardDescription>Upload a video and generate Kyrgyz subtitles</CardDescription>
+          {videosProcessedCount > 0 && (
+            <div className="mt-3 pt-3 border-t">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full">
+                <Video className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold text-primary">
+                  {videosProcessedCount} video{videosProcessedCount !== 1 ? 's' : ''} processed
+                </span>
+              </div>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">

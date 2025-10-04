@@ -48,6 +48,7 @@ export type Database = {
           subscription_paid_at: string | null
           subscription_status: string | null
           updated_at: string
+          videos_processed_count: number
         }
         Insert: {
           created_at?: string
@@ -58,6 +59,7 @@ export type Database = {
           subscription_paid_at?: string | null
           subscription_status?: string | null
           updated_at?: string
+          videos_processed_count?: number
         }
         Update: {
           created_at?: string
@@ -68,6 +70,7 @@ export type Database = {
           subscription_paid_at?: string | null
           subscription_status?: string | null
           updated_at?: string
+          videos_processed_count?: number
         }
         Relationships: []
       }
@@ -154,6 +157,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      increment_video_processing_count: {
+        Args: { user_uuid: string }
+        Returns: undefined
+      }
       is_admin: {
         Args: { user_id: string }
         Returns: boolean
