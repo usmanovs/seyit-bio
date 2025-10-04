@@ -177,7 +177,7 @@ serve(async (req) => {
         model: 'fofr/smart-ffmpeg',
         input: {
           files: [publicUrl, srtUrl],
-          prompt: `Burn the subtitles from the SRT file onto the video at the bottom. CRITICAL: Use a font family that fully supports emoji rendering such as Noto Color Emoji, Segoe UI Emoji, Apple Color Emoji, or Twemoji. If none available, use the system default emoji font. Ensure all emoji characters (🎉😊❤️ etc.) render correctly as colored graphics, not as text boxes or missing characters. IMPORTANT: Copy the original audio stream without modification using -c:a copy. The output must include both the original video with burned subtitles AND the original audio track. Style: ${enhancedPrompt}. Position subtitles at the very bottom with minimal padding (like standard video players). Use clear, readable font size around 18px. Ensure normal word spacing and full emoji support.`,
+          prompt: `Burn the subtitles from the SRT file onto the video at the bottom. CRITICAL: Use a font family that fully supports emoji rendering such as Noto Color Emoji, Segoe UI Emoji, Apple Color Emoji, or Twemoji. Ensure all emoji characters (🎉😊❤️ etc.) render correctly as colored graphics. Audio: ensure the output includes the full original audio track; if the source codec is not MP4-compatible, re-encode to AAC at 192k (use -c:a aac -b:a 192k) and set -movflags +faststart for compatibility. Style: ${enhancedPrompt}. Position subtitles at the very bottom with minimal padding (like standard video players). Use clear, readable font size around 18px. Ensure normal word spacing and full emoji support.`,
           max_attempts: 3,
         },
       } as any);

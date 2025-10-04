@@ -838,36 +838,34 @@ export const KyrgyzSubtitleGenerator = () => {
     setHasUnsavedChanges(true);
   };
   const downloadVideoWithSubtitles = async () => {
-    // If cloud result is ready, download it directly
-    if (cloudVideoUrl) {
-      try {
-        const response = await fetch(cloudVideoUrl);
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `video-with-subtitles-${Date.now()}.mp4`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast.success("Video downloaded!");
-        return;
-      } catch (error) {
-        console.error("Failed to download cloud video:", error);
-        toast.error("Failed to download. Opening in new tab instead.");
-        window.open(cloudVideoUrl, '_blank');
-        return;
-      }
-    }
-
     if (!videoFile || !subtitles) {
       toast.error("No video or subtitles available");
       return;
     }
 
-    // Try local FFmpeg processing if loaded, otherwise fallback to cloud
+    // Prefer local FFmpeg processing when available; otherwise use cloud
     if (!ffmpegLoaded) {
+      if (cloudVideoUrl) {
+        try {
+          const response = await fetch(cloudVideoUrl);
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `video-with-subtitles-${Date.now()}.mp4`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast.success("Video downloaded!");
+          return;
+        } catch (error) {
+          console.error("Failed to download cloud video:", error);
+          toast.error("Failed to download. Opening in new tab instead.");
+          window.open(cloudVideoUrl, '_blank');
+          return;
+        }
+      }
       toast.info("Using cloud processing...");
       await burnVideoInCloud();
       return;
@@ -944,10 +942,12 @@ export const KyrgyzSubtitleGenerator = () => {
       await ffmpeg.exec([
         '-i', 'input.mp4',
         '-vf', subtitleFilter,
-        '-c:a', 'copy',
         '-c:v', 'libx264',
         '-preset', 'ultrafast',
         '-crf', '23',
+        '-c:a', 'aac',
+        '-b:a', '192k',
+        '-movflags', '+faststart',
         'output.mp4'
       ]);
 
