@@ -651,7 +651,7 @@ export const KyrgyzSubtitleGenerator = () => {
       const blobUrl = URL.createObjectURL(blob);
       setSubtitleBlobUrl(blobUrl);
       console.log('[KyrgyzSubtitleGenerator] Subtitles generated, cues:', parsedCues.length);
-      toast.success("Kyrgyz subtitles generated successfully");
+      toast.success("Subtitles generated successfully");
       
       // For logged-in users, increment videos processed count
       if (user) {

@@ -99,9 +99,15 @@ serve(async (req) => {
       throw new Error('Video path is required');
     }
     
+    // Map incoming language to provider code and human-readable name
+    const languageCodeMap: Record<string, string> = { ky: 'ky', kk: 'kk', uz: 'uz', ru: 'ru', tr: 'tr' };
+    const languageNameMap: Record<string, string> = { ky: 'Kyrgyz', kk: 'Kazakh', uz: 'Uzbek', ru: 'Russian', tr: 'Turkish' };
+    const languageCode = languageCodeMap[language] ?? 'ky';
+    const languageName = languageNameMap[language] ?? 'Kyrgyz';
+
     console.log('[KYRGYZ-SUBTITLES] addEmojis flag:', addEmojis);
     console.log('[KYRGYZ-SUBTITLES] correctSpelling flag:', correctSpelling);
-    console.log('[KYRGYZ-SUBTITLES] language:', language);
+    console.log('[KYRGYZ-SUBTITLES] language:', { requested: language, code: languageCode, name: languageName });
 
     console.log('[KYRGYZ-SUBTITLES] Processing video:', videoPath);
 
@@ -137,7 +143,7 @@ serve(async (req) => {
     // This avoids memory constraints by not downloading the file
     const formData = new FormData();
     formData.append('model_id', 'scribe_v1');
-    formData.append('language_code', language);
+    formData.append('language_code', languageCode);
     formData.append('cloud_storage_url', signedUrlData.signedUrl);
 
     // Log FormData contents for debugging (especially mobile issues)
@@ -187,11 +193,11 @@ serve(async (req) => {
               model: 'google/gemini-2.5-flash',
               messages: [{
                 role: 'user',
-                content: `You are a Kyrgyz language expert. Correct spelling mistakes in these Kyrgyz subtitles while preserving the exact SRT format.
+                content: `You are a ${languageName} language expert. Correct spelling mistakes in these ${languageName} subtitles while preserving the exact SRT format.
 
 CRITICAL RULES:
 - Keep line numbers and timestamps EXACTLY as they are
-- Only fix obvious spelling errors in Kyrgyz text
+- Only fix obvious spelling errors in ${languageName} text
 - Do NOT change the meaning or rephrase sentences
 - Preserve all punctuation
 - Return the complete SRT file with corrections
@@ -236,13 +242,13 @@ ${srtContent}`
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${LOVABLE_API_KEY}`
           },
-          body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
-            messages: [{
-              role: 'user',
-              content: `Add relevant emojis to these subtitles. Keep the exact SRT format (including line numbers and timestamps). Only add 1-2 relevant emojis per subtitle line where appropriate. Keep the Kyrgyz text exactly as is.\n\nSubtitles:\n${srtContent}`
-            }]
-          })
+            body: JSON.stringify({
+              model: 'google/gemini-2.5-flash',
+              messages: [{
+                role: 'user',
+                content: `Add relevant emojis to these subtitles. Keep the exact SRT format (including line numbers and timestamps). Only add 1-2 relevant emojis per subtitle line where appropriate. Keep the ${languageName} text exactly as is.\n\nSubtitles:\n${srtContent}`
+              }]
+            })
         });
         
         if (geminiResponse.ok) {
@@ -270,7 +276,7 @@ ${srtContent}`
           user_id: userId,
           video_path: videoPath,
           subtitle_content: srtContent,
-          language: 'ky'
+          language: languageCode
         });
 
       if (insertError) {
