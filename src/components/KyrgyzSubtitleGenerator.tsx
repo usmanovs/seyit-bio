@@ -801,20 +801,23 @@ export const KyrgyzSubtitleGenerator = () => {
           ${currentStyle.css}
         }
       `}</style>
+      
+      {/* Counter at the top of the page */}
+      {videosProcessedCount > 0 && (
+        <div className="max-w-4xl mx-auto mb-4 text-center">
+          <div className="inline-flex items-center gap-2 px-6 py-3 bg-primary/10 rounded-full shadow-sm">
+            <Video className="w-5 h-5 text-primary" />
+            <span className="text-base font-semibold text-primary">
+              {videosProcessedCount} video{videosProcessedCount !== 1 ? 's' : ''} processed successfully
+            </span>
+          </div>
+        </div>
+      )}
+      
       <Card className="max-w-4xl mx-auto">
         <CardHeader className="text-center">
           <CardTitle>Kyrgyz Video Subtitle Generator</CardTitle>
           <CardDescription>Upload a video and generate Kyrgyz subtitles</CardDescription>
-          {videosProcessedCount > 0 && (
-            <div className="mt-3 pt-3 border-t">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full">
-                <Video className="w-4 h-4 text-primary" />
-                <span className="text-sm font-semibold text-primary">
-                  {videosProcessedCount} video{videosProcessedCount !== 1 ? 's' : ''} processed
-                </span>
-              </div>
-            </div>
-          )}
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
