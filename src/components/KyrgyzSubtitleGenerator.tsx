@@ -475,6 +475,24 @@ export const KyrgyzSubtitleGenerator = () => {
       console.log('[KyrgyzSubtitleGenerator] Subtitles generated, cues:', parsedCues.length);
       toast.success("Kyrgyz subtitles generated successfully");
 
+      // Increment video processing count for authenticated users
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { error: incrementError } = await supabase.rpc('increment_video_processing_count', {
+            user_uuid: user.id
+          });
+          if (incrementError) {
+            console.error('[KyrgyzSubtitleGenerator] Failed to increment counter:', incrementError);
+          } else {
+            // Refresh the displayed count
+            await fetchVideosProcessedCount();
+          }
+        }
+      } catch (err) {
+        console.error('[KyrgyzSubtitleGenerator] Error incrementing counter:', err);
+      }
+
       // Auto-generate titles and summaries
       if (data.transcription) {
         console.log('[KyrgyzSubtitleGenerator] Auto-generating titles and summaries...');
