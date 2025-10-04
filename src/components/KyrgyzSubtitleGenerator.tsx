@@ -838,13 +838,38 @@ export const KyrgyzSubtitleGenerator = () => {
     setHasUnsavedChanges(true);
   };
   const downloadVideoWithSubtitles = async () => {
+    // If cloud result is ready, download it directly
+    if (cloudVideoUrl) {
+      try {
+        const response = await fetch(cloudVideoUrl);
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `video-with-subtitles-${Date.now()}.mp4`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success("Video downloaded!");
+        return;
+      } catch (error) {
+        console.error("Failed to download cloud video:", error);
+        toast.error("Failed to download. Opening in new tab instead.");
+        window.open(cloudVideoUrl, '_blank');
+        return;
+      }
+    }
+
     if (!videoFile || !subtitles) {
       toast.error("No video or subtitles available");
       return;
     }
 
+    // Try local FFmpeg processing if loaded, otherwise fallback to cloud
     if (!ffmpegLoaded) {
-      toast.error("Video processor not ready yet. Please wait...");
+      toast.info("Using cloud processing...");
+      await burnVideoInCloud();
       return;
     }
 
@@ -1377,7 +1402,7 @@ export const KyrgyzSubtitleGenerator = () => {
                           )}
 
                           <Button
-                            onClick={ffmpegLoaded ? downloadVideoWithSubtitles : burnVideoInCloud}
+                            onClick={downloadVideoWithSubtitles}
                             size="lg"
                             className={`
                               ${hasUnsavedChanges ? "flex-1" : "w-full"}
@@ -1387,8 +1412,7 @@ export const KyrgyzSubtitleGenerator = () => {
                               transition-all duration-300
                             `}
                             disabled={
-                              isProcessingVideo ||
-                              (ffmpegLoaded ? false : (cloudPolling || !videoPath))
+                              isProcessingVideo || cloudPolling || !subtitles
                             }
                           >
                             {ffmpegLoading ? (
@@ -1407,41 +1431,23 @@ export const KyrgyzSubtitleGenerator = () => {
                                 </div>
                                 <Progress value={processingProgress} className="w-full h-2" />
                               </div>
-                            ) : ffmpegLoaded ? (
-                              <div className="flex items-center gap-2">
-                                <Download className="w-5 h-5" />
-                                <span>Download Video</span>
-                              </div>
                             ) : cloudPolling ? (
                               <div className="flex items-center gap-2">
                                 <Loader2 className="w-5 h-5 animate-spin" />
                                 <span>Processing in Cloud ({cloudStatus || 'starting'})...</span>
                               </div>
                             ) : (
-                              <span>Process in Cloud</span>
+                              <div className="flex items-center gap-2">
+                                <Download className="w-5 h-5" />
+                                <span>Download Video</span>
+                              </div>
                             )}
                           </Button>
-
-                          {!ffmpegLoaded && !ffmpegLoading && !isProcessingVideo && (
-                            <Button variant="outline" onClick={loadFFmpeg} className="shrink-0">
-                              Retry Processor Load
-                            </Button>
-                          )}
-
-                          {cloudVideoUrl && (
-                            <Button
-                              variant="outline"
-                              onClick={() => window.open(cloudVideoUrl!, '_blank')}
-                              className="shrink-0"
-                            >
-                              Download Cloud Result
-                            </Button>
-                          )}
                         </div>
 
-                        {!ffmpegLoaded && !ffmpegLoading && (
+                        {!ffmpegLoaded && !ffmpegLoading && !isProcessingVideo && !cloudPolling && (
                           <div className="text-xs text-muted-foreground p-2 rounded border bg-muted/50">
-                            Local processor unavailable; using Cloud mode for downloads.
+                            Cloud mode enabled - click Download to process your video
                           </div>
                         )}
                       </div>
