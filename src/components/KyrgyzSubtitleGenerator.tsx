@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Loader2, Download, Video, Sparkles, Share2, Lock, Clock, CheckCircle2, ArrowRight } from "lucide-react";
+import { Upload, Loader2, Download, Video, Sparkles, Lock, Clock, CheckCircle2, ArrowRight } from "lucide-react";
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -55,9 +55,6 @@ export const KyrgyzSubtitleGenerator = () => {
   const [titleVariations, setTitleVariations] = useState<string[]>([]);
   const [isGeneratingSummaries, setIsGeneratingSummaries] = useState(false);
   const [summaries, setSummaries] = useState<string[]>([]);
-  const [isTikTokConnected, setIsTikTokConnected] = useState(false);
-  const [isCheckingTikTokAuth, setIsCheckingTikTokAuth] = useState(true);
-  const [isPublishingToTikTok, setIsPublishingToTikTok] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [videosProcessedCount, setVideosProcessedCount] = useState<number>(43);
   
@@ -107,9 +104,8 @@ export const KyrgyzSubtitleGenerator = () => {
     return `${minutes}m ${remainingSeconds}s`;
   };
 
-  // Check TikTok authentication status on mount
+  // Check video processing count on mount
   useEffect(() => {
-    checkTikTokAuth();
     fetchVideosProcessedCount();
   }, []);
 
@@ -178,81 +174,6 @@ export const KyrgyzSubtitleGenerator = () => {
       }
     } catch (err) {
       console.error('[KyrgyzSubtitleGenerator] Failed to fetch videos processed count:', err);
-    }
-  };
-  const checkTikTokAuth = async () => {
-    setIsCheckingTikTokAuth(true);
-    try {
-      const {
-        data,
-        error
-      } = await supabase.from('tiktok_credentials').select('expires_at').maybeSingle();
-      if (!error && data) {
-        const expiresAt = new Date(data.expires_at);
-        setIsTikTokConnected(expiresAt > new Date());
-      } else {
-        setIsTikTokConnected(false);
-      }
-    } catch (err) {
-      setIsTikTokConnected(false);
-    } finally {
-      setIsCheckingTikTokAuth(false);
-    }
-  };
-  const connectTikTok = async () => {
-    try {
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke('tiktok-auth');
-      if (error) throw error;
-      if (data?.authUrl) {
-        window.open(data.authUrl, '_blank');
-        toast.info("Please complete TikTok authorization in the new window");
-
-        // Check auth status after a delay
-        setTimeout(() => checkTikTokAuth(), 3000);
-      }
-    } catch (error: any) {
-      console.error('TikTok auth error:', error);
-      toast.error(error.message || "Failed to connect to TikTok");
-    }
-  };
-  const publishToTikTok = async () => {
-    if (!videoPath) {
-      toast.error("No video available to publish");
-      return;
-    }
-    if (!isTikTokConnected) {
-      toast.error("Please connect to TikTok first");
-      return;
-    }
-
-    // Get title from first title variation or use default
-    const title = titleVariations[0] || "My Video";
-    const description = summaries[0] || "";
-    setIsPublishingToTikTok(true);
-    try {
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke('publish-to-tiktok', {
-        body: {
-          videoPath,
-          title,
-          description
-        }
-      });
-      if (error) throw error;
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-      toast.success("Video published to TikTok successfully!");
-    } catch (error: any) {
-      console.error('TikTok publish error:', error);
-      toast.error(error.message || "Failed to publish to TikTok");
-    } finally {
-      setIsPublishingToTikTok(false);
     }
   };
   useEffect(() => {
@@ -1533,7 +1454,7 @@ export const KyrgyzSubtitleGenerator = () => {
             <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
             <div>
               <p className="font-medium text-sm">All Premium Features</p>
-              <p className="text-xs text-muted-foreground">TikTok publishing, custom styles & more</p>
+              <p className="text-xs text-muted-foreground">Custom styles & more</p>
             </div>
           </div>
           <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">

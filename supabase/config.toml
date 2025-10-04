@@ -1,14 +1,5 @@
 project_id = "namcnwyhexvtklawagip"
 
-[functions.tiktok-auth]
-verify_jwt = true
-
-[functions.tiktok-callback]
-verify_jwt = true
-
-[functions.publish-to-tiktok]
-verify_jwt = true
-
 [functions.create-checkout]
 verify_jwt = true
 
