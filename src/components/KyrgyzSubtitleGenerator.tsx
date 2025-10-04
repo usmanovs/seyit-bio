@@ -75,6 +75,10 @@ export const KyrgyzSubtitleGenerator = () => {
   const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
   const [ffmpegLoading, setFfmpegLoading] = useState(false);
   const [ffmpegError, setFfmpegError] = useState<string | null>(null);
+  const [cloudPredictionId, setCloudPredictionId] = useState<string | null>(null);
+  const [cloudStatus, setCloudStatus] = useState<string>('');
+  const [cloudPolling, setCloudPolling] = useState<boolean>(false);
+  const [cloudVideoUrl, setCloudVideoUrl] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const captionStyles = [{
     id: 'outline',
@@ -973,6 +977,77 @@ export const KyrgyzSubtitleGenerator = () => {
       setProcessingStartTime(0);
     }
   };
+
+  // Cloud burning fallback via backend
+  const pollCloudPrediction = async (predictionId: string) => {
+    setCloudPolling(true);
+    setCloudStatus('queued');
+    try {
+      const pollOnce = async () => {
+        const { data, error } = await supabase.functions.invoke('burn-subtitles-backend', {
+          body: { predictionId, requestId: generateRequestId() },
+        });
+        if (error) throw error;
+        if (data?.status === 'succeeded' && data?.videoUrl) {
+          setCloudStatus('succeeded');
+          setCloudVideoUrl(data.videoUrl);
+          setCloudPolling(false);
+          toast.success('Cloud video ready!');
+          return true;
+        }
+        if (data?.status === 'failed') {
+          setCloudStatus('failed');
+          setCloudPolling(false);
+          toast.error(data?.error || 'Cloud processing failed');
+          return true;
+        }
+        setCloudStatus(data?.status || 'processing');
+        return false;
+      };
+      const done = await pollOnce();
+      if (!done) setTimeout(() => pollCloudPrediction(predictionId), 4000);
+    } catch (e: any) {
+      setCloudPolling(false);
+      setCloudStatus('error');
+      toast.error(e.message || 'Cloud polling error');
+    }
+  };
+
+  const burnVideoInCloud = async () => {
+    if (!videoPath || !(editedSubtitles || subtitles)) {
+      toast.error('No video or captions available');
+      return;
+    }
+    const useSubs = editedSubtitles || subtitles;
+    const rid = generateRequestId();
+    try {
+      setCloudStatus('starting');
+      const { data, error } = await supabase.functions.invoke('burn-subtitles-backend', {
+        body: {
+          videoPath,
+          subtitles: useSubs,
+          stylePrompt: currentStyle.prompt,
+          requestId: rid,
+        },
+      });
+      if (error) throw error;
+      if (data?.predictionId) {
+        setCloudPredictionId(data.predictionId);
+        pollCloudPrediction(data.predictionId);
+        toast.info('Started cloud processing...');
+      } else if (data?.videoUrl) {
+        setCloudVideoUrl(data.videoUrl);
+        setCloudStatus('succeeded');
+        toast.success('Cloud video ready!');
+      } else if (data?.error) {
+        throw new Error(data.error);
+      }
+    } catch (e: any) {
+      setCloudStatus('error');
+      toast.error(e.message || 'Failed to start cloud processing');
+    }
+  };
+
   const generateTitleVariations = async () => {
     if (!transcription) {
       toast.error("No transcription available. Please generate subtitles first.");
@@ -1293,43 +1368,89 @@ export const KyrgyzSubtitleGenerator = () => {
                         <Textarea value={cue.text} onChange={e => handleCueTextChange(index, e.target.value)} className="min-h-[50px] text-sm resize-none bg-transparent border-0 p-0 focus-visible:ring-0 font-medium" placeholder="Enter subtitle text..." />
                       </div>)}
                    </div>
-                     <div className="space-y-2">
-                       <div className="flex gap-2 items-center">
-                         {hasUnsavedChanges && <Button onClick={applySubtitleChanges} className="flex-1">
-                             Update Captions
-                           </Button>}
-                         <Button onClick={downloadVideoWithSubtitles} size="lg" className={`
-                          ${hasUnsavedChanges ? "flex-1" : "w-full"}
-                          bg-blue-600 hover:bg-blue-700
-                          text-white font-semibold
-                          shadow-lg hover:shadow-xl
-                          transition-all duration-300
-                        `} disabled={isProcessingVideo || !ffmpegLoaded}>
-                        {ffmpegLoading ? <div className="flex items-center gap-2">
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                              <span>Loading processor...</span>
-                            </div> : isProcessingVideo ? <div className="w-full space-y-2">
-                              <div className="flex items-center justify-center gap-2">
+                      <div className="space-y-2">
+                        <div className="flex gap-2 items-center">
+                          {hasUnsavedChanges && (
+                            <Button onClick={applySubtitleChanges} className="flex-1">
+                              Update Captions
+                            </Button>
+                          )}
+                          <Button
+                            onClick={downloadVideoWithSubtitles}
+                            size="lg"
+                            className={`
+                              ${hasUnsavedChanges ? "flex-1" : "w-full"}
+                              bg-blue-600 hover:bg-blue-700
+                              text-white font-semibold
+                              shadow-lg hover:shadow-xl
+                              transition-all duration-300
+                            `}
+                            disabled={isProcessingVideo || !ffmpegLoaded}
+                          >
+                            {ffmpegLoading ? (
+                              <div className="flex items-center gap-2">
                                 <Loader2 className="w-5 h-5 animate-spin" />
-                                 <span className="text-sm">
-                                   {processingStatus.charAt(0).toUpperCase() + processingStatus.slice(1)} - {Math.round(processingProgress)}%
-                                   {estimatedTimeRemaining > 0 && ` ~${formatTimeRemaining(estimatedTimeRemaining)} left`}
-                                 </span>
+                                <span>Loading processor...</span>
                               </div>
-                              <Progress value={processingProgress} className="w-full h-2" />
-                            </div> : <>
-                            <div className="flex items-center gap-2">
-                              <Download className="w-5 h-5" />
-                              <span>Download Video</span>
-                            </div>
-                           </>}
-                       </Button>
-                       {!ffmpegLoaded && !ffmpegLoading && !isProcessingVideo && (
-                         <Button variant="outline" onClick={loadFFmpeg} className="shrink-0">
-                           Retry Processor Load
-                         </Button>
-                       )}
+                            ) : isProcessingVideo ? (
+                              <div className="w-full space-y-2">
+                                <div className="flex items-center justify-center gap-2">
+                                  <Loader2 className="w-5 h-5 animate-spin" />
+                                  <span className="text-sm">
+                                    {processingStatus.charAt(0).toUpperCase() + processingStatus.slice(1)} - {Math.round(processingProgress)}%
+                                    {estimatedTimeRemaining > 0 && ` ~${formatTimeRemaining(estimatedTimeRemaining)} left`}
+                                  </span>
+                                </div>
+                                <Progress value={processingProgress} className="w-full h-2" />
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <Download className="w-5 h-5" />
+                                  <span>Download Video</span>
+                                </div>
+                              </>
+                            )}
+                          </Button>
+                          {!ffmpegLoaded && !ffmpegLoading && !isProcessingVideo && (
+                            <Button variant="outline" onClick={loadFFmpeg} className="shrink-0">
+                              Retry Processor Load
+                            </Button>
+                          )}
                         </div>
+
+                        {/* Cloud fallback */}
+                        {(!ffmpegLoaded || ffmpegError) && (
+                          <div className="flex flex-col gap-2 p-3 border rounded-lg bg-muted/50">
+                            <div className="text-xs text-muted-foreground">
+                              Having trouble with the in-browser processor? Use Cloud processing instead.
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                variant="secondary"
+                                onClick={burnVideoInCloud}
+                                disabled={cloudPolling || !videoPath}
+                              >
+                                {cloudPolling ? (
+                                  <div className="flex items-center gap-2">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <span>Processing in Cloud ({cloudStatus || 'starting'})...</span>
+                                  </div>
+                                ) : (
+                                  'Process in Cloud'
+                                )}
+                              </Button>
+                              {cloudVideoUrl && (
+                                <Button
+                                  variant="outline"
+                                  onClick={() => window.open(cloudVideoUrl!, '_blank')}
+                                >
+                                  Download Cloud Result
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                  </div>}
               </div>
