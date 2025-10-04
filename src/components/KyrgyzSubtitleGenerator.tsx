@@ -50,7 +50,7 @@ export const KyrgyzSubtitleGenerator = () => {
   const [processingStartTime, setProcessingStartTime] = useState<number>(0);
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number>(0);
   const [captionStyle, setCaptionStyle] = useState<string>('outline');
-  const [addEmojis, setAddEmojis] = useState<boolean>(false);
+  const [addEmojis, setAddEmojis] = useState<boolean>(true);
   const [correctSpelling, setCorrectSpelling] = useState<boolean>(true);
   const [selectedLanguage, setSelectedLanguage] = useState<string>('ky');
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
