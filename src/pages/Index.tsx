@@ -175,10 +175,10 @@ const Index = () => {
 
         <div className="text-center mb-12 space-y-4">
           <h2 className="text-4xl lg:text-5xl font-bold">
-            Try It Free - No Signup Required
+            Try It Free
           </h2>
           <p className="text-xl text-muted-foreground font-light">
-            Experience the power of AI subtitle generation instantly
+            Experience the power of AI subtitle generation
           </p>
         </div>
         <div className="animate-fade-in">
