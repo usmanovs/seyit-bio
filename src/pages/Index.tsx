@@ -70,7 +70,7 @@ const Index = () => {
           <Video className="w-5 h-5 text-primary" />
           <div className="flex items-center gap-2">
             <div className="flex gap-1">
-              {['4', '3'].map((digit, index) => (
+              {['0', '1', '5', '8', '7'].map((digit, index) => (
                 <div
                   key={index}
                   className="flex items-center justify-center w-10 h-12 bg-gray-900 dark:bg-gray-800 rounded border border-gray-700 shadow-sm"
