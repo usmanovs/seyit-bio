@@ -93,13 +93,13 @@ export const KyrgyzSubtitleGenerator = () => {
   }];
   const currentStyle = captionStyles.find(s => s.id === captionStyle) || captionStyles[0];
 
-  // Helper function to format time remaining
-  const formatTimeRemaining = (seconds: number): string => {
-    if (seconds <= 0) return "almost done";
-    if (seconds < 60) return `${Math.round(seconds)}s`;
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.round(seconds % 60);
-    return `${minutes}m ${remainingSeconds}s`;
+  // Helper function to format elapsed time
+  const formatElapsedTime = (startTime: number): string => {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    if (elapsed < 60) return `${elapsed}s`;
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    return `${minutes}m ${seconds}s`;
   };
 
   // Check TikTok authentication status on mount
@@ -288,20 +288,30 @@ export const KyrgyzSubtitleGenerator = () => {
     }
     const interval = setInterval(() => {
       const elapsed = (Date.now() - processingStartTime) / 1000; // seconds
-      // Estimate: typical video processing takes ~120 seconds
-      // Progress curve: fast at start, slows down near end
-      const estimatedTotal = 120;
-      let progress = Math.min(elapsed / estimatedTotal * 100, 95);
-
-      // Apply curve: progress faster in early stages
-      if (progress < 50) {
-        progress = progress * 1.2;
+      
+      // More realistic progress: slower and steadier
+      // Average video processing takes 60-180 seconds depending on length
+      // Show gradual progress without artificial curves
+      let progress = 0;
+      
+      if (elapsed < 30) {
+        // 0-30s: reach 25%
+        progress = (elapsed / 30) * 25;
+      } else if (elapsed < 60) {
+        // 30-60s: reach 50%
+        progress = 25 + ((elapsed - 30) / 30) * 25;
+      } else if (elapsed < 120) {
+        // 60-120s: reach 80%
+        progress = 50 + ((elapsed - 60) / 60) * 30;
+      } else {
+        // 120s+: slowly approach 90%
+        progress = 80 + Math.min(((elapsed - 120) / 60) * 10, 10);
       }
-      setProcessingProgress(Math.min(progress, 95));
-
-      // Calculate estimated time remaining
-      const timeRemaining = Math.max(estimatedTotal - elapsed, 0);
-      setEstimatedTimeRemaining(timeRemaining);
+      
+      setProcessingProgress(Math.min(progress, 90));
+      
+      // Don't show specific time remaining since we can't accurately predict it
+      setEstimatedTimeRemaining(0);
     }, 500);
     return () => clearInterval(interval);
   }, [isProcessingVideo, processingStartTime]);
@@ -1367,7 +1377,7 @@ export const KyrgyzSubtitleGenerator = () => {
                               <Loader2 className="w-5 h-5 animate-spin" />
                                <span className="text-sm">
                                  {processingStatus.charAt(0).toUpperCase() + processingStatus.slice(1)} - {Math.round(processingProgress)}%
-                                 {estimatedTimeRemaining > 0 && ` ~${formatTimeRemaining(estimatedTimeRemaining)} left`}
+                                 {processingStartTime > 0 && ` (${formatElapsedTime(processingStartTime)})`}
                                </span>
                             </div>
                             <Progress value={processingProgress} className="w-full h-2" />
