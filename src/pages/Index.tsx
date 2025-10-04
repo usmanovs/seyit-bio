@@ -74,14 +74,23 @@ const Index = () => {
               </span>
             </div>
             <div className="flex items-center gap-4">
-              {!loading && (user ? <div className="flex items-center gap-3">
+              {/* Global counter pill */}
+              <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+                <Video className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-primary">43 videos processed</span>
+              </div>
+              {!loading && (user ? (
+                <div className="flex items-center gap-3">
                   <span className="text-sm text-muted-foreground hidden sm:inline">{user.email}</span>
                   <Button onClick={handleLogout} variant="ghost" size="sm" className="rounded-full">
                     Sign Out
                   </Button>
-                </div> : <Button onClick={() => navigate('/auth')} className="rounded-full px-6">
+                </div>
+              ) : (
+                <Button onClick={() => navigate('/auth')} className="rounded-full px-6">
                   Get Started
-                </Button>)}
+                </Button>
+              ))}
             </div>
           </div>
         </div>
