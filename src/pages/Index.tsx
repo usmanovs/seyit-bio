@@ -28,6 +28,14 @@ const Index = () => {
       block: 'start'
     });
   };
+
+  const scrollToDemo = () => {
+    const element = document.getElementById('demo-video');
+    element?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
+  };
   return <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Gradient Background */}
       <div className="fixed inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5 -z-10" />
@@ -88,8 +96,8 @@ const Index = () => {
               Start Creating Free
               <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
-            <Button size="lg" variant="outline" onClick={() => navigate('/auth')} className="text-lg px-8 h-14 rounded-full border-2">
-              View Demo
+            <Button size="lg" variant="outline" onClick={scrollToDemo} className="text-lg px-8 h-14 rounded-full border-2">
+              Watch Demo
             </Button>
           </div>
           
@@ -123,7 +131,7 @@ const Index = () => {
       <BenefitsGrid />
 
       {/* Demo Video Section */}
-      <section className="container mx-auto px-4 lg:px-8 py-16">
+      <section id="demo-video" className="container mx-auto px-4 lg:px-8 py-16 scroll-mt-20">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12 space-y-4">
             <h2 className="text-4xl lg:text-5xl font-bold">
