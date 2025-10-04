@@ -805,11 +805,23 @@ export const KyrgyzSubtitleGenerator = () => {
       {/* Counter at the top of the page */}
       {videosProcessedCount > 0 && (
         <div className="max-w-4xl mx-auto mb-4 text-center">
-          <div className="inline-flex items-center gap-2 px-6 py-3 bg-primary/10 rounded-full shadow-sm">
+          <div className="inline-flex items-center gap-3">
             <Video className="w-5 h-5 text-primary" />
-            <span className="text-base font-semibold text-primary">
-              {videosProcessedCount} video{videosProcessedCount !== 1 ? 's' : ''} processed successfully
-            </span>
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1">
+                {videosProcessedCount.toString().split('').map((digit, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-center w-10 h-12 bg-gray-900 dark:bg-gray-800 rounded border border-gray-700 shadow-sm"
+                  >
+                    <span className="text-2xl font-bold text-white">{digit}</span>
+                  </div>
+                ))}
+              </div>
+              <span className="text-sm font-medium text-muted-foreground ml-1">
+                video{videosProcessedCount !== 1 ? 's' : ''} processed successfully
+              </span>
+            </div>
           </div>
         </div>
       )}
