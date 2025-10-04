@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Loader2, Download, Video, Sparkles, Share2, Lock, Clock } from "lucide-react";
+import { Upload, Loader2, Download, Video, Sparkles, Share2, Lock, Clock, CheckCircle2, ArrowRight } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
@@ -57,6 +58,14 @@ export const KyrgyzSubtitleGenerator = () => {
   const [isPublishingToTikTok, setIsPublishingToTikTok] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [videosProcessedCount, setVideosProcessedCount] = useState<number>(43);
+  
+  // Track free generations for non-authenticated users
+  const [freeGenerationsUsed, setFreeGenerationsUsed] = useState(() => {
+    const used = localStorage.getItem('freeGenerationsUsed');
+    return used ? parseInt(used, 10) : 0;
+  });
+  const [showSignupPrompt, setShowSignupPrompt] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
@@ -118,6 +127,8 @@ export const KyrgyzSubtitleGenerator = () => {
   };
 
   const hasAccess = user && (subscription.subscribed || subscription.isInTrial);
+  const canUseFree = !user && freeGenerationsUsed < 1;
+  const canGenerate = hasAccess || canUseFree;
 
   // Fetch the user's videos processed count
   const fetchVideosProcessedCount = async () => {
@@ -529,6 +540,14 @@ export const KyrgyzSubtitleGenerator = () => {
     });
     
     setIsGenerating(true);
+    
+    // Track free generation usage for non-authenticated users
+    if (!user) {
+      const newCount = freeGenerationsUsed + 1;
+      setFreeGenerationsUsed(newCount);
+      localStorage.setItem('freeGenerationsUsed', newCount.toString());
+    }
+    
     let responseData: any = null;
     try {
       const {
@@ -581,6 +600,11 @@ export const KyrgyzSubtitleGenerator = () => {
       setSubtitleBlobUrl(blobUrl);
       console.log('[KyrgyzSubtitleGenerator] Subtitles generated, cues:', parsedCues.length);
       toast.success("Kyrgyz subtitles generated successfully");
+      
+      // Show signup prompt for non-authenticated users after first free generation
+      if (!user && freeGenerationsUsed >= 1) {
+        setTimeout(() => setShowSignupPrompt(true), 2000);
+      }
 
       // Increment video processing count for authenticated users
       try {
@@ -1041,41 +1065,53 @@ export const KyrgyzSubtitleGenerator = () => {
       {/* Counter at the top of the page */}
       {videosProcessedCount > 0}
       
+      {/* Free Generation Banner for Non-Authenticated Users */}
+      {!user && (
+        <div className="mb-4 p-4 rounded-lg border bg-primary/10 border-primary/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              <div>
+                <p className="font-medium text-sm">
+                  {canUseFree ? 'Free Trial - No Signup Required' : 'Free Trial Used'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {canUseFree ? '1 free video generation available' : 'Sign up for unlimited videos'}
+                </p>
+              </div>
+            </div>
+            {!canUseFree && (
+              <Button onClick={() => window.location.href = '/auth'} size="sm" className="rounded-full">
+                Sign Up Free
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+      
       <Card className="max-w-4xl mx-auto relative">
         {/* Paywall Overlay */}
-        {!hasAccess && (
+        {!canGenerate && (
           <div className="absolute inset-0 z-50 backdrop-blur-sm bg-background/80 rounded-lg flex items-center justify-center">
             <div className="text-center space-y-6 p-8 max-w-md">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10">
                 <Lock className="w-8 h-8 text-primary" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-2xl font-bold">Pro Feature</h3>
+                <h3 className="text-2xl font-bold">Continue Creating Videos</h3>
                 <p className="text-muted-foreground">
-                  {user 
-                    ? "Start your free trial to unlock unlimited subtitle generation"
-                    : "Sign in and start your free trial to generate subtitles"
-                  }
+                  Sign up for a free 1-day trial to keep generating subtitles
                 </p>
               </div>
               <div className="space-y-3">
-                {user ? (
-                  <Button 
-                    size="lg" 
-                    onClick={() => setShowSubscriptionModal(true)}
-                    className="w-full"
-                  >
-                    Start 1-Day Free Trial
-                  </Button>
-                ) : (
-                  <Button 
-                    size="lg" 
-                    onClick={() => window.location.href = '/auth'}
-                    className="w-full"
-                  >
-                    Sign In to Start Free Trial
-                  </Button>
-                )}
+                <Button 
+                  size="lg" 
+                  onClick={() => window.location.href = '/auth'}
+                  className="w-full"
+                >
+                  Sign Up Free
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Button>
                 <p className="text-xs text-muted-foreground">
                   Try free for 24 hours • Cancel anytime • $15/month after trial
                 </p>
@@ -1455,5 +1491,48 @@ export const KyrgyzSubtitleGenerator = () => {
       open={showSubscriptionModal} 
       onOpenChange={setShowSubscriptionModal}
     />
+    
+    {/* Signup Prompt Dialog for Free Users */}
+    <Dialog open={showSignupPrompt} onOpenChange={setShowSignupPrompt}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-2xl">Love what you created?</DialogTitle>
+          <DialogDescription className="text-base pt-2">
+            Sign up for free to continue generating unlimited videos with a 1-day trial!
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+            <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-sm">Unlimited Videos</p>
+              <p className="text-xs text-muted-foreground">No limits during trial</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+            <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-sm">All Premium Features</p>
+              <p className="text-xs text-muted-foreground">TikTok publishing, custom styles & more</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+            <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-sm">No Credit Card</p>
+              <p className="text-xs text-muted-foreground">Start free, upgrade later</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <Button onClick={() => setShowSignupPrompt(false)} variant="outline" className="flex-1">
+            Maybe Later
+          </Button>
+          <Button onClick={() => window.location.href = '/auth'} className="flex-1">
+            Sign Up Free
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
     </>;
 };

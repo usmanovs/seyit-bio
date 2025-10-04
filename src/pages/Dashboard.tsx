@@ -5,9 +5,6 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { KyrgyzSubtitleGenerator } from "@/components/KyrgyzSubtitleGenerator";
-
-
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -46,11 +43,13 @@ const Dashboard = () => {
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h2 className="text-3xl font-bold mb-2">Welcome, {user?.email}!</h2>
-          <p className="text-muted-foreground">This is your authenticated dashboard area</p>
+          <p className="text-muted-foreground">Use the generator on the home page to create your subtitled videos</p>
         </div>
 
-        <div className="mb-8">
-          <KyrgyzSubtitleGenerator />
+        <div className="text-center py-12">
+          <Button onClick={() => navigate('/')} size="lg" className="rounded-full">
+            Go to Video Generator
+          </Button>
         </div>
       </main>
     </div>

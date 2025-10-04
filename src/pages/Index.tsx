@@ -16,12 +16,7 @@ const Index = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   
-  useEffect(() => {
-    // Redirect authenticated users to dashboard
-    if (!loading && user) {
-      navigate('/dashboard');
-    }
-  }, [user, loading, navigate]);
+  // Don't redirect authenticated users - they can use the generator on landing page too
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast.success("Logged out successfully");
