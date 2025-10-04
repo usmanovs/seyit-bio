@@ -135,31 +135,23 @@ export const KyrgyzSubtitleGenerator = () => {
     setFfmpegError(null);
     console.log('[FFmpeg] Starting to load FFmpeg...');
 
-    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('FFmpeg load timed out')), 60000));
-
     try {
       // Try primary CDN (unpkg) with correct version
-      await Promise.race([
-        loadFFmpegCore('https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd'),
-        timeout,
-      ]);
+      await loadFFmpegCore('https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd');
       setFfmpegLoaded(true);
       console.log('[FFmpeg] FFmpeg loaded successfully (unpkg)');
       toast.success('Video processor ready!');
     } catch (err) {
-      console.warn('[FFmpeg] Primary CDN failed, retrying with jsDelivr...', err);
+      console.warn('[FFmpeg] Primary CDN failed, trying jsDelivr...', err);
       try {
-        await Promise.race([
-          loadFFmpegCore('https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd'),
-          timeout,
-        ]);
+        await loadFFmpegCore('https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd');
         setFfmpegLoaded(true);
         console.log('[FFmpeg] FFmpeg loaded successfully (jsDelivr)');
         toast.success('Video processor ready!');
       } catch (e2) {
-        console.error('[FFmpeg] Failed to load from both CDNs:', e2);
-        setFfmpegError('Failed to load video processor. Use Cloud processing instead.');
-        toast.error('Failed to load video processor. Use Cloud processing instead.');
+        console.warn('[FFmpeg] Both CDNs failed, will use cloud processing:', e2);
+        setFfmpegError('Video processor unavailable. Cloud processing will be used.');
+        // Don't show error toast - cloud processing is a valid fallback
       }
     } finally {
       setFfmpegLoading(false);
