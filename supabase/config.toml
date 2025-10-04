@@ -41,3 +41,6 @@ verify_jwt = true
 
 [functions.generate-video-summary]
 verify_jwt = true
+
+[functions.apply-subtitle-modifications]
+verify_jwt = true
