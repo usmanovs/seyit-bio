@@ -524,6 +524,58 @@ export const KyrgyzSubtitleGenerator = () => {
       }); // Longer duration for mobile tips
     }
   };
+  const applyModificationsToExistingSubtitles = async () => {
+    if (!editedSubtitles) {
+      toast.error("No subtitles to modify");
+      return;
+    }
+
+    const rid = generateRequestId();
+    console.log(`[${rid}] APPLYING MODIFICATIONS TO EXISTING SUBTITLES`, {
+      addEmojis,
+      correctSpelling,
+      hasEdits: hasUnsavedChanges,
+      timestamp: new Date().toISOString()
+    });
+
+    setIsGenerating(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('apply-subtitle-modifications', {
+        body: {
+          subtitles: editedSubtitles,
+          addEmojis,
+          correctSpelling,
+          requestId: rid
+        }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      console.log(`[${rid}] MODIFICATIONS APPLIED SUCCESSFULLY`);
+
+      // Update subtitles with the modified version
+      setSubtitles(data.subtitles);
+      setEditedSubtitles(data.subtitles);
+      setHasUnsavedChanges(false);
+      setParsedCues(parseSrtToCues(data.subtitles));
+
+      // Update the video player subtitles
+      const webvtt = convertSrtToWebVtt(data.subtitles);
+      const blob = new Blob([webvtt], { type: 'text/vtt' });
+      const blobUrl = URL.createObjectURL(blob);
+      setSubtitleBlobUrl(blobUrl);
+
+      toast.success("Captions updated with your changes preserved!");
+    } catch (error: any) {
+      console.error(`[${rid}] MODIFICATION FAILED`, error);
+      toast.error(error.message || "Failed to apply modifications");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const generateSubtitlesForPath = async (path: string, requestId?: string) => {
     if (!path) {
       toast.error("Please upload a video first");
@@ -1218,7 +1270,15 @@ export const KyrgyzSubtitleGenerator = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch id="spelling-toggle" checked={correctSpelling} onCheckedChange={setCorrectSpelling} />
-                    {subtitles && <Button size="sm" variant="secondary" onClick={() => videoPath && generateSubtitlesForPath(videoPath)} disabled={isGenerating}>
+                    {subtitles && <Button size="sm" variant="secondary" onClick={() => {
+                        // If user has manual edits, apply modifications to preserve them
+                        if (hasUnsavedChanges || editedSubtitles !== subtitles) {
+                          applyModificationsToExistingSubtitles();
+                        } else {
+                          // No manual edits, safe to regenerate from video
+                          videoPath && generateSubtitlesForPath(videoPath);
+                        }
+                      }} disabled={isGenerating}>
                         {isGenerating ? 'Regenerating...' : 'Regenerate'}
                       </Button>}
                   </div>
@@ -1236,7 +1296,15 @@ export const KyrgyzSubtitleGenerator = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch id="emoji-toggle" checked={addEmojis} onCheckedChange={setAddEmojis} />
-                    {subtitles && <Button size="sm" variant="secondary" onClick={() => videoPath && generateSubtitlesForPath(videoPath)} disabled={isGenerating}>
+                    {subtitles && <Button size="sm" variant="secondary" onClick={() => {
+                        // If user has manual edits, apply modifications to preserve them
+                        if (hasUnsavedChanges || editedSubtitles !== subtitles) {
+                          applyModificationsToExistingSubtitles();
+                        } else {
+                          // No manual edits, safe to regenerate from video
+                          videoPath && generateSubtitlesForPath(videoPath);
+                        }
+                      }} disabled={isGenerating}>
                         {isGenerating ? 'Regenerating...' : 'Regenerate'}
                       </Button>}
                   </div>
