@@ -317,23 +317,29 @@ export const KyrgyzSubtitleGenerator = () => {
     setHasUnsavedChanges(false);
     setIsUploading(true);
     setUploadProgress(0);
+    
+    // Detect mobile device early for upload optimization
+    const isMobile = isMobileDevice();
 
     // Simulate upload progress based on file size
     const simulateProgress = () => {
       const fileSize = file.size;
-      // Estimate ~1.5s per MB, cap at 5 minutes for very large files
-      const estimatedTime = Math.min(fileSize / (1024 * 1024) * 1500, 300000);
-      const interval = 200; // update less frequently to reduce jank
-      const increment = 100 / (estimatedTime / interval) * 1.4; // slightly faster at start
+      // For mobile, be more conservative with time estimates
+      const baseTime = isMobile ? 2000 : 1500; // ms per MB
+      const estimatedTime = Math.min(fileSize / (1024 * 1024) * baseTime, 300000);
+      const interval = 200;
+      const increment = 100 / (estimatedTime / interval) * 1.4;
 
       const timer = setInterval(() => {
         setUploadProgress(prev => {
-          // Ramp to 95 normally, then "trickle" slowly up to 99% while finalizing
-          if (prev < 95) {
-            return Math.min(prev + increment, 95);
+          // On mobile, stop at 90% to avoid "stuck at 99%" perception
+          // On desktop, go to 95%
+          const maxProgress = isMobile ? 90 : 95;
+          if (prev < maxProgress) {
+            return Math.min(prev + increment, maxProgress);
           }
-          // Trickle at ~0.05% per tick while waiting for the real upload to finish
-          return Math.min(prev + 0.05, 99);
+          // Very slow trickle after that
+          return Math.min(prev + 0.03, maxProgress + 8);
         });
       }, interval);
       return timer;
@@ -350,7 +356,6 @@ export const KyrgyzSubtitleGenerator = () => {
       // Generate unique file name (works for both authenticated and guest users)
       const userId = user?.id || 'guest';
       const fileName = `${userId}/${Date.now()}_${file.name}`;
-      const isMobile = isMobileDevice();
       
       console.log(`[${requestId}] UPLOAD START`, {
         fileName,
@@ -366,11 +371,19 @@ export const KyrgyzSubtitleGenerator = () => {
         upsert: false
       });
 
-      // Set timeout based on file size and device: 30s base + more per MB for mobile
-      // Mobile devices get 20s per MB vs 10s per MB for desktop
-      const secondsPerMB = isMobile ? 20 : 10;
-      const timeoutMs = 30000 + file.size / (1024 * 1024) * secondsPerMB * 1000;
-      console.log('[Upload] Timeout set to:', Math.round(timeoutMs / 1000), 'seconds', `(${secondsPerMB}s per MB)`);
+      // Set timeout based on file size and device
+      // Mobile devices get more generous timeouts: 25s per MB vs 12s per MB for desktop
+      // Also increase base timeout for mobile to account for connection establishment
+      const secondsPerMB = isMobile ? 25 : 12;
+      const baseTimeout = isMobile ? 45000 : 30000; // 45s vs 30s base
+      const timeoutMs = baseTimeout + file.size / (1024 * 1024) * secondsPerMB * 1000;
+      
+      console.log(`[${requestId}] UPLOAD CONFIGURATION`, {
+        fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+        timeout: `${Math.round(timeoutMs / 1000)}s`,
+        secondsPerMB,
+        device: isMobile ? 'Mobile' : 'Desktop'
+      });
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Upload timeout - please check your connection and try again')), timeoutMs));
 
       // Fallback: if the SDK upload promise hangs, poll storage to detect if the file actually exists
@@ -378,25 +391,34 @@ export const KyrgyzSubtitleGenerator = () => {
         const folder = fileName.split('/')[0];
         const target = fileName.split('/').pop();
         const started = Date.now();
+        // More aggressive polling on mobile - check every 2s instead of 3s
+        const pollInterval = isMobile ? 2000 : 3000;
+        let attempts = 0;
+        
         while (Date.now() - started < timeoutMs) {
+          attempts++;
           try {
             const {
               data
             } = await supabase.storage.from('videos').list(folder);
             if (data?.some((o: any) => o.name === target)) {
-              console.log('[Upload] File detected in storage via polling');
+              console.log(`[${requestId}] File detected via polling after ${attempts} attempts`);
               return 'exists';
             }
           } catch (e) {
-            // ignore transient errors and keep polling
+            console.log(`[${requestId}] Polling attempt ${attempts} failed, retrying...`);
           }
-          await new Promise(r => setTimeout(r, 3000));
+          await new Promise(r => setTimeout(r, pollInterval));
         }
         throw new Error('Upload verification timed out');
       };
       const existsPromise = pollFileExists();
       const winner: any = await Promise.race([uploadPromise, existsPromise, timeoutPromise]);
       clearInterval(progressTimer);
+      
+      // Show a brief "finalizing" state before jumping to 100%
+      setUploadProgress(98);
+      await new Promise(r => setTimeout(r, 200));
       setUploadProgress(100);
 
       // If the race winner is the polling result, treat as success; otherwise check SDK response error
@@ -409,6 +431,7 @@ export const KyrgyzSubtitleGenerator = () => {
         fileName,
         uploadDuration: `${uploadDuration}s`,
         uploadSpeed: `${(file.size / (1024 * 1024) / parseFloat(uploadDuration)).toFixed(2)} MB/s`,
+        winnerType: winner === 'exists' ? 'polling' : 'direct',
         timestamp: new Date().toISOString()
       });
 
