@@ -93,7 +93,7 @@ serve(async (req) => {
       throw new Error('ELEVENLABS_API_KEY is not set');
     }
 
-    const { videoPath, addEmojis = false, correctSpelling = true } = await req.json();
+    const { videoPath, addEmojis = false, correctSpelling = true, language = 'ky' } = await req.json();
 
     if (!videoPath) {
       throw new Error('Video path is required');
@@ -101,6 +101,7 @@ serve(async (req) => {
     
     console.log('[KYRGYZ-SUBTITLES] addEmojis flag:', addEmojis);
     console.log('[KYRGYZ-SUBTITLES] correctSpelling flag:', correctSpelling);
+    console.log('[KYRGYZ-SUBTITLES] language:', language);
 
     console.log('[KYRGYZ-SUBTITLES] Processing video:', videoPath);
 
@@ -136,7 +137,7 @@ serve(async (req) => {
     // This avoids memory constraints by not downloading the file
     const formData = new FormData();
     formData.append('model_id', 'scribe_v1');
-    formData.append('language_code', 'ky'); // Kyrgyz language code
+    formData.append('language_code', language);
     formData.append('cloud_storage_url', signedUrlData.signedUrl);
 
     // Log FormData contents for debugging (especially mobile issues)

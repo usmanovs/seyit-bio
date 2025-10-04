@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { SubscriptionModal } from "./SubscriptionModal";
 import editingExample from "@/assets/editing-example.png";
@@ -51,6 +52,7 @@ export const KyrgyzSubtitleGenerator = () => {
   const [captionStyle, setCaptionStyle] = useState<string>('outline');
   const [addEmojis, setAddEmojis] = useState<boolean>(false);
   const [correctSpelling, setCorrectSpelling] = useState<boolean>(true);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('ky');
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
   const [titleVariations, setTitleVariations] = useState<string[]>([]);
   const [isGeneratingSummaries, setIsGeneratingSummaries] = useState(false);
@@ -568,6 +570,7 @@ export const KyrgyzSubtitleGenerator = () => {
           videoPath: path,
           addEmojis: addEmojis,
           correctSpelling: correctSpelling,
+          language: selectedLanguage,
           requestId: rid
         },
         headers: (await supabase.auth.getSession()).data.session?.access_token ? {
@@ -1166,6 +1169,37 @@ export const KyrgyzSubtitleGenerator = () => {
           {videoUrl && <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Left side - Controls and Subtitle Editor */}
               <div className="space-y-3">
+                {/* Language Selector */}
+                <div className="p-3 border rounded-lg bg-card">
+                  <Label htmlFor="language-select" className="text-sm font-medium mb-2 block">
+                    🌐 Caption Language
+                  </Label>
+                  <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                    <SelectTrigger id="language-select">
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ky">Kyrgyz (Кыргызча)</SelectItem>
+                      <SelectItem value="kk">Kazakh (Қазақша)</SelectItem>
+                      <SelectItem value="uz">Uzbek (Oʻzbekcha)</SelectItem>
+                      <SelectItem value="ru">Russian (Русский)</SelectItem>
+                      <SelectItem value="tr">Turkish (Türkçe)</SelectItem>
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="ar">Arabic (العربية)</SelectItem>
+                      <SelectItem value="zh">Chinese (中文)</SelectItem>
+                      <SelectItem value="es">Spanish (Español)</SelectItem>
+                      <SelectItem value="fr">French (Français)</SelectItem>
+                      <SelectItem value="de">German (Deutsch)</SelectItem>
+                      <SelectItem value="hi">Hindi (हिन्दी)</SelectItem>
+                      <SelectItem value="ja">Japanese (日本語)</SelectItem>
+                      <SelectItem value="ko">Korean (한국어)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Select the language for subtitle generation
+                  </p>
+                </div>
+
                 {/* Emoji Toggle */}
                 <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
                   <div className="space-y-0.5">
