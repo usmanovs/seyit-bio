@@ -242,6 +242,30 @@ export const KyrgyzSubtitleGenerator = () => {
     }, 500);
     return () => clearInterval(interval);
   }, [isProcessingVideo, processingStartTime]);
+
+  // Helper function to send error notifications
+  const sendErrorNotification = async (errorType: string, error: any, additionalContext?: Record<string, any>) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.functions.invoke('send-error-notification', {
+        body: {
+          errorType,
+          errorMessage: error.message || String(error),
+          errorStack: error.stack,
+          userEmail: user?.email,
+          userId: user?.id,
+          deviceType: isMobileDevice() ? 'Mobile' : 'Desktop',
+          fileName: videoPath?.split('/').pop(),
+          fileSize: videoUrl ? undefined : additionalContext?.fileSize,
+          filePath: videoPath,
+          additionalContext
+        }
+      });
+    } catch (notifError) {
+      console.error('[Error Notification] Failed to send error notification:', notifError);
+    }
+  };
+
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -390,6 +414,15 @@ export const KyrgyzSubtitleGenerator = () => {
         device: isMobile ? 'Mobile' : 'Desktop'
       });
       
+      // Send error notification email
+      await sendErrorNotification('Video Upload Failure', error, {
+        fileSize: file.size,
+        fileName: file.name,
+        fileType: file.type,
+        errorStatus: error.status,
+        errorStatusCode: error.statusCode
+      });
+      
       // Always clear progress timer on error
       clearInterval(progressTimer);
       setIsUploading(false);
@@ -512,6 +545,14 @@ export const KyrgyzSubtitleGenerator = () => {
         context: error.context
       });
 
+      // Send error notification email
+      await sendErrorNotification('Subtitle Generation Failure', error, {
+        videoPath: path,
+        addEmojis,
+        correctSpelling,
+        errorContext: error.context
+      });
+
       // Extract the actual error message
       let errorMessage = error.message || "Failed to generate subtitles";
 
@@ -611,6 +652,10 @@ export const KyrgyzSubtitleGenerator = () => {
     setProcessingStatus('starting');
     setProcessingProgress(0);
     setProcessingStartTime(Date.now());
+    
+    let predictionId: string | undefined;
+    let lastStatus: string | undefined;
+    
     try {
       console.log('[KyrgyzSubtitleGenerator] Calling backend burn-subtitles function...');
       toast.info("Processing started. This may take several minutes...");
@@ -627,10 +672,12 @@ export const KyrgyzSubtitleGenerator = () => {
         }
       });
       if (error) throw error;
+      
+      predictionId = data?.predictionId;
 
       // New flow: poll by predictionId
       if (data?.predictionId) {
-        const predictionId: string = data.predictionId;
+        const predId: string = data.predictionId;
         for (let attempt = 0; attempt < 120; attempt++) {
           // ~10 minutes max
           await new Promise(res => setTimeout(res, 5000));
@@ -639,11 +686,14 @@ export const KyrgyzSubtitleGenerator = () => {
             error: statusError
           } = await supabase.functions.invoke('burn-subtitles-backend', {
             body: {
-              predictionId
+              predictionId: predId
             }
           });
           if (statusError) throw statusError;
-          if (statusData?.status) setProcessingStatus(statusData.status);
+          if (statusData?.status) {
+            lastStatus = statusData.status;
+            setProcessingStatus(statusData.status);
+          }
           if (statusData?.videoUrl) {
             // Completed successfully – set to 100%
             setProcessingProgress(100);
@@ -679,6 +729,15 @@ export const KyrgyzSubtitleGenerator = () => {
       throw new Error(data?.error || "Failed to start video processing");
     } catch (error: any) {
       console.error('[KyrgyzSubtitleGenerator] Backend processing failed:', error);
+      
+      // Send error notification email
+      await sendErrorNotification('Video Processing Failure', error, {
+        predictionId,
+        processingStatus: lastStatus,
+        selectedStyle: currentStyle.name,
+        subtitlesLength: editedSubtitles?.length
+      });
+      
       toast.error("Processing failed: " + (error?.message || 'Unknown error'));
     } finally {
       setIsProcessingVideo(false);
