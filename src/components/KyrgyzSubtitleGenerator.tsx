@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Upload, Loader2, Download, Video, Sparkles, Share2, Lock, Clock, CheckCircle2, ArrowRight } from "lucide-react";
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { fetchFile, toBlobURL } from '@ffmpeg/util';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
@@ -70,6 +72,9 @@ export const KyrgyzSubtitleGenerator = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
   const subtitleRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const ffmpegRef = useRef(new FFmpeg());
+  const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
   const captionStyles = [{
     id: 'outline',
     name: 'Stroke',
@@ -106,6 +111,29 @@ export const KyrgyzSubtitleGenerator = () => {
   useEffect(() => {
     checkTikTokAuth();
     fetchVideosProcessedCount();
+  }, []);
+
+  // Load FFmpeg on mount
+  useEffect(() => {
+    const loadFFmpeg = async () => {
+      try {
+        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+        const ffmpeg = ffmpegRef.current;
+        ffmpeg.on('log', ({ message }) => {
+          console.log('[FFmpeg]', message);
+        });
+        await ffmpeg.load({
+          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+        });
+        setFfmpegLoaded(true);
+        console.log('FFmpeg loaded successfully');
+      } catch (error) {
+        console.error('Failed to load FFmpeg:', error);
+        toast.error('Failed to load video processor');
+      }
+    };
+    loadFFmpeg();
   }, []);
 
   // Calculate time remaining in trial
@@ -342,6 +370,9 @@ export const KyrgyzSubtitleGenerator = () => {
       toast.error(`Video file must be less than 200MB (current: ${Math.round(file.size / 1024 / 1024)}MB). Please compress your video.`);
       return;
     }
+
+    // Store the file for later use in burning subtitles
+    setVideoFile(file);
 
     // Reset all state when uploading a new video
     setVideoUrl(null);
@@ -847,187 +878,133 @@ export const KyrgyzSubtitleGenerator = () => {
     setHasUnsavedChanges(true);
   };
   const downloadVideoWithSubtitles = async () => {
-    if (!videoUrl || !subtitles || !videoPath) {
+    if (!videoFile || !subtitles) {
       toast.error("No video or subtitles available");
       return;
     }
-    
+
+    if (!ffmpegLoaded) {
+      toast.error("Video processor not ready yet. Please wait...");
+      return;
+    }
+
     const requestId = generateRequestId();
     const processingStartTime = Date.now();
     
-    console.log(`[${requestId}] VIDEO PROCESSING START`, {
-      videoPath,
+    console.log(`[${requestId}] LOCAL VIDEO PROCESSING START`, {
       subtitlesLength: subtitles.length,
       captionStyle: captionStyle,
       timestamp: new Date().toISOString()
     });
     
     setIsProcessingVideo(true);
-    setProcessingStatus('starting');
+    setProcessingStatus('processing');
     setProcessingProgress(0);
     setProcessingStartTime(processingStartTime);
-    let predictionId: string | undefined;
-    let lastStatus: string | undefined;
+
     try {
-      toast.info("Processing started. This may take several minutes...");
+      toast.info("Processing video locally...");
+      const ffmpeg = ffmpegRef.current;
 
-      // Start the processing job; backend returns a predictionId for polling
-      console.log(`[${requestId}] Calling burn-subtitles-backend...`);
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke('burn-subtitles-backend', {
-        body: {
-          videoPath,
-          subtitles,
-          stylePrompt: currentStyle.prompt,
-          requestId
-        }
-      });
-      if (error) throw error;
-      predictionId = data?.predictionId;
+      // Write video file to FFmpeg virtual filesystem
+      console.log(`[${requestId}] Writing video file to FFmpeg...`);
+      await ffmpeg.writeFile('input.mp4', await fetchFile(videoFile));
+      setProcessingProgress(10);
       
-      console.log(`[${requestId}] Processing job created`, { predictionId });
+      // Clean and prepare SRT content
+      let cleanSubtitles = subtitles.trim();
+      if (cleanSubtitles.startsWith('```')) {
+        cleanSubtitles = cleanSubtitles.replace(/^```[a-z]*\n/, '').replace(/\n?```$/, '');
+      }
+      
+      const srtContent = cleanSubtitles
+        .split('\n')
+        .map((line: string) => {
+          const isTiming = /^\d+:\d+:\d+[,.]\d+\s+-->\s+\d+:\d+:\d+[,.]\d+/.test(line);
+          if (isTiming) return line.trim();
+          return line
+            .replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, ' ')
+            .replace(/[ \t]{2,}/g, ' ')
+            .trimEnd();
+        })
+        .join('\n');
 
-      // New flow: poll by predictionId
-      if (data?.predictionId) {
-        const predId: string = data.predictionId;
-        console.log(`[${requestId}] Starting status polling loop for ${predId}`);
-        
-        for (let attempt = 0; attempt < 120; attempt++) {
-          // ~10 minutes max
-          await new Promise(res => setTimeout(res, 5000));
-          
-          const elapsedSeconds = ((Date.now() - processingStartTime) / 1000).toFixed(1);
-          console.log(`[${requestId}] Polling attempt ${attempt + 1}/120 (${elapsedSeconds}s elapsed)`);
-          
-          const {
-            data: statusData,
-            error: statusError
-          } = await supabase.functions.invoke('burn-subtitles-backend', {
-            body: {
-              predictionId: predId,
-              requestId
-            }
-          });
-          if (statusError) throw statusError;
-          
-          // Check for failed status
-          if (statusData?.status === 'failed') {
-            const errorMsg = statusData.error || 'Video processing failed';
-            const details = statusData.details ? `\n\nDetails: ${statusData.details}` : '';
-            console.error(`[${requestId}] PROCESSING FAILED`, {
-              error: errorMsg,
-              details: statusData.details,
-              attempt: attempt + 1,
-              elapsedTime: `${elapsedSeconds}s`
-            });
-            throw new Error(`${errorMsg}${details}`);
-          }
-          
-          if (statusData?.status) {
-            if (lastStatus !== statusData.status) {
-              console.log(`[${requestId}] Status changed: ${lastStatus || 'none'} → ${statusData.status}`);
-            }
-            lastStatus = statusData.status;
-            setProcessingStatus(statusData.status);
-          }
-          if (statusData?.videoUrl) {
-            const totalDuration = ((Date.now() - processingStartTime) / 1000).toFixed(2);
-            console.log(`[${requestId}] PROCESSING COMPLETE`, {
-              totalDuration: `${totalDuration}s`,
-              videoUrl: statusData.videoUrl.substring(0, 50) + '...',
-              timestamp: new Date().toISOString()
-            });
-            
-            // Completed successfully – set to 100%
-            setProcessingProgress(100);
-            // Completed successfully – download
-            const videoResponse = await fetch(statusData.videoUrl);
-            
-            if (!videoResponse.ok) {
-              throw new Error(`Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`);
-            }
-            
-            const processedVideoBlob = await videoResponse.blob();
-            // Create a new blob with explicit video/mp4 MIME type
-            const videoBlob = new Blob([processedVideoBlob], { type: 'video/mp4' });
-            const downloadSizeMB = (videoBlob.size / (1024 * 1024)).toFixed(2);
-            
-            console.log(`[${requestId}] DOWNLOAD START`, {
-              videoUrl: statusData.videoUrl.substring(0, 50) + '...',
-              fileSizeMB: downloadSizeMB,
-              blobType: videoBlob.type,
-              timestamp: new Date().toISOString()
-            });
-            
-            const videoLink = document.createElement('a');
-            videoLink.href = window.URL.createObjectURL(videoBlob);
-            videoLink.download = 'video_with_subtitles.mp4';
-            document.body.appendChild(videoLink);
-            videoLink.click();
-            document.body.removeChild(videoLink);
-            window.URL.revokeObjectURL(videoLink.href);
-            
-            const endToEndDuration = ((Date.now() - processingStartTime) / 1000).toFixed(2);
-            console.log(`[${requestId}] DOWNLOAD COMPLETE - END TO END SUCCESS`, {
-              totalDuration: `${endToEndDuration}s`,
-              fileSizeMB: downloadSizeMB,
-              timestamp: new Date().toISOString()
-            });
-            
-            toast.success("Video with burned subtitles downloaded successfully!");
-            
-            // Show signup prompt after successful download if user just used their free generation
-            if (!user && freeGenerationsUsed >= 1) {
-              setShowSignupPrompt(true);
-            }
-            
-            return;
-          }
-        }
-        console.log(`[${requestId}] PROCESSING TIMEOUT after 120 polling attempts (max 10 minutes)`);
-        throw new Error("Processing timed out. Please try again later.");
+      console.log(`[${requestId}] Writing SRT file to FFmpeg...`);
+      await ffmpeg.writeFile('subtitles.srt', new TextEncoder().encode(srtContent));
+      setProcessingProgress(20);
+
+      // Build subtitle style based on user selection
+      let subtitleFilter = 'subtitles=subtitles.srt:force_style=';
+      const styleOptions = [];
+      
+      if (currentStyle.prompt.includes('yellow') || currentStyle.prompt.includes('Highlight')) {
+        styleOptions.push('PrimaryColour=&H00FFFF', 'OutlineColour=&HFFFFFF', 'Outline=2');
+      } else if (currentStyle.prompt.includes('green') || currentStyle.prompt.includes('Framed')) {
+        styleOptions.push('PrimaryColour=&H00FF00', 'OutlineColour=&H000000', 'Outline=2', 'BorderStyle=3');
+      } else if (currentStyle.prompt.includes('minimal') || currentStyle.prompt.includes('Subtle')) {
+        styleOptions.push('PrimaryColour=&HFFFFFF', 'BackColour=&H80000000', 'FontSize=18', 'Bold=0');
+      } else {
+        // Default: white text with black outline (Stroke style)
+        styleOptions.push('PrimaryColour=&HFFFFFF', 'OutlineColour=&H000000', 'Outline=3', 'Bold=1');
+      }
+      
+      styleOptions.push('FontSize=18', 'Alignment=2', 'MarginV=20', 'FontName=Arial');
+      subtitleFilter += styleOptions.join(',');
+
+      console.log(`[${requestId}] Running FFmpeg with filter: ${subtitleFilter}`);
+      setProcessingProgress(30);
+
+      // Run FFmpeg to burn subtitles
+      await ffmpeg.exec([
+        '-i', 'input.mp4',
+        '-vf', subtitleFilter,
+        '-c:a', 'copy',
+        '-c:v', 'libx264',
+        '-preset', 'ultrafast',
+        '-crf', '23',
+        'output.mp4'
+      ]);
+
+      console.log(`[${requestId}] FFmpeg processing complete`);
+      setProcessingProgress(90);
+
+      // Read the output file
+      const data = await ffmpeg.readFile('output.mp4');
+      const blob = new Blob([data], { type: 'video/mp4' });
+      const downloadSizeMB = (blob.size / (1024 * 1024)).toFixed(2);
+      
+      console.log(`[${requestId}] Creating download link...`, {
+        fileSizeMB: downloadSizeMB
+      });
+
+      const videoLink = document.createElement('a');
+      videoLink.href = URL.createObjectURL(blob);
+      videoLink.download = 'video_with_subtitles.mp4';
+      document.body.appendChild(videoLink);
+      videoLink.click();
+      document.body.removeChild(videoLink);
+      URL.revokeObjectURL(videoLink.href);
+
+      const endToEndDuration = ((Date.now() - processingStartTime) / 1000).toFixed(2);
+      console.log(`[${requestId}] DOWNLOAD COMPLETE`, {
+        totalDuration: `${endToEndDuration}s`,
+        fileSizeMB: downloadSizeMB,
+        timestamp: new Date().toISOString()
+      });
+
+      setProcessingProgress(100);
+      toast.success("Video with burned subtitles downloaded successfully!");
+      
+      // Show signup prompt after successful download if user just used their free generation
+      if (!user && freeGenerationsUsed >= 1) {
+        setShowSignupPrompt(true);
       }
 
-      // Backward-compatibility: if backend returns the URL directly
-      if (data?.success && data?.videoUrl) {
-        const videoResponse = await fetch(data.videoUrl);
-        
-        if (!videoResponse.ok) {
-          throw new Error(`Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`);
-        }
-        
-        const processedVideoBlob = await videoResponse.blob();
-        // Create a new blob with explicit video/mp4 MIME type
-        const videoBlob = new Blob([processedVideoBlob], { type: 'video/mp4' });
-        const videoLink = document.createElement('a');
-        videoLink.href = window.URL.createObjectURL(videoBlob);
-        videoLink.download = 'video_with_subtitles.mp4';
-        document.body.appendChild(videoLink);
-        videoLink.click();
-        document.body.removeChild(videoLink);
-        window.URL.revokeObjectURL(videoLink.href);
-
-        // Note: Counter already incremented after subtitle generation
-        // No need to increment again here to avoid double counting
-        toast.success("Video with burned subtitles downloaded successfully!");
-        
-        // Show signup prompt after successful download if user just used their free generation
-        if (!user && freeGenerationsUsed >= 1) {
-          setShowSignupPrompt(true);
-        }
-        
-        return;
-      }
-      throw new Error(data?.error || "Failed to start video processing");
     } catch (error: any) {
       const errorDuration = ((Date.now() - processingStartTime) / 1000).toFixed(2);
       
       console.error(`[${requestId}] VIDEO PROCESSING FAILED`, {
         error: error.message,
-        predictionId,
-        lastStatus,
         duration: `${errorDuration}s`,
         timestamp: new Date().toISOString()
       });
