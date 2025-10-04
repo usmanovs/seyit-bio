@@ -10,6 +10,7 @@ import { Testimonials } from "@/components/landing/Testimonials";
 import { Pricing } from "@/components/landing/Pricing";
 import { FAQ } from "@/components/landing/FAQ";
 import { Button } from "@/components/ui/button";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { CheckCircle2, Video, Sparkles, ArrowRight, Shield } from "lucide-react";
 const Index = () => {
   const navigate = useNavigate();
@@ -139,14 +140,15 @@ const Index = () => {
           </div>
           
           <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/40 bg-card max-w-[280px] mx-auto">
-            <video 
-              controls 
-              className="w-full h-auto object-contain"
-              poster="/demo-video-poster.jpg"
-            >
-              <source src="/demo-video.mp4" type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
+            <AspectRatio ratio={16 / 9}>
+              <video 
+                controls 
+                className="w-full h-full object-contain"
+              >
+                <source src="/demo-video.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </AspectRatio>
           </div>
         </div>
       </section>
