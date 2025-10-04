@@ -12,10 +12,8 @@ import editingExample from "@/assets/editing-example.png";
 
 // Detect if user is on mobile device
 const isMobileDevice = () => {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-    (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || navigator.maxTouchPoints && navigator.maxTouchPoints > 2;
 };
-
 export const KyrgyzSubtitleGenerator = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -95,14 +93,16 @@ export const KyrgyzSubtitleGenerator = () => {
   // Fetch the user's videos processed count
   const fetchVideosProcessedCount = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: {
+          user
+        }
+      } = await supabase.auth.getUser();
       if (user) {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('videos_processed_count')
-          .eq('id', user.id)
-          .single();
-        
+        const {
+          data,
+          error
+        } = await supabase.from('profiles').select('videos_processed_count').eq('id', user.id).single();
         if (!error && data) {
           setVideosProcessedCount(data.videos_processed_count || 0);
         }
@@ -111,7 +111,6 @@ export const KyrgyzSubtitleGenerator = () => {
       console.error('[KyrgyzSubtitleGenerator] Failed to fetch videos processed count:', err);
     }
   };
-
   const checkTikTokAuth = async () => {
     setIsCheckingTikTokAuth(true);
     try {
@@ -265,7 +264,6 @@ export const KyrgyzSubtitleGenerator = () => {
     }, 500);
     return () => clearInterval(interval);
   }, [isProcessingVideo, processingStartTime]);
-
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -303,12 +301,12 @@ export const KyrgyzSubtitleGenerator = () => {
     const simulateProgress = () => {
       const fileSize = file.size;
       // Estimate ~1.5s per MB, cap at 5 minutes for very large files
-      const estimatedTime = Math.min((fileSize / (1024 * 1024)) * 1500, 300000);
+      const estimatedTime = Math.min(fileSize / (1024 * 1024) * 1500, 300000);
       const interval = 200; // update less frequently to reduce jank
-      const increment = (100 / (estimatedTime / interval)) * 1.4; // slightly faster at start
+      const increment = 100 / (estimatedTime / interval) * 1.4; // slightly faster at start
 
       const timer = setInterval(() => {
-        setUploadProgress((prev) => {
+        setUploadProgress(prev => {
           // Ramp to 95 normally, then "trickle" slowly up to 99% while finalizing
           if (prev < 95) {
             return Math.min(prev + increment, 95);
@@ -331,10 +329,9 @@ export const KyrgyzSubtitleGenerator = () => {
       // Generate unique file name (works for both authenticated and guest users)
       const userId = user?.id || 'guest';
       const fileName = `${userId}/${Date.now()}_${file.name}`;
-      
       const isMobile = isMobileDevice();
       console.log('[Upload] Starting upload:', fileName, 'Size:', file.size, 'bytes', 'Device:', isMobile ? 'Mobile' : 'Desktop');
-      
+
       // Add timeout wrapper for upload
       const uploadPromise = supabase.storage.from('videos').upload(fileName, file, {
         cacheControl: '3600',
@@ -344,12 +341,9 @@ export const KyrgyzSubtitleGenerator = () => {
       // Set timeout based on file size and device: 30s base + more per MB for mobile
       // Mobile devices get 20s per MB vs 10s per MB for desktop
       const secondsPerMB = isMobile ? 20 : 10;
-      const timeoutMs = 30000 + (file.size / (1024 * 1024)) * secondsPerMB * 1000;
+      const timeoutMs = 30000 + file.size / (1024 * 1024) * secondsPerMB * 1000;
       console.log('[Upload] Timeout set to:', Math.round(timeoutMs / 1000), 'seconds', `(${secondsPerMB}s per MB)`);
-
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Upload timeout - please check your connection and try again')), timeoutMs)
-      );
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Upload timeout - please check your connection and try again')), timeoutMs));
 
       // Fallback: if the SDK upload promise hangs, poll storage to detect if the file actually exists
       const pollFileExists = async (): Promise<'exists'> => {
@@ -358,7 +352,9 @@ export const KyrgyzSubtitleGenerator = () => {
         const started = Date.now();
         while (Date.now() - started < timeoutMs) {
           try {
-            const { data } = await supabase.storage.from('videos').list(folder);
+            const {
+              data
+            } = await supabase.storage.from('videos').list(folder);
             if (data?.some((o: any) => o.name === target)) {
               console.log('[Upload] File detected in storage via polling');
               return 'exists';
@@ -366,15 +362,12 @@ export const KyrgyzSubtitleGenerator = () => {
           } catch (e) {
             // ignore transient errors and keep polling
           }
-          await new Promise((r) => setTimeout(r, 3000));
+          await new Promise(r => setTimeout(r, 3000));
         }
         throw new Error('Upload verification timed out');
       };
-
       const existsPromise = pollFileExists();
-
       const winner: any = await Promise.race([uploadPromise, existsPromise, timeoutPromise]);
-
       clearInterval(progressTimer);
       setUploadProgress(100);
 
@@ -382,7 +375,6 @@ export const KyrgyzSubtitleGenerator = () => {
       if (winner !== 'exists' && winner?.error) {
         throw winner.error;
       }
-
       console.log('[Upload] Upload completed (winner):', winner);
 
       // Show 100% completion briefly before continuing
@@ -413,12 +405,12 @@ export const KyrgyzSubtitleGenerator = () => {
         statusCode: error.statusCode,
         device: isMobile ? 'Mobile' : 'Desktop'
       });
-      
+
       // Always clear progress timer on error
       clearInterval(progressTimer);
       setIsUploading(false);
       setUploadProgress(0);
-      
+
       // Provide helpful, device-specific error message
       let errorMessage = "Failed to upload video";
       if (error.message?.includes('timeout') || error.message?.includes('Timeout')) {
@@ -430,8 +422,9 @@ export const KyrgyzSubtitleGenerator = () => {
       } else if (error.message) {
         errorMessage = isMobile ? `${error.message} (Mobile device detected - try WiFi for better stability)` : error.message;
       }
-      
-      toast.error(errorMessage, { duration: 6000 }); // Longer duration for mobile tips
+      toast.error(errorMessage, {
+        duration: 6000
+      }); // Longer duration for mobile tips
     }
   };
   const generateSubtitlesForPath = async (path: string) => {
@@ -635,10 +628,8 @@ export const KyrgyzSubtitleGenerator = () => {
     setProcessingStatus('starting');
     setProcessingProgress(0);
     setProcessingStartTime(Date.now());
-    
     let predictionId: string | undefined;
     let lastStatus: string | undefined;
-    
     try {
       console.log('[KyrgyzSubtitleGenerator] Calling backend burn-subtitles function...');
       toast.info("Processing started. This may take several minutes...");
@@ -655,7 +646,6 @@ export const KyrgyzSubtitleGenerator = () => {
         }
       });
       if (error) throw error;
-      
       predictionId = data?.predictionId;
 
       // New flow: poll by predictionId
@@ -703,28 +693,32 @@ export const KyrgyzSubtitleGenerator = () => {
         videoLink.href = window.URL.createObjectURL(processedVideoBlob);
         videoLink.download = 'video_with_subtitles.mp4';
         document.body.appendChild(videoLink);
-            videoLink.click();
-            document.body.removeChild(videoLink);
-            window.URL.revokeObjectURL(videoLink.href);
-            
-            // Increment the videos processed count
-            try {
-              const { data: { user } } = await supabase.auth.getUser();
-              if (user) {
-                await supabase.rpc('increment_video_processing_count', { user_uuid: user.id });
-                setVideosProcessedCount(prev => prev + 1);
-              }
-            } catch (countError) {
-              console.error('[KyrgyzSubtitleGenerator] Failed to increment count:', countError);
+        videoLink.click();
+        document.body.removeChild(videoLink);
+        window.URL.revokeObjectURL(videoLink.href);
+
+        // Increment the videos processed count
+        try {
+          const {
+            data: {
+              user
             }
-            
-            toast.success("Video with burned subtitles downloaded successfully!");
-            return;
+          } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.rpc('increment_video_processing_count', {
+              user_uuid: user.id
+            });
+            setVideosProcessedCount(prev => prev + 1);
+          }
+        } catch (countError) {
+          console.error('[KyrgyzSubtitleGenerator] Failed to increment count:', countError);
+        }
+        toast.success("Video with burned subtitles downloaded successfully!");
+        return;
       }
       throw new Error(data?.error || "Failed to start video processing");
     } catch (error: any) {
       console.error('[KyrgyzSubtitleGenerator] Backend processing failed:', error);
-      
       toast.error("Processing failed: " + (error?.message || 'Unknown error'));
     } finally {
       setIsProcessingVideo(false);
@@ -803,28 +797,7 @@ export const KyrgyzSubtitleGenerator = () => {
       `}</style>
       
       {/* Counter at the top of the page */}
-      {videosProcessedCount > 0 && (
-        <div className="max-w-4xl mx-auto mb-4 text-center">
-          <div className="inline-flex items-center gap-3">
-            <Video className="w-5 h-5 text-primary" />
-            <div className="flex items-center gap-2">
-              <div className="flex gap-1">
-                {videosProcessedCount.toString().split('').map((digit, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-center w-10 h-12 bg-gray-900 dark:bg-gray-800 rounded border border-gray-700 shadow-sm"
-                  >
-                    <span className="text-2xl font-bold text-white">{digit}</span>
-                  </div>
-                ))}
-              </div>
-              <span className="text-sm font-medium text-muted-foreground ml-1">
-                video{videosProcessedCount !== 1 ? 's' : ''} processed successfully
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+      {videosProcessedCount > 0}
       
       <Card className="max-w-4xl mx-auto">
         <CardHeader className="text-center">
@@ -885,16 +858,12 @@ export const KyrgyzSubtitleGenerator = () => {
                 </div>
               </div>
             </div>
-            {isUploading && (
-              <div className="w-full space-y-1">
+            {isUploading && <div className="w-full space-y-1">
                 <Progress value={uploadProgress} className="w-full" />
                 <p className="text-xs text-muted-foreground">
-                  {uploadProgress < 95 
-                    ? "Uploading and generating captions... This may take a few minutes for large files."
-                    : "Finalizing upload and caption generation... Large files on mobile can take a few minutes."}
+                  {uploadProgress < 95 ? "Uploading and generating captions... This may take a few minutes for large files." : "Finalizing upload and caption generation... Large files on mobile can take a few minutes."}
                 </p>
-              </div>
-            )}
+              </div>}
           </div>
 
           {/* Caption Style Selector */}
