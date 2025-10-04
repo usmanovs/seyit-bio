@@ -177,7 +177,7 @@ serve(async (req) => {
         model: 'fofr/smart-ffmpeg',
         input: {
           files: [publicUrl, srtUrl],
-          prompt: `Burn the subtitles from the SRT file onto the video at the bottom. Preserve original video quality and audio without re-encoding. Style: ${enhancedPrompt}. Position subtitles at the very bottom with minimal padding (like standard video players). Use clear, readable font size around 18px. Ensure normal word spacing.`,
+          prompt: `Burn the subtitles from the SRT file onto the video at the bottom. Use a font that supports emoji characters (like Noto Color Emoji, Segoe UI Emoji, or Apple Color Emoji). Preserve original video quality and audio without re-encoding. Style: ${enhancedPrompt}. Position subtitles at the very bottom with minimal padding (like standard video players). Use clear, readable font size around 18px. Ensure normal word spacing and full emoji support.`,
           max_attempts: 3,
         },
       } as any);
