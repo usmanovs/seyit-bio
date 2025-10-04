@@ -945,16 +945,19 @@ export const KyrgyzSubtitleGenerator = () => {
             }
             
             const processedVideoBlob = await videoResponse.blob();
-            const downloadSizeMB = (processedVideoBlob.size / (1024 * 1024)).toFixed(2);
+            // Create a new blob with explicit video/mp4 MIME type
+            const videoBlob = new Blob([processedVideoBlob], { type: 'video/mp4' });
+            const downloadSizeMB = (videoBlob.size / (1024 * 1024)).toFixed(2);
             
             console.log(`[${requestId}] DOWNLOAD START`, {
               videoUrl: statusData.videoUrl.substring(0, 50) + '...',
               fileSizeMB: downloadSizeMB,
+              blobType: videoBlob.type,
               timestamp: new Date().toISOString()
             });
             
             const videoLink = document.createElement('a');
-            videoLink.href = window.URL.createObjectURL(processedVideoBlob);
+            videoLink.href = window.URL.createObjectURL(videoBlob);
             videoLink.download = 'video_with_subtitles.mp4';
             document.body.appendChild(videoLink);
             videoLink.click();
@@ -991,8 +994,10 @@ export const KyrgyzSubtitleGenerator = () => {
         }
         
         const processedVideoBlob = await videoResponse.blob();
+        // Create a new blob with explicit video/mp4 MIME type
+        const videoBlob = new Blob([processedVideoBlob], { type: 'video/mp4' });
         const videoLink = document.createElement('a');
-        videoLink.href = window.URL.createObjectURL(processedVideoBlob);
+        videoLink.href = window.URL.createObjectURL(videoBlob);
         videoLink.download = 'video_with_subtitles.mp4';
         document.body.appendChild(videoLink);
         videoLink.click();
