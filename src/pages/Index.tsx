@@ -145,8 +145,30 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      
+      {/* Demo Video Section */}
+      <section className="container mx-auto px-4 lg:px-8 py-16">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12 space-y-4">
+            <h2 className="text-4xl lg:text-5xl font-bold">
+              See It In Action
+            </h2>
+            <p className="text-xl text-muted-foreground font-light">
+              Watch how our AI generates perfect Kyrgyz subtitles
+            </p>
+          </div>
+          
+          <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/40 bg-card">
+            <video 
+              controls 
+              className="w-full h-auto"
+              poster="/demo-video-poster.jpg"
+            >
+              <source src="/demo-video.mp4" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        </div>
+      </section>
 
       {/* How It Works */}
       <section className="container mx-auto px-4 lg:px-8 py-16">
