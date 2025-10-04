@@ -606,11 +606,6 @@ export const KyrgyzSubtitleGenerator = () => {
       if (user) {
         setVideosProcessedCount(prev => prev + 1);
       }
-      
-      // Show signup prompt for non-authenticated users after first free generation
-      if (!user && freeGenerationsUsed >= 1) {
-        setTimeout(() => setShowSignupPrompt(true), 2000);
-      }
 
       // Increment video processing count for authenticated users
       try {
