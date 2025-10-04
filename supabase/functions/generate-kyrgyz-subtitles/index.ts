@@ -278,6 +278,17 @@ ${srtContent}`
         console.warn('[KYRGYZ-SUBTITLES] Failed to save subtitles to database, but continuing');
       } else {
         console.log('[KYRGYZ-SUBTITLES] Subtitles saved successfully');
+        
+        // Increment video processing count
+        console.log('[KYRGYZ-SUBTITLES] Incrementing video processing count for user:', userId);
+        const { error: incrementError } = await supabaseClient
+          .rpc('increment_video_processing_count', { user_uuid: userId });
+        
+        if (incrementError) {
+          console.error('[KYRGYZ-SUBTITLES] Failed to increment counter:', incrementError);
+        } else {
+          console.log('[KYRGYZ-SUBTITLES] Counter incremented successfully');
+        }
       }
     } else {
       console.log('[KYRGYZ-SUBTITLES] Guest user - skipping database save');
