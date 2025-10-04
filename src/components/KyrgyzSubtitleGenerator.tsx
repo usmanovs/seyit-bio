@@ -1369,14 +1369,15 @@ export const KyrgyzSubtitleGenerator = () => {
                       </div>)}
                    </div>
                       <div className="space-y-2">
-                        <div className="flex gap-2 items-center">
+                        <div className="flex gap-2 items-center flex-wrap">
                           {hasUnsavedChanges && (
-                            <Button onClick={applySubtitleChanges} className="flex-1">
+                            <Button onClick={applySubtitleChanges} className="flex-1 min-w-[160px]">
                               Update Captions
                             </Button>
                           )}
+
                           <Button
-                            onClick={downloadVideoWithSubtitles}
+                            onClick={ffmpegLoaded ? downloadVideoWithSubtitles : burnVideoInCloud}
                             size="lg"
                             className={`
                               ${hasUnsavedChanges ? "flex-1" : "w-full"}
@@ -1385,7 +1386,10 @@ export const KyrgyzSubtitleGenerator = () => {
                               shadow-lg hover:shadow-xl
                               transition-all duration-300
                             `}
-                            disabled={isProcessingVideo || !ffmpegLoaded}
+                            disabled={
+                              isProcessingVideo ||
+                              (ffmpegLoaded ? false : (cloudPolling || !videoPath))
+                            }
                           >
                             {ffmpegLoading ? (
                               <div className="flex items-center gap-2">
@@ -1403,52 +1407,41 @@ export const KyrgyzSubtitleGenerator = () => {
                                 </div>
                                 <Progress value={processingProgress} className="w-full h-2" />
                               </div>
+                            ) : ffmpegLoaded ? (
+                              <div className="flex items-center gap-2">
+                                <Download className="w-5 h-5" />
+                                <span>Download Video</span>
+                              </div>
+                            ) : cloudPolling ? (
+                              <div className="flex items-center gap-2">
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                <span>Processing in Cloud ({cloudStatus || 'starting'})...</span>
+                              </div>
                             ) : (
-                              <>
-                                <div className="flex items-center gap-2">
-                                  <Download className="w-5 h-5" />
-                                  <span>Download Video</span>
-                                </div>
-                              </>
+                              <span>Process in Cloud</span>
                             )}
                           </Button>
+
                           {!ffmpegLoaded && !ffmpegLoading && !isProcessingVideo && (
                             <Button variant="outline" onClick={loadFFmpeg} className="shrink-0">
                               Retry Processor Load
                             </Button>
                           )}
+
+                          {cloudVideoUrl && (
+                            <Button
+                              variant="outline"
+                              onClick={() => window.open(cloudVideoUrl!, '_blank')}
+                              className="shrink-0"
+                            >
+                              Download Cloud Result
+                            </Button>
+                          )}
                         </div>
 
-                        {/* Cloud fallback */}
-                        {(!ffmpegLoaded || ffmpegError) && (
-                          <div className="flex flex-col gap-2 p-3 border rounded-lg bg-muted/50">
-                            <div className="text-xs text-muted-foreground">
-                              Having trouble with the in-browser processor? Use Cloud processing instead.
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              <Button
-                                variant="secondary"
-                                onClick={burnVideoInCloud}
-                                disabled={cloudPolling || !videoPath}
-                              >
-                                {cloudPolling ? (
-                                  <div className="flex items-center gap-2">
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    <span>Processing in Cloud ({cloudStatus || 'starting'})...</span>
-                                  </div>
-                                ) : (
-                                  'Process in Cloud'
-                                )}
-                              </Button>
-                              {cloudVideoUrl && (
-                                <Button
-                                  variant="outline"
-                                  onClick={() => window.open(cloudVideoUrl!, '_blank')}
-                                >
-                                  Download Cloud Result
-                                </Button>
-                              )}
-                            </div>
+                        {!ffmpegLoaded && !ffmpegLoading && (
+                          <div className="text-xs text-muted-foreground p-2 rounded border bg-muted/50">
+                            Local processor unavailable; using Cloud mode for downloads.
                           </div>
                         )}
                       </div>
