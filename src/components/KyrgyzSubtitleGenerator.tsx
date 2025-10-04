@@ -689,7 +689,13 @@ export const KyrgyzSubtitleGenerator = () => {
             // Completed successfully – set to 100%
             setProcessingProgress(100);
             // Completed successfully – download
-            const processedVideoBlob = await fetch(statusData.videoUrl).then(r => r.blob());
+            const videoResponse = await fetch(statusData.videoUrl);
+            
+            if (!videoResponse.ok) {
+              throw new Error(`Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`);
+            }
+            
+            const processedVideoBlob = await videoResponse.blob();
             const videoLink = document.createElement('a');
             videoLink.href = window.URL.createObjectURL(processedVideoBlob);
             videoLink.download = 'video_with_subtitles.mp4';
@@ -706,7 +712,13 @@ export const KyrgyzSubtitleGenerator = () => {
 
       // Backward-compatibility: if backend returns the URL directly
       if (data?.success && data?.videoUrl) {
-        const processedVideoBlob = await fetch(data.videoUrl).then(r => r.blob());
+        const videoResponse = await fetch(data.videoUrl);
+        
+        if (!videoResponse.ok) {
+          throw new Error(`Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`);
+        }
+        
+        const processedVideoBlob = await videoResponse.blob();
         const videoLink = document.createElement('a');
         videoLink.href = window.URL.createObjectURL(processedVideoBlob);
         videoLink.download = 'video_with_subtitles.mp4';
