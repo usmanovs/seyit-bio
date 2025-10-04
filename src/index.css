@@ -101,3 +101,15 @@ All colors MUST be HSL.
     @apply font-sans;
   }
 }
+
+/* Emoji-capable font and subtitle cue styling */
+@font-face {
+  font-family: 'Symbola';
+  src: url('/fonts/Symbola.ttf') format('truetype');
+  font-display: swap;
+}
+
+/* Ensure browser-rendered captions can display emojis */
+video::cue, ::cue {
+  font-family: 'Symbola', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', ui-sans-serif, system-ui, sans-serif;
+}

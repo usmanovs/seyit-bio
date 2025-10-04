@@ -297,6 +297,14 @@ export const KyrgyzSubtitleGenerator = () => {
     if (prevLanguageRef.current !== selectedLanguage && videoPath && subtitles && !isGenerating) {
       toast.info(`Regenerating subtitles in ${selectedLanguage === 'ky' ? 'Kyrgyz' : selectedLanguage === 'kk' ? 'Kazakh' : selectedLanguage === 'uz' ? 'Uzbek' : selectedLanguage === 'ru' ? 'Russian' : 'Turkish'}...`);
       generateSubtitlesForPath(videoPath);
+      // Ensure the video track uses the correct language metadata
+      setTimeout(() => {
+        const t = trackRef.current;
+        if (t) {
+          t.srclang = selectedLanguage;
+          t.label = selectedLanguage === 'ky' ? 'Kyrgyz' : selectedLanguage === 'kk' ? 'Kazakh' : selectedLanguage === 'uz' ? 'Uzbek' : selectedLanguage === 'ru' ? 'Russian' : 'Turkish';
+        }
+      }, 0);
     }
     prevLanguageRef.current = selectedLanguage;
   }, [selectedLanguage]);
@@ -763,12 +771,17 @@ export const KyrgyzSubtitleGenerator = () => {
     }
   };
   const convertSrtToWebVtt = (srt: string): string => {
-    // Robust SRT -> WebVTT conversion: remove numeric cue IDs and fix timestamps
-    const normalized = srt.replace(/\r+/g, '').trim();
+    // Robust SRT -> WebVTT conversion: remove code fences, numeric cue IDs, and fix timestamps
+    const normalized = srt
+      .replace(/\r+/g, '')
+      // strip Markdown code fences like ```srt and ```
+      .replace(/```[a-zA-Z]*\n?/g, '')
+      .replace(/```/g, '')
+      .trim();
     const cues = normalized.split('\n\n').map(block => {
-      const lines = block.split('\n');
+      const lines = block.split('\n').filter(l => !/^```/.test(l));
       // Remove numeric cue identifier if present
-      if (/^\d+$/.test(lines[0])) {
+      if (lines[0] && /^\d+$/.test(lines[0])) {
         lines.shift();
       }
       return lines.join('\n');
@@ -777,7 +790,11 @@ export const KyrgyzSubtitleGenerator = () => {
     return 'WEBVTT\n\n' + withDots;
   };
   const parseSrtToCues = (srt: string) => {
-    const normalized = srt.replace(/\r+/g, '').trim();
+    const normalized = srt
+      .replace(/\r+/g, '')
+      .replace(/```[a-zA-Z]*\n?/g, '')
+      .replace(/```/g, '')
+      .trim();
     const blocks = normalized.split('\n\n');
     const cues: Array<{
       start: number;
@@ -785,7 +802,7 @@ export const KyrgyzSubtitleGenerator = () => {
       text: string;
     }> = [];
     for (const block of blocks) {
-      const lines = block.split('\n');
+      const lines = block.split('\n').filter(l => !/^```/.test(l));
       if (!lines.length) continue;
       if (/^\d+$/.test(lines[0])) lines.shift();
       const timing = lines.shift() || '';
@@ -794,11 +811,7 @@ export const KyrgyzSubtitleGenerator = () => {
       const start = hmsToSeconds(m[1], m[2]);
       const end = hmsToSeconds(m[3], m[4]);
       const text = lines.join('\n');
-      cues.push({
-        start,
-        end,
-        text
-      });
+      cues.push({ start, end, text });
     }
     return cues;
   };
@@ -1510,7 +1523,16 @@ export const KyrgyzSubtitleGenerator = () => {
                     for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
                   }
                 }}>
-                      {subtitleBlobUrl && <track kind="captions" src={subtitleBlobUrl} srcLang="ky" label="Kyrgyz" default ref={trackRef} />}
+                      {subtitleBlobUrl && (
+                        <track
+                          kind="captions"
+                          src={subtitleBlobUrl}
+                          srcLang={selectedLanguage}
+                          label={selectedLanguage === 'ky' ? 'Kyrgyz' : selectedLanguage === 'kk' ? 'Kazakh' : selectedLanguage === 'uz' ? 'Uzbek' : selectedLanguage === 'ru' ? 'Russian' : 'Turkish'}
+                          default
+                          ref={trackRef}
+                        />
+                      )}
                     </video>
                   </div>
                 </div>
