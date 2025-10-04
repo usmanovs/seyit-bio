@@ -135,7 +135,7 @@ const Index = () => {
               See It In Action
             </h2>
             <p className="text-xl text-muted-foreground font-light">
-              Watch how our AI generates perfect Kyrgyz subtitles
+              Watch how our AI generates great Kyrgyz subtitles
             </p>
           </div>
           
