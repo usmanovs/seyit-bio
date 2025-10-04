@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { VideoSubtitleGenerator } from "@/components/VideoSubtitleGenerator";
+
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -49,9 +49,6 @@ const Dashboard = () => {
           <p className="text-muted-foreground">This is your authenticated dashboard area</p>
         </div>
 
-        <div className="mb-8">
-          <VideoSubtitleGenerator />
-        </div>
       </main>
     </div>
   );
