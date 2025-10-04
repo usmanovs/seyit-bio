@@ -138,9 +138,9 @@ export const KyrgyzSubtitleGenerator = () => {
     const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('FFmpeg load timed out')), 20000));
 
     try {
-      // Try primary CDN (unpkg) pinned to package version
+      // Try primary CDN (unpkg) with correct version
       await Promise.race([
-        loadFFmpegCore('https://unpkg.com/@ffmpeg/core@0.12.15/dist/umd'),
+        loadFFmpegCore('https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd'),
         timeout,
       ]);
       setFfmpegLoaded(true);
@@ -150,7 +150,7 @@ export const KyrgyzSubtitleGenerator = () => {
       console.warn('[FFmpeg] Primary CDN failed, retrying with jsDelivr...', err);
       try {
         await Promise.race([
-          loadFFmpegCore('https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/umd'),
+          loadFFmpegCore('https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd'),
           timeout,
         ]);
         setFfmpegLoaded(true);
@@ -158,8 +158,8 @@ export const KyrgyzSubtitleGenerator = () => {
         toast.success('Video processor ready!');
       } catch (e2) {
         console.error('[FFmpeg] Failed to load from both CDNs:', e2);
-        setFfmpegError('Failed to load video processor. Please try again.');
-        toast.error('Failed to load video processor. Click Retry.');
+        setFfmpegError('Failed to load video processor. Use Cloud processing instead.');
+        toast.error('Failed to load video processor. Use Cloud processing instead.');
       }
     } finally {
       setFfmpegLoading(false);
