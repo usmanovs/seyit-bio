@@ -308,6 +308,12 @@ export const KyrgyzSubtitleGenerator = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Check access before processing
+    if (!canGenerate) {
+      setShowSignupPrompt(true);
+      return;
+    }
+
     const requestId = generateRequestId();
     const uploadStartTime = Date.now();
     
@@ -1090,35 +1096,6 @@ export const KyrgyzSubtitleGenerator = () => {
       )}
       
       <Card className="max-w-4xl mx-auto relative">
-        {/* Paywall Overlay */}
-        {!canGenerate && (
-          <div className="absolute inset-0 z-50 backdrop-blur-sm bg-background/80 rounded-lg flex items-center justify-center">
-            <div className="text-center space-y-6 p-8 max-w-md">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10">
-                <Lock className="w-8 h-8 text-primary" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-2xl font-bold">Continue Creating Videos</h3>
-                <p className="text-muted-foreground">
-                  Sign up for a free 1-day trial to keep generating subtitles
-                </p>
-              </div>
-              <div className="space-y-3">
-                <Button 
-                  size="lg" 
-                  onClick={() => window.location.href = '/auth'}
-                  className="w-full"
-                >
-                  Sign Up Free
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  Try free for 24 hours • Cancel anytime • $15/month after trial
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         <CardHeader className="text-center">
           <CardTitle>Kyrgyz Video Subtitle Generator</CardTitle>
