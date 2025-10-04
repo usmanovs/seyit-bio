@@ -116,7 +116,7 @@ const Index = () => {
           {/* Trust Badge */}
           <div className="flex items-center justify-center gap-2 pt-4 px-4 py-2 rounded-full bg-muted/50 border border-border/40 backdrop-blur-sm">
             <Shield className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">Trusted by 10,000+ creators worldwide</span>
+            <span className="text-sm font-medium">Trusted by 100+ creators worldwide</span>
           </div>
         </div>
       </section>
