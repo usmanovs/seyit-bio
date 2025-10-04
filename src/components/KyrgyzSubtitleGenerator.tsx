@@ -1020,7 +1020,22 @@ export const KyrgyzSubtitleGenerator = () => {
           setCloudStatus('succeeded');
           setCloudVideoUrl(data.videoUrl);
           setCloudPolling(false);
-          toast.success('Cloud video ready!');
+          toast.success('Cloud video ready! Downloading...');
+          try {
+            const response = await fetch(data.videoUrl);
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `video-with-subtitles-${Date.now()}.mp4`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          } catch (e) {
+            console.error('Auto-download failed, opening in new tab', e);
+            window.open(data.videoUrl, '_blank');
+          }
           return true;
         }
         if (data?.status === 'failed') {
@@ -1050,6 +1065,7 @@ export const KyrgyzSubtitleGenerator = () => {
     const rid = generateRequestId();
     try {
       setCloudStatus('starting');
+      setCloudPolling(true);
       const { data, error } = await supabase.functions.invoke('burn-subtitles-backend', {
         body: {
           videoPath,
@@ -1066,7 +1082,23 @@ export const KyrgyzSubtitleGenerator = () => {
       } else if (data?.videoUrl) {
         setCloudVideoUrl(data.videoUrl);
         setCloudStatus('succeeded');
-        toast.success('Cloud video ready!');
+        setCloudPolling(false);
+        toast.success('Cloud video ready! Downloading...');
+        try {
+          const response = await fetch(data.videoUrl);
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `video-with-subtitles-${Date.now()}.mp4`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          console.error('Auto-download failed, opening in new tab', e);
+          window.open(data.videoUrl, '_blank');
+        }
       } else if (data?.error) {
         throw new Error(data.error);
       }
@@ -1445,7 +1477,7 @@ export const KyrgyzSubtitleGenerator = () => {
 
                         {!ffmpegLoaded && !isProcessingVideo && !cloudPolling && (
                           <div className="text-xs text-muted-foreground p-2 rounded border bg-muted/50">
-                            Cloud mode - click Download to process your video
+                            Cloud mode — click once, it will auto-download when ready
                           </div>
                         )}
                       </div>
