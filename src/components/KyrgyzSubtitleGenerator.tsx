@@ -49,7 +49,7 @@ export const KyrgyzSubtitleGenerator = () => {
   const [isCheckingTikTokAuth, setIsCheckingTikTokAuth] = useState(true);
   const [isPublishingToTikTok, setIsPublishingToTikTok] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [videosProcessedCount, setVideosProcessedCount] = useState<number>(0);
+  const [videosProcessedCount, setVideosProcessedCount] = useState<number>(43);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
