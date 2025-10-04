@@ -65,12 +65,23 @@ serve(async (req) => {
     const hasActiveSub = subscriptions.data.length > 0;
     let productId = null;
     let subscriptionEnd = null;
+    let isInTrial = false;
+    let trialEnd = null;
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
       productId = subscription.items.data[0].price.product;
+      
+      // Check if subscription is in trial period
+      if (subscription.status === "trialing" || (subscription.trial_end && subscription.trial_end * 1000 > Date.now())) {
+        isInTrial = true;
+        trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null;
+        logStep("Active subscription in trial", { subscriptionId: subscription.id, trialEnd });
+      } else {
+        logStep("Active subscription (paid)", { subscriptionId: subscription.id, endDate: subscriptionEnd });
+      }
+      
       logStep("Determined subscription product", { productId });
     } else {
       logStep("No active subscription found");
@@ -79,7 +90,9 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       product_id: productId,
-      subscription_end: subscriptionEnd
+      subscription_end: subscriptionEnd,
+      is_in_trial: isInTrial,
+      trial_end: trialEnd
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

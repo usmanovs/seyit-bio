@@ -2,49 +2,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User } from "@supabase/supabase-js";
+import { useAuth } from "@/contexts/AuthContext";
 import { KyrgyzSubtitleGenerator } from "@/components/KyrgyzSubtitleGenerator";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, Globe, Zap, Shield, Video, Languages, Sparkles, ArrowRight } from "lucide-react";
 const Index = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading } = useAuth();
+  
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const {
-      data: {
-        subscription
-      }
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      setLoading(false);
-
-      // Redirect authenticated users to dashboard
-      if (currentUser) {
-        navigate('/dashboard');
-      }
-    });
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({
-      data: {
-        session
-      }
-    }) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      setLoading(false);
-
-      // Redirect authenticated users to dashboard
-      if (currentUser) {
-        navigate('/dashboard');
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    // Redirect authenticated users to dashboard
+    if (!loading && user) {
+      navigate('/dashboard');
+    }
+  }, [user, loading, navigate]);
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast.success("Logged out successfully");

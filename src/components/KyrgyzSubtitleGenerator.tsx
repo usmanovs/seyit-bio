@@ -3,11 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Loader2, Download, Video, Sparkles, Share2 } from "lucide-react";
+import { Upload, Loader2, Download, Video, Sparkles, Share2, Lock, Clock } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/AuthContext";
+import { SubscriptionModal } from "./SubscriptionModal";
 import editingExample from "@/assets/editing-example.png";
 
 // Detect if user is on mobile device
@@ -20,6 +22,8 @@ const generateRequestId = () => {
   return `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 };
 export const KyrgyzSubtitleGenerator = () => {
+  const { user, subscription, refreshSubscription } = useAuth();
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -94,6 +98,26 @@ export const KyrgyzSubtitleGenerator = () => {
     checkTikTokAuth();
     fetchVideosProcessedCount();
   }, []);
+
+  // Calculate time remaining in trial
+  const getTrialTimeRemaining = () => {
+    if (!subscription.isInTrial || !subscription.trialEnd) return null;
+    const now = new Date().getTime();
+    const end = new Date(subscription.trialEnd).getTime();
+    const remaining = end - now;
+    
+    if (remaining <= 0) return 'Trial expired';
+    
+    const hours = Math.floor(remaining / (1000 * 60 * 60));
+    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m remaining`;
+    }
+    return `${minutes}m remaining`;
+  };
+
+  const hasAccess = user && (subscription.subscribed || subscription.isInTrial);
 
   // Fetch the user's videos processed count
   const fetchVideosProcessedCount = async () => {
@@ -986,10 +1010,80 @@ export const KyrgyzSubtitleGenerator = () => {
         }
       `}</style>
       
+      {/* Trial Countdown Banner */}
+      {user && subscription.isInTrial && (
+        <div className="mb-4 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Clock className="w-5 h-5 text-primary" />
+              <div>
+                <p className="font-semibold">Free Trial Active</p>
+                <p className="text-sm text-muted-foreground">{getTrialTimeRemaining()}</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline">
+              View Plans
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Subscription Status Badge */}
+      {user && subscription.subscribed && !subscription.isInTrial && (
+        <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">Pro Subscription Active</span>
+          </div>
+        </div>
+      )}
+      
       {/* Counter at the top of the page */}
       {videosProcessedCount > 0}
       
-      <Card className="max-w-4xl mx-auto">
+      <Card className="max-w-4xl mx-auto relative">
+        {/* Paywall Overlay */}
+        {!hasAccess && (
+          <div className="absolute inset-0 z-50 backdrop-blur-sm bg-background/80 rounded-lg flex items-center justify-center">
+            <div className="text-center space-y-6 p-8 max-w-md">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10">
+                <Lock className="w-8 h-8 text-primary" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-2xl font-bold">Pro Feature</h3>
+                <p className="text-muted-foreground">
+                  {user 
+                    ? "Start your free trial to unlock unlimited subtitle generation"
+                    : "Sign in and start your free trial to generate subtitles"
+                  }
+                </p>
+              </div>
+              <div className="space-y-3">
+                {user ? (
+                  <Button 
+                    size="lg" 
+                    onClick={() => setShowSubscriptionModal(true)}
+                    className="w-full"
+                  >
+                    Start 1-Day Free Trial
+                  </Button>
+                ) : (
+                  <Button 
+                    size="lg" 
+                    onClick={() => window.location.href = '/auth'}
+                    className="w-full"
+                  >
+                    Sign In to Start Free Trial
+                  </Button>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Try free for 24 hours • Cancel anytime • $15/month after trial
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <CardHeader className="text-center">
           <CardTitle>Kyrgyz Video Subtitle Generator</CardTitle>
           <CardDescription>Upload a video and generate Kyrgyz subtitles</CardDescription>
@@ -1349,5 +1443,10 @@ export const KyrgyzSubtitleGenerator = () => {
         </div>
       </CardContent>
     </Card>}
+    
+    <SubscriptionModal 
+      open={showSubscriptionModal} 
+      onOpenChange={setShowSubscriptionModal}
+    />
     </>;
 };
