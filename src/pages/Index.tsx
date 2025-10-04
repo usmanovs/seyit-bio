@@ -157,7 +157,7 @@ const Index = () => {
             </p>
           </div>
           
-          <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/40 bg-card max-w-xs mx-auto">
+          <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/40 bg-card max-w-[280px] mx-auto">
             <video 
               controls 
               className="w-full h-auto max-h-[500px] object-contain"
