@@ -1166,32 +1166,6 @@ export const KyrgyzSubtitleGenerator = () => {
           {videoUrl && <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Left side - Controls and Subtitle Editor */}
               <div className="space-y-3">
-                {/* Spelling Correction Toggle */}
-                <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="spelling-toggle" className="text-sm font-medium">
-                      ✓ Correct Spelling
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      {subtitles ? correctSpelling ? "Spelling correction ON — click Regenerate to apply" : "Turn on and click Regenerate to correct spelling" : correctSpelling ? "Spelling will be corrected on generation" : "Fix spelling mistakes in Kyrgyz text"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch id="spelling-toggle" checked={correctSpelling} onCheckedChange={setCorrectSpelling} />
-                    {subtitles && <Button size="sm" variant="secondary" onClick={() => {
-                        // If user has manual edits, apply modifications to preserve them
-                        if (hasUnsavedChanges || editedSubtitles !== subtitles) {
-                          applyModificationsToExistingSubtitles();
-                        } else {
-                          // No manual edits, safe to regenerate from video
-                          videoPath && generateSubtitlesForPath(videoPath);
-                        }
-                      }} disabled={isGenerating}>
-                        {isGenerating ? 'Regenerating...' : 'Regenerate'}
-                      </Button>}
-                  </div>
-                </div>
-
                 {/* Emoji Toggle */}
                 <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
                   <div className="space-y-0.5">
