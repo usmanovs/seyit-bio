@@ -74,10 +74,24 @@ const Index = () => {
               </span>
             </div>
             <div className="flex items-center gap-4">
-              {/* Global counter pill */}
-              <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
-                <Video className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium text-primary">43 videos processed</span>
+              {/* Global counter with flip-counter style */}
+              <div className="hidden sm:inline-flex items-center gap-3">
+                <Video className="w-5 h-5 text-primary" />
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
+                    {['4', '3'].map((digit, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-center w-8 h-10 bg-gray-900 dark:bg-gray-800 rounded border border-gray-700 shadow-sm"
+                      >
+                        <span className="text-xl font-bold text-white">{digit}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <span className="text-sm font-medium text-muted-foreground ml-1">
+                    videos processed
+                  </span>
+                </div>
               </div>
               {!loading && (user ? (
                 <div className="flex items-center gap-3">
