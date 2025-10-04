@@ -1408,12 +1408,7 @@ export const KyrgyzSubtitleGenerator = () => {
                               isProcessingVideo || cloudPolling || !subtitles
                             }
                           >
-                            {ffmpegLoading ? (
-                              <div className="flex items-center gap-2">
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                <span>Loading processor...</span>
-                              </div>
-                            ) : isProcessingVideo ? (
+                            {isProcessingVideo ? (
                               <div className="w-full space-y-2">
                                 <div className="flex items-center justify-center gap-2">
                                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -1438,9 +1433,9 @@ export const KyrgyzSubtitleGenerator = () => {
                           </Button>
                         </div>
 
-                        {!ffmpegLoaded && !ffmpegLoading && !isProcessingVideo && !cloudPolling && (
+                        {!ffmpegLoaded && !isProcessingVideo && !cloudPolling && (
                           <div className="text-xs text-muted-foreground p-2 rounded border bg-muted/50">
-                            Cloud mode enabled - click Download to process your video
+                            Cloud mode - click Download to process your video
                           </div>
                         )}
                       </div>
