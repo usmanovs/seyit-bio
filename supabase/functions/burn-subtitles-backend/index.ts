@@ -177,11 +177,13 @@ serve(async (req) => {
         model: 'fofr/smart-ffmpeg',
         input: {
           files: [publicUrl, srtUrl],
-          prompt: `CRITICAL AUDIO REQUIREMENT: Use -c:a copy to preserve the original audio codec without re-encoding. MUST keep original audio stream intact with all codecs (AAC, MP3, etc). Do not transcode or modify audio in any way.
+          prompt: `CRITICAL QUALITY REQUIREMENTS:
+1. VIDEO: Use -c:v libx264 -preset slow -crf 18 for high quality encoding. Maintain original resolution. Use -profile:v high for best quality.
+2. AUDIO: Use -c:a copy to preserve the original audio codec without re-encoding. MUST keep original audio stream intact with all codecs (AAC, MP3, etc). Do not transcode or modify audio in any way.
 
 Subtitle instructions: Burn the subtitles from the SRT file onto the video at the VERY BOTTOM with only small padding from bottom edge (92-96% from top). Style: ${enhancedPrompt}. Text must be clearly readable and visible. Use appropriate font size (16-20px). Background should be semi-transparent if present, never fully opaque. Ensure high contrast between text and any background. Subtitles must be positioned at the absolute bottom like standard video players, with minimal margin from bottom edge. Ensure normal spacing between words (no extra gaps).
 
-FFmpeg command must include: -c:a copy -map 0:a? to preserve all audio streams without modification.`,
+FFmpeg command must include: -c:v libx264 -preset slow -crf 18 -profile:v high -c:a copy -map 0:a? to ensure high video quality while preserving audio.`,
           max_attempts: 3,
         },
       } as any);
