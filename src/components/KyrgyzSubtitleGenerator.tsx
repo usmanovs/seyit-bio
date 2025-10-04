@@ -127,7 +127,8 @@ export const KyrgyzSubtitleGenerator = () => {
   };
 
   const hasAccess = user && (subscription.subscribed || subscription.isInTrial);
-  const canUseFree = !user && freeGenerationsUsed < 1;
+  // Allow free generation for both guests and logged-in users
+  const canUseFree = (!user && freeGenerationsUsed < 1) || (user && videosProcessedCount < 1);
   const canGenerate = hasAccess || canUseFree;
 
   // Fetch the user's videos processed count
@@ -1071,24 +1072,26 @@ export const KyrgyzSubtitleGenerator = () => {
       {/* Counter at the top of the page */}
       {videosProcessedCount > 0}
       
-      {/* Free Generation Banner for Non-Authenticated Users */}
-      {!user && (
+      {/* Free Generation Banner */}
+      {!hasAccess && (
         <div className="mb-4 p-4 rounded-lg border bg-primary/10 border-primary/20">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-primary" />
               <div>
                 <p className="font-medium text-sm">
-                  {canUseFree ? 'Free Trial - No Signup Required' : 'Free Trial Used'}
+                  {canUseFree ? 'Free Trial Available' : 'Free Trial Used'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {canUseFree ? '1 free video generation available' : 'Sign up for unlimited videos'}
+                  {canUseFree 
+                    ? (user ? '1 free video generation for your account' : '1 free video - no signup required')
+                    : 'Start a free trial for unlimited videos'}
                 </p>
               </div>
             </div>
             {!canUseFree && (
-              <Button onClick={() => window.location.href = '/auth'} size="sm" className="rounded-full">
-                Sign Up Free
+              <Button onClick={() => setShowSubscriptionModal(true)} size="sm" className="rounded-full">
+                Start Free Trial
               </Button>
             )}
           </div>
