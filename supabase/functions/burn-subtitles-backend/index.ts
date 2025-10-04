@@ -48,8 +48,17 @@ serve(async (req) => {
       }
 
       if (prediction.status === 'failed') {
+        const errorMessage = prediction.error ?? 'Video processing failed';
+        console.error('[BURN-SUBTITLES] Prediction failed:', errorMessage);
+        console.error('[BURN-SUBTITLES] Full prediction object:', JSON.stringify(prediction, null, 2));
+        
         return new Response(
-          JSON.stringify({ success: false, status: prediction.status, error: prediction.error ?? 'Video processing failed' }),
+          JSON.stringify({ 
+            success: false, 
+            status: prediction.status, 
+            error: errorMessage,
+            details: prediction.logs || 'No additional details available'
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         );
       }

@@ -681,6 +681,14 @@ export const KyrgyzSubtitleGenerator = () => {
             }
           });
           if (statusError) throw statusError;
+          
+          // Check for failed status
+          if (statusData?.status === 'failed') {
+            const errorMsg = statusData.error || 'Video processing failed';
+            const details = statusData.details ? `\n\nDetails: ${statusData.details}` : '';
+            throw new Error(`${errorMsg}${details}`);
+          }
+          
           if (statusData?.status) {
             lastStatus = statusData.status;
             setProcessingStatus(statusData.status);
