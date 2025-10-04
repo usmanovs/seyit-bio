@@ -933,7 +933,8 @@ export const KyrgyzSubtitleGenerator = () => {
         styleOptions.push('PrimaryColour=&HFFFFFF', 'OutlineColour=&H000000', 'Outline=3', 'Bold=1');
       }
       
-      styleOptions.push('FontSize=18', 'Alignment=2', 'MarginV=20', 'FontName=Arial');
+      // Use DejaVu Sans which supports emojis better than Arial
+      styleOptions.push('FontSize=18', 'Alignment=2', 'MarginV=20', 'FontName=DejaVu Sans');
       subtitleFilter += styleOptions.join(',');
 
       console.log(`[${requestId}] Running FFmpeg with filter: ${subtitleFilter}`);
