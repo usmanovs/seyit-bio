@@ -289,6 +289,15 @@ export const KyrgyzSubtitleGenerator = () => {
     }, 500);
     return () => clearInterval(interval);
   }, [isProcessingVideo, processingStartTime]);
+
+  // Auto-regenerate subtitles when language changes
+  useEffect(() => {
+    // Only regenerate if there's a video loaded and subtitles already exist
+    if (videoPath && subtitles && !isGenerating) {
+      toast.info(`Regenerating subtitles in ${selectedLanguage === 'ky' ? 'Kyrgyz' : selectedLanguage === 'kk' ? 'Kazakh' : selectedLanguage === 'uz' ? 'Uzbek' : selectedLanguage === 'ru' ? 'Russian' : 'Turkish'}...`);
+      generateSubtitlesForPath(videoPath);
+    }
+  }, [selectedLanguage]);
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
