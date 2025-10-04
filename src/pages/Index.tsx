@@ -157,10 +157,10 @@ const Index = () => {
             </p>
           </div>
           
-          <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/40 bg-card max-h-[30vh]">
+          <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/40 bg-card">
             <video 
               controls 
-              className="w-full h-full object-contain"
+              className="w-full h-auto"
               poster="/demo-video-poster.jpg"
             >
               <source src="/demo-video.mp4" type="video/mp4" />
