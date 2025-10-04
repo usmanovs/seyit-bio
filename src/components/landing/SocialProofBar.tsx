@@ -8,7 +8,7 @@ export const SocialProofBar = () => {
           <div className="flex flex-col items-center gap-2">
             <div className="flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" />
-              <span className="text-3xl font-bold">10,000+</span>
+              <span className="text-3xl font-bold">10+</span>
             </div>
             <span className="text-sm text-muted-foreground">Happy Creators</span>
           </div>
