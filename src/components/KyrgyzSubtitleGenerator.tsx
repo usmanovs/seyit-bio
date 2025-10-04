@@ -309,12 +309,6 @@ export const KyrgyzSubtitleGenerator = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Check access before processing
-    if (!canGenerate) {
-      setShowSignupPrompt(true);
-      return;
-    }
-
     const requestId = generateRequestId();
     const uploadStartTime = Date.now();
     
@@ -607,6 +601,16 @@ export const KyrgyzSubtitleGenerator = () => {
       setSubtitleBlobUrl(blobUrl);
       console.log('[KyrgyzSubtitleGenerator] Subtitles generated, cues:', parsedCues.length);
       toast.success("Kyrgyz subtitles generated successfully");
+      
+      // Show signup prompt after successful generation if user just used their free generation
+      if (!user && freeGenerationsUsed >= 1) {
+        setShowSignupPrompt(true);
+      }
+      
+      // For logged-in users, increment videos processed count
+      if (user) {
+        setVideosProcessedCount(prev => prev + 1);
+      }
       
       // Show signup prompt for non-authenticated users after first free generation
       if (!user && freeGenerationsUsed >= 1) {
