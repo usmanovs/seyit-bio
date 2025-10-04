@@ -74,25 +74,6 @@ const Index = () => {
               </span>
             </div>
             <div className="flex items-center gap-4">
-              {/* Global counter with flip-counter style */}
-              <div className="hidden sm:inline-flex items-center gap-3">
-                <Video className="w-5 h-5 text-primary" />
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1">
-                    {['4', '3'].map((digit, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-center w-8 h-10 bg-gray-900 dark:bg-gray-800 rounded border border-gray-700 shadow-sm"
-                      >
-                        <span className="text-xl font-bold text-white">{digit}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <span className="text-sm font-medium text-muted-foreground ml-1">
-                    videos processed
-                  </span>
-                </div>
-              </div>
               {!loading && (user ? (
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-muted-foreground hidden sm:inline">{user.email}</span>
@@ -144,6 +125,26 @@ const Index = () => {
             Professional AI-powered subtitle generation in minutes. 
             Perfect translations, beautiful styling, zero hassle.
           </p>
+
+          {/* Flip Counter */}
+          <div className="flex items-center justify-center gap-3 py-6">
+            <Video className="w-5 h-5 text-primary" />
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1">
+                {['4', '3'].map((digit, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-center w-10 h-12 bg-gray-900 dark:bg-gray-800 rounded border border-gray-700 shadow-sm"
+                  >
+                    <span className="text-2xl font-bold text-white">{digit}</span>
+                  </div>
+                ))}
+              </div>
+              <span className="text-sm font-medium text-muted-foreground ml-1">
+                videos processed
+              </span>
+            </div>
+          </div>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
             <Button size="lg" onClick={scrollToGenerator} className="text-lg px-8 h-14 rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all group">
