@@ -140,7 +140,7 @@ const Index = () => {
           </div>
           
           <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/40 bg-card max-w-[280px] mx-auto">
-            <AspectRatio ratio={16 / 9}>
+            <div className="max-h-[500px] w-full">
               <video 
                 controls 
                 className="w-full h-full object-contain"
@@ -148,7 +148,7 @@ const Index = () => {
                 <source src="/demo-video.mp4" type="video/mp4" />
                 Your browser does not support the video tag.
               </video>
-            </AspectRatio>
+            </div>
           </div>
         </div>
       </section>
