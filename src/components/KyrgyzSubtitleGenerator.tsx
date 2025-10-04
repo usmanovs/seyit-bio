@@ -73,6 +73,8 @@ export const KyrgyzSubtitleGenerator = () => {
   const subtitleRefs = useRef<(HTMLDivElement | null)[]>([]);
   const ffmpegRef = useRef(new FFmpeg());
   const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
+  const [ffmpegLoading, setFfmpegLoading] = useState(false);
+  const [ffmpegError, setFfmpegError] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const captionStyles = [{
     id: 'outline',
@@ -111,28 +113,56 @@ export const KyrgyzSubtitleGenerator = () => {
     fetchVideosProcessedCount();
   }, []);
 
-  // Load FFmpeg on mount
-  useEffect(() => {
-    const loadFFmpeg = async () => {
+  // FFmpeg loader with retry and timeout
+  const loadFFmpegCore = async (baseURL: string) => {
+    const ffmpeg = ffmpegRef.current;
+    ffmpeg.on('log', ({ message }) => {
+      console.log('[FFmpeg]', message);
+    });
+    await ffmpeg.load({
+      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+    });
+  };
+
+  const loadFFmpeg = async () => {
+    if (ffmpegLoaded || ffmpegLoading) return;
+    setFfmpegLoading(true);
+    setFfmpegError(null);
+    console.log('[FFmpeg] Starting to load FFmpeg...');
+
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('FFmpeg load timed out')), 20000));
+
+    try {
+      // Try primary CDN (unpkg) pinned to package version
+      await Promise.race([
+        loadFFmpegCore('https://unpkg.com/@ffmpeg/core@0.12.15/dist/umd'),
+        timeout,
+      ]);
+      setFfmpegLoaded(true);
+      console.log('[FFmpeg] FFmpeg loaded successfully (unpkg)');
+      toast.success('Video processor ready!');
+    } catch (err) {
+      console.warn('[FFmpeg] Primary CDN failed, retrying with jsDelivr...', err);
       try {
-        console.log('[FFmpeg] Starting to load FFmpeg...');
-        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
-        const ffmpeg = ffmpegRef.current;
-        ffmpeg.on('log', ({ message }) => {
-          console.log('[FFmpeg]', message);
-        });
-        await ffmpeg.load({
-          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-        });
+        await Promise.race([
+          loadFFmpegCore('https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/umd'),
+          timeout,
+        ]);
         setFfmpegLoaded(true);
-        console.log('[FFmpeg] FFmpeg loaded successfully');
+        console.log('[FFmpeg] FFmpeg loaded successfully (jsDelivr)');
         toast.success('Video processor ready!');
-      } catch (error) {
-        console.error('[FFmpeg] Failed to load FFmpeg:', error);
-        toast.error('Failed to load video processor. Please refresh the page.');
+      } catch (e2) {
+        console.error('[FFmpeg] Failed to load from both CDNs:', e2);
+        setFfmpegError('Failed to load video processor. Please try again.');
+        toast.error('Failed to load video processor. Click Retry.');
       }
-    };
+    } finally {
+      setFfmpegLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadFFmpeg();
   }, []);
 
@@ -1263,39 +1293,44 @@ export const KyrgyzSubtitleGenerator = () => {
                         <Textarea value={cue.text} onChange={e => handleCueTextChange(index, e.target.value)} className="min-h-[50px] text-sm resize-none bg-transparent border-0 p-0 focus-visible:ring-0 font-medium" placeholder="Enter subtitle text..." />
                       </div>)}
                    </div>
-                   <div className="space-y-2">
-                     <div className="flex gap-2">
-                       {hasUnsavedChanges && <Button onClick={applySubtitleChanges} className="flex-1">
-                           Update Captions
-                         </Button>}
-                       <Button onClick={downloadVideoWithSubtitles} size="lg" className={`
-                        ${hasUnsavedChanges ? "flex-1" : "w-full"}
-                        bg-blue-600 hover:bg-blue-700
-                        text-white font-semibold
-                        shadow-lg hover:shadow-xl
-                        transition-all duration-300
-                      `} disabled={isProcessingVideo || !ffmpegLoaded}>
-                      {!ffmpegLoaded ? <div className="flex items-center gap-2">
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            <span>Loading processor...</span>
-                          </div> : isProcessingVideo ? <div className="w-full space-y-2">
-                            <div className="flex items-center justify-center gap-2">
+                     <div className="space-y-2">
+                       <div className="flex gap-2 items-center">
+                         {hasUnsavedChanges && <Button onClick={applySubtitleChanges} className="flex-1">
+                             Update Captions
+                           </Button>}
+                         <Button onClick={downloadVideoWithSubtitles} size="lg" className={`
+                          ${hasUnsavedChanges ? "flex-1" : "w-full"}
+                          bg-blue-600 hover:bg-blue-700
+                          text-white font-semibold
+                          shadow-lg hover:shadow-xl
+                          transition-all duration-300
+                        `} disabled={isProcessingVideo || !ffmpegLoaded}>
+                        {ffmpegLoading ? <div className="flex items-center gap-2">
                               <Loader2 className="w-5 h-5 animate-spin" />
-                               <span className="text-sm">
-                                 {processingStatus.charAt(0).toUpperCase() + processingStatus.slice(1)} - {Math.round(processingProgress)}%
-                                 {estimatedTimeRemaining > 0 && ` ~${formatTimeRemaining(estimatedTimeRemaining)} left`}
-                               </span>
+                              <span>Loading processor...</span>
+                            </div> : isProcessingVideo ? <div className="w-full space-y-2">
+                              <div className="flex items-center justify-center gap-2">
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                 <span className="text-sm">
+                                   {processingStatus.charAt(0).toUpperCase() + processingStatus.slice(1)} - {Math.round(processingProgress)}%
+                                   {estimatedTimeRemaining > 0 && ` ~${formatTimeRemaining(estimatedTimeRemaining)} left`}
+                                 </span>
+                              </div>
+                              <Progress value={processingProgress} className="w-full h-2" />
+                            </div> : <>
+                            <div className="flex items-center gap-2">
+                              <Download className="w-5 h-5" />
+                              <span>Download Video</span>
                             </div>
-                            <Progress value={processingProgress} className="w-full h-2" />
-                          </div> : <>
-                          <div className="flex items-center gap-2">
-                            <Download className="w-5 h-5" />
-                            <span>Download Video</span>
-                          </div>
-                         </>}
-                     </Button>
+                           </>}
+                       </Button>
+                       {!ffmpegLoaded && !ffmpegLoading && !isProcessingVideo && (
+                         <Button variant="outline" onClick={loadFFmpeg} className="shrink-0">
+                           Retry Processor Load
+                         </Button>
+                       )}
+                        </div>
                       </div>
-                    </div>
                  </div>}
               </div>
 
