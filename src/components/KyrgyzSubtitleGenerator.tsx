@@ -14,6 +14,11 @@ import editingExample from "@/assets/editing-example.png";
 const isMobileDevice = () => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || navigator.maxTouchPoints && navigator.maxTouchPoints > 2;
 };
+
+// Generate unique request ID for tracking
+const generateRequestId = () => {
+  return `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+};
 export const KyrgyzSubtitleGenerator = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -268,8 +273,19 @@ export const KyrgyzSubtitleGenerator = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    const requestId = generateRequestId();
+    const uploadStartTime = Date.now();
+    
+    console.log(`[${requestId}] FILE SELECTED`, {
+      fileName: file.name,
+      fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+      fileType: file.type,
+      timestamp: new Date().toISOString()
+    });
+
     // Validate file type
     if (!file.type.startsWith('video/')) {
+      console.error(`[${requestId}] VALIDATION FAILED: Invalid file type`, { fileType: file.type });
       toast.error("Please select a video file");
       return;
     }
@@ -277,6 +293,11 @@ export const KyrgyzSubtitleGenerator = () => {
     // Validate file size (max 200MB)
     const MAX_SIZE = 200 * 1024 * 1024; // 200MB
     if (file.size > MAX_SIZE) {
+      console.error(`[${requestId}] VALIDATION FAILED: File too large`, { 
+        fileSize: file.size, 
+        maxSize: MAX_SIZE,
+        sizeMB: Math.round(file.size / 1024 / 1024)
+      });
       toast.error(`Video file must be less than 200MB (current: ${Math.round(file.size / 1024 / 1024)}MB). Please compress your video.`);
       return;
     }
@@ -330,7 +351,14 @@ export const KyrgyzSubtitleGenerator = () => {
       const userId = user?.id || 'guest';
       const fileName = `${userId}/${Date.now()}_${file.name}`;
       const isMobile = isMobileDevice();
-      console.log('[Upload] Starting upload:', fileName, 'Size:', file.size, 'bytes', 'Device:', isMobile ? 'Mobile' : 'Desktop');
+      
+      console.log(`[${requestId}] UPLOAD START`, {
+        fileName,
+        fileSize: file.size,
+        userId: userId.substring(0, 8),
+        device: isMobile ? 'Mobile' : 'Desktop',
+        timestamp: new Date().toISOString()
+      });
 
       // Add timeout wrapper for upload
       const uploadPromise = supabase.storage.from('videos').upload(fileName, file, {
@@ -375,7 +403,14 @@ export const KyrgyzSubtitleGenerator = () => {
       if (winner !== 'exists' && winner?.error) {
         throw winner.error;
       }
-      console.log('[Upload] Upload completed (winner):', winner);
+      
+      const uploadDuration = ((Date.now() - uploadStartTime) / 1000).toFixed(2);
+      console.log(`[${requestId}] UPLOAD SUCCESS`, {
+        fileName,
+        uploadDuration: `${uploadDuration}s`,
+        uploadSpeed: `${(file.size / (1024 * 1024) / parseFloat(uploadDuration)).toFixed(2)} MB/s`,
+        timestamp: new Date().toISOString()
+      });
 
       // Show 100% completion briefly before continuing
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -395,15 +430,18 @@ export const KyrgyzSubtitleGenerator = () => {
       setIsUploading(false);
 
       // Auto-generate subtitles after upload
-      await generateSubtitlesForPath(fileName);
+      await generateSubtitlesForPath(fileName, requestId);
     } catch (error: any) {
       const isMobile = isMobileDevice();
-      console.error("[Upload] Upload failed:", error);
-      console.error("[Upload] Error details:", {
-        message: error.message,
+      const uploadDuration = ((Date.now() - uploadStartTime) / 1000).toFixed(2);
+      
+      console.error(`[${requestId}] UPLOAD FAILED`, {
+        error: error.message,
+        uploadDuration: `${uploadDuration}s`,
         status: error.status,
         statusCode: error.statusCode,
-        device: isMobile ? 'Mobile' : 'Desktop'
+        device: isMobile ? 'Mobile' : 'Desktop',
+        timestamp: new Date().toISOString()
       });
 
       // Always clear progress timer on error
@@ -427,15 +465,25 @@ export const KyrgyzSubtitleGenerator = () => {
       }); // Longer duration for mobile tips
     }
   };
-  const generateSubtitlesForPath = async (path: string) => {
+  const generateSubtitlesForPath = async (path: string, requestId?: string) => {
     if (!path) {
       toast.error("Please upload a video first");
       return;
     }
+    
+    const rid = requestId || generateRequestId();
+    const subtitleStartTime = Date.now();
+    
+    console.log(`[${rid}] SUBTITLE GENERATION START`, {
+      videoPath: path,
+      addEmojis,
+      correctSpelling,
+      timestamp: new Date().toISOString()
+    });
+    
     setIsGenerating(true);
     let responseData: any = null;
     try {
-      console.log('[KyrgyzSubtitleGenerator] Calling edge function with videoPath:', path, 'addEmojis:', addEmojis, 'correctSpelling:', correctSpelling);
       const {
         data,
         error
@@ -443,7 +491,8 @@ export const KyrgyzSubtitleGenerator = () => {
         body: {
           videoPath: path,
           addEmojis: addEmojis,
-          correctSpelling: correctSpelling
+          correctSpelling: correctSpelling,
+          requestId: rid
         },
         headers: (await supabase.auth.getSession()).data.session?.access_token ? {
           Authorization: `Bearer ${(await supabase.auth.getSession()).data.session!.access_token}`
@@ -458,6 +507,17 @@ export const KyrgyzSubtitleGenerator = () => {
         throw new Error(data.error);
       }
       if (error) throw error;
+      
+      const subtitleDuration = ((Date.now() - subtitleStartTime) / 1000).toFixed(2);
+      const subtitleCount = parseSrtToCues(data.subtitles).length;
+      
+      console.log(`[${rid}] SUBTITLE GENERATION SUCCESS`, {
+        subtitleCount,
+        transcriptionLength: data.transcription?.length || 0,
+        duration: `${subtitleDuration}s`,
+        timestamp: new Date().toISOString()
+      });
+      
       setSubtitles(data.subtitles);
       setEditedSubtitles(data.subtitles);
       setHasUnsavedChanges(false);
@@ -479,18 +539,20 @@ export const KyrgyzSubtitleGenerator = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          console.log(`[${rid}] Incrementing video counter for user ${user.id.substring(0, 8)}`);
           const { error: incrementError } = await supabase.rpc('increment_video_processing_count', {
             user_uuid: user.id
           });
           if (incrementError) {
-            console.error('[KyrgyzSubtitleGenerator] Failed to increment counter:', incrementError);
+            console.error(`[${rid}] COUNTER INCREMENT FAILED`, incrementError);
           } else {
+            console.log(`[${rid}] Counter incremented successfully`);
             // Refresh the displayed count
             await fetchVideosProcessedCount();
           }
         }
       } catch (err) {
-        console.error('[KyrgyzSubtitleGenerator] Error incrementing counter:', err);
+        console.error(`[${rid}] Error incrementing counter:`, err);
       }
 
       // Auto-generate titles and summaries
@@ -541,10 +603,13 @@ export const KyrgyzSubtitleGenerator = () => {
         toast.success("AI content generated!");
       }
     } catch (error: any) {
-      console.error("[KyrgyzSubtitleGenerator] Full error:", error);
-      console.error("[KyrgyzSubtitleGenerator] Error context:", {
-        message: error.message,
-        context: error.context
+      const subtitleDuration = ((Date.now() - subtitleStartTime) / 1000).toFixed(2);
+      
+      console.error(`[${rid}] SUBTITLE GENERATION FAILED`, {
+        error: error.message,
+        duration: `${subtitleDuration}s`,
+        responseData: responseData ? JSON.stringify(responseData).substring(0, 200) : null,
+        timestamp: new Date().toISOString()
       });
 
       // Extract the actual error message
@@ -642,17 +707,28 @@ export const KyrgyzSubtitleGenerator = () => {
       toast.error("No video or subtitles available");
       return;
     }
+    
+    const requestId = generateRequestId();
+    const processingStartTime = Date.now();
+    
+    console.log(`[${requestId}] VIDEO PROCESSING START`, {
+      videoPath,
+      subtitlesLength: subtitles.length,
+      captionStyle: captionStyle,
+      timestamp: new Date().toISOString()
+    });
+    
     setIsProcessingVideo(true);
     setProcessingStatus('starting');
     setProcessingProgress(0);
-    setProcessingStartTime(Date.now());
+    setProcessingStartTime(processingStartTime);
     let predictionId: string | undefined;
     let lastStatus: string | undefined;
     try {
-      console.log('[KyrgyzSubtitleGenerator] Calling backend burn-subtitles function...');
       toast.info("Processing started. This may take several minutes...");
 
       // Start the processing job; backend returns a predictionId for polling
+      console.log(`[${requestId}] Calling burn-subtitles-backend...`);
       const {
         data,
         error
@@ -660,24 +736,34 @@ export const KyrgyzSubtitleGenerator = () => {
         body: {
           videoPath,
           subtitles,
-          stylePrompt: currentStyle.prompt
+          stylePrompt: currentStyle.prompt,
+          requestId
         }
       });
       if (error) throw error;
       predictionId = data?.predictionId;
+      
+      console.log(`[${requestId}] Processing job created`, { predictionId });
 
       // New flow: poll by predictionId
       if (data?.predictionId) {
         const predId: string = data.predictionId;
+        console.log(`[${requestId}] Starting status polling loop for ${predId}`);
+        
         for (let attempt = 0; attempt < 120; attempt++) {
           // ~10 minutes max
           await new Promise(res => setTimeout(res, 5000));
+          
+          const elapsedSeconds = ((Date.now() - processingStartTime) / 1000).toFixed(1);
+          console.log(`[${requestId}] Polling attempt ${attempt + 1}/120 (${elapsedSeconds}s elapsed)`);
+          
           const {
             data: statusData,
             error: statusError
           } = await supabase.functions.invoke('burn-subtitles-backend', {
             body: {
-              predictionId: predId
+              predictionId: predId,
+              requestId
             }
           });
           if (statusError) throw statusError;
@@ -686,14 +772,30 @@ export const KyrgyzSubtitleGenerator = () => {
           if (statusData?.status === 'failed') {
             const errorMsg = statusData.error || 'Video processing failed';
             const details = statusData.details ? `\n\nDetails: ${statusData.details}` : '';
+            console.error(`[${requestId}] PROCESSING FAILED`, {
+              error: errorMsg,
+              details: statusData.details,
+              attempt: attempt + 1,
+              elapsedTime: `${elapsedSeconds}s`
+            });
             throw new Error(`${errorMsg}${details}`);
           }
           
           if (statusData?.status) {
+            if (lastStatus !== statusData.status) {
+              console.log(`[${requestId}] Status changed: ${lastStatus || 'none'} → ${statusData.status}`);
+            }
             lastStatus = statusData.status;
             setProcessingStatus(statusData.status);
           }
           if (statusData?.videoUrl) {
+            const totalDuration = ((Date.now() - processingStartTime) / 1000).toFixed(2);
+            console.log(`[${requestId}] PROCESSING COMPLETE`, {
+              totalDuration: `${totalDuration}s`,
+              videoUrl: statusData.videoUrl.substring(0, 50) + '...',
+              timestamp: new Date().toISOString()
+            });
+            
             // Completed successfully – set to 100%
             setProcessingProgress(100);
             // Completed successfully – download
@@ -704,6 +806,14 @@ export const KyrgyzSubtitleGenerator = () => {
             }
             
             const processedVideoBlob = await videoResponse.blob();
+            const downloadSizeMB = (processedVideoBlob.size / (1024 * 1024)).toFixed(2);
+            
+            console.log(`[${requestId}] DOWNLOAD START`, {
+              videoUrl: statusData.videoUrl.substring(0, 50) + '...',
+              fileSizeMB: downloadSizeMB,
+              timestamp: new Date().toISOString()
+            });
+            
             const videoLink = document.createElement('a');
             videoLink.href = window.URL.createObjectURL(processedVideoBlob);
             videoLink.download = 'video_with_subtitles.mp4';
@@ -711,10 +821,19 @@ export const KyrgyzSubtitleGenerator = () => {
             videoLink.click();
             document.body.removeChild(videoLink);
             window.URL.revokeObjectURL(videoLink.href);
+            
+            const endToEndDuration = ((Date.now() - processingStartTime) / 1000).toFixed(2);
+            console.log(`[${requestId}] DOWNLOAD COMPLETE - END TO END SUCCESS`, {
+              totalDuration: `${endToEndDuration}s`,
+              fileSizeMB: downloadSizeMB,
+              timestamp: new Date().toISOString()
+            });
+            
             toast.success("Video with burned subtitles downloaded successfully!");
             return;
           }
         }
+        console.log(`[${requestId}] PROCESSING TIMEOUT after 120 polling attempts (max 10 minutes)`);
         throw new Error("Processing timed out. Please try again later.");
       }
 
@@ -756,7 +875,16 @@ export const KyrgyzSubtitleGenerator = () => {
       }
       throw new Error(data?.error || "Failed to start video processing");
     } catch (error: any) {
-      console.error('[KyrgyzSubtitleGenerator] Backend processing failed:', error);
+      const errorDuration = ((Date.now() - processingStartTime) / 1000).toFixed(2);
+      
+      console.error(`[${requestId}] VIDEO PROCESSING FAILED`, {
+        error: error.message,
+        predictionId,
+        lastStatus,
+        duration: `${errorDuration}s`,
+        timestamp: new Date().toISOString()
+      });
+      
       toast.error("Processing failed: " + (error?.message || 'Unknown error'));
     } finally {
       setIsProcessingVideo(false);

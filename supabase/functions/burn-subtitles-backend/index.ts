@@ -12,9 +12,17 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  let requestId = 'unknown';
   try {
     const body = await req.json();
-    console.log('[BURN-SUBTITLES] Request body:', body);
+    requestId = body.requestId || `backend_${Date.now()}`;
+    
+    console.log(`[${requestId}] BACKEND REQUEST`, {
+      hasPredictionId: !!body.predictionId,
+      hasVideoPath: !!body.videoPath,
+      hasSubtitles: !!body.subtitles,
+      timestamp: new Date().toISOString()
+    });
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -23,7 +31,7 @@ serve(async (req) => {
     const replicateToken = Deno.env.get('REPLICATE_API_KEY');
     
     if (!replicateToken) {
-      console.log('[BURN-SUBTITLES] No Replicate token found');
+      console.error(`[${requestId}] CONFIGURATION ERROR: No Replicate token found`);
       throw new Error('REPLICATE_API_KEY is not configured');
     }
 
@@ -34,13 +42,18 @@ serve(async (req) => {
     // Case 1: Status polling - if body contains predictionId
     if (body.predictionId) {
       const predictionId = body.predictionId;
-      console.log('[BURN-SUBTITLES] Checking status for:', predictionId);
+      console.log(`[${requestId}] STATUS CHECK for prediction: ${predictionId}`);
       
       const prediction = await replicate.predictions.get(predictionId);
-      console.log('[BURN-SUBTITLES] Status:', prediction.status);
+      console.log(`[${requestId}] Current status: ${prediction.status}`);
 
       if (prediction.status === 'succeeded') {
         const outputUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+        console.log(`[${requestId}] PREDICTION SUCCESS`, {
+          predictionId,
+          outputUrl: outputUrl?.substring(0, 50) + '...',
+          timestamp: new Date().toISOString()
+        });
         return new Response(
           JSON.stringify({ success: true, status: prediction.status, videoUrl: outputUrl }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -49,8 +62,13 @@ serve(async (req) => {
 
       if (prediction.status === 'failed') {
         const errorMessage = prediction.error ?? 'Video processing failed';
-        console.error('[BURN-SUBTITLES] Prediction failed:', errorMessage);
-        console.error('[BURN-SUBTITLES] Full prediction object:', JSON.stringify(prediction, null, 2));
+        console.error(`[${requestId}] PREDICTION FAILED`, {
+          predictionId,
+          error: errorMessage,
+          logs: prediction.logs,
+          timestamp: new Date().toISOString()
+        });
+        console.error(`[${requestId}] Full prediction:`, JSON.stringify(prediction, null, 2));
         
         return new Response(
           JSON.stringify({ 
@@ -64,6 +82,7 @@ serve(async (req) => {
       }
 
       // Still processing
+      console.log(`[${requestId}] Still processing (status: ${prediction.status})`);
       return new Response(
         JSON.stringify({ success: true, status: prediction.status }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -74,17 +93,22 @@ serve(async (req) => {
     const { videoPath, subtitles } = body;
     
     if (!videoPath || !subtitles) {
+      console.error(`[${requestId}] VALIDATION ERROR: Missing videoPath or subtitles`);
       throw new Error('Missing videoPath or subtitles');
     }
 
-    console.log('[BURN-SUBTITLES] Starting new job for video:', videoPath);
+    console.log(`[${requestId}] JOB INITIATION`, {
+      videoPath,
+      subtitlesLength: subtitles.length,
+      timestamp: new Date().toISOString()
+    });
 
     // Get video public URL
     const { data: { publicUrl } } = supabase.storage
       .from('videos')
       .getPublicUrl(videoPath);
 
-    console.log('[BURN-SUBTITLES] Video URL:', publicUrl);
+    console.log(`[${requestId}] Video URL retrieved:`, publicUrl.substring(0, 50) + '...');
 
     // Create a temporary SRT file content - normalize spacing to avoid extra gaps
     // First, clean any markdown code fences from the subtitles
@@ -107,6 +131,12 @@ serve(async (req) => {
     const srtBlob = new Blob([srtContent], { type: 'text/plain' });
     const srtFileName = `subtitles_${Date.now()}.srt`;
     
+    console.log(`[${requestId}] SRT file prepared`, {
+      fileName: srtFileName,
+      sizeBytes: srtBlob.size,
+      timestamp: new Date().toISOString()
+    });
+    
     // Upload SRT to storage temporarily
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('videos')
@@ -116,15 +146,17 @@ serve(async (req) => {
       });
 
     if (uploadError) {
-      console.error('[BURN-SUBTITLES] SRT upload error:', uploadError);
+      console.error(`[${requestId}] SRT UPLOAD ERROR`, uploadError);
       throw new Error('Failed to upload subtitle file');
     }
+    
+    console.log(`[${requestId}] SRT uploaded successfully to temp/${srtFileName}`);
 
     const { data: { publicUrl: srtUrl } } = supabase.storage
       .from('videos')
       .getPublicUrl(`temp/${srtFileName}`);
 
-    console.log('[BURN-SUBTITLES] SRT URL:', srtUrl);
+    console.log(`[${requestId}] SRT URL:`, srtUrl.substring(0, 50) + '...');
 
       // Create clean, readable subtitle style based on user's selection
       let enhancedPrompt = body.stylePrompt || 'white text with black outline, bold font';
@@ -154,7 +186,12 @@ FFmpeg command must include: -c:a copy -map 0:a? to preserve all audio streams w
         },
       } as any);
 
-    console.log('[BURN-SUBTITLES] Prediction created:', prediction.id);
+    console.log(`[${requestId}] REPLICATE JOB CREATED`, {
+      predictionId: prediction.id,
+      model: 'fofr/smart-ffmpeg',
+      stylePrompt: enhancedPrompt,
+      timestamp: new Date().toISOString()
+    });
 
     // Return immediately with predictionId for client-side polling
     return new Response(
@@ -163,7 +200,11 @@ FFmpeg command must include: -c:a copy -map 0:a? to preserve all audio streams w
     );
 
   } catch (error: any) {
-    console.error('[BURN-SUBTITLES] Error:', error);
+    console.error(`[${requestId}] BACKEND ERROR`, {
+      error: error.message,
+      stack: error.stack?.substring(0, 200),
+      timestamp: new Date().toISOString()
+    });
     return new Response(
       JSON.stringify({ error: error.message }),
       {
