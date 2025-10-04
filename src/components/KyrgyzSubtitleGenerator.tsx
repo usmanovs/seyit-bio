@@ -567,15 +567,30 @@ export const KyrgyzSubtitleGenerator = () => {
             user_uuid: user.id
           });
           if (incrementError) {
-            console.error(`[${rid}] COUNTER INCREMENT FAILED`, incrementError);
+            console.error(`[${rid}] COUNTER INCREMENT FAILED`, {
+              error: incrementError,
+              message: incrementError.message,
+              details: incrementError.details,
+              hint: incrementError.hint,
+              code: incrementError.code
+            });
+            toast.error("Failed to update video counter");
           } else {
             console.log(`[${rid}] Counter incremented successfully`);
             // Refresh the displayed count
             await fetchVideosProcessedCount();
           }
+        } else {
+          console.warn(`[${rid}] Cannot increment counter: user not authenticated`);
+          toast.error("Please sign in to track your videos");
         }
       } catch (err) {
-        console.error(`[${rid}] Error incrementing counter:`, err);
+        console.error(`[${rid}] Error incrementing counter:`, {
+          error: err,
+          message: (err as any)?.message,
+          stack: (err as any)?.stack
+        });
+        toast.error("Error updating video counter");
       }
 
       // Auto-generate titles and summaries
@@ -877,22 +892,8 @@ export const KyrgyzSubtitleGenerator = () => {
         document.body.removeChild(videoLink);
         window.URL.revokeObjectURL(videoLink.href);
 
-        // Increment the videos processed count
-        try {
-          const {
-            data: {
-              user
-            }
-          } = await supabase.auth.getUser();
-          if (user) {
-            await supabase.rpc('increment_video_processing_count', {
-              user_uuid: user.id
-            });
-            setVideosProcessedCount(prev => prev + 1);
-          }
-        } catch (countError) {
-          console.error('[KyrgyzSubtitleGenerator] Failed to increment count:', countError);
-        }
+        // Note: Counter already incremented after subtitle generation
+        // No need to increment again here to avoid double counting
         toast.success("Video with burned subtitles downloaded successfully!");
         return;
       }
