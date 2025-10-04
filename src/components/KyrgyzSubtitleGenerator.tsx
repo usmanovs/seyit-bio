@@ -602,11 +602,6 @@ export const KyrgyzSubtitleGenerator = () => {
       console.log('[KyrgyzSubtitleGenerator] Subtitles generated, cues:', parsedCues.length);
       toast.success("Kyrgyz subtitles generated successfully");
       
-      // Show signup prompt after successful generation if user just used their free generation
-      if (!user && freeGenerationsUsed >= 1) {
-        setShowSignupPrompt(true);
-      }
-      
       // For logged-in users, increment videos processed count
       if (user) {
         setVideosProcessedCount(prev => prev + 1);
@@ -927,6 +922,12 @@ export const KyrgyzSubtitleGenerator = () => {
             });
             
             toast.success("Video with burned subtitles downloaded successfully!");
+            
+            // Show signup prompt after successful download if user just used their free generation
+            if (!user && freeGenerationsUsed >= 1) {
+              setShowSignupPrompt(true);
+            }
+            
             return;
           }
         }
@@ -954,6 +955,12 @@ export const KyrgyzSubtitleGenerator = () => {
         // Note: Counter already incremented after subtitle generation
         // No need to increment again here to avoid double counting
         toast.success("Video with burned subtitles downloaded successfully!");
+        
+        // Show signup prompt after successful download if user just used their free generation
+        if (!user && freeGenerationsUsed >= 1) {
+          setShowSignupPrompt(true);
+        }
+        
         return;
       }
       throw new Error(data?.error || "Failed to start video processing");
