@@ -186,7 +186,7 @@ export const KyrgyzSubtitleGenerator = () => {
       const {
         data,
         error
-      } = await supabase.from('tiktok_credentials').select('expires_at').single();
+      } = await supabase.from('tiktok_credentials').select('expires_at').maybeSingle();
       if (!error && data) {
         const expiresAt = new Date(data.expires_at);
         setIsTikTokConnected(expiresAt > new Date());
