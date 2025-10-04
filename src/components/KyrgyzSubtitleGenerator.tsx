@@ -908,10 +908,20 @@ export const KyrgyzSubtitleGenerator = () => {
       await ffmpeg.writeFile('subtitles.srt', new TextEncoder().encode(srtContent));
       setProcessingProgress(20);
 
+      // Load a broad-coverage emoji font into FFmpeg's FS so emojis render
+      try {
+        console.log(`[${requestId}] Loading emoji font for FFmpeg...`);
+        const fontBinary = await fetchFile('/fonts/Symbola.ttf');
+        await ffmpeg.writeFile('Symbola.ttf', fontBinary); // write at FS root
+        console.log(`[${requestId}] Emoji font loaded`);
+      } catch (e) {
+        console.warn(`[${requestId}] Emoji font load failed (will continue without it)`, e);
+      }
+
       // Build subtitle style based on user selection
-      let subtitleFilter = 'subtitles=subtitles.srt:force_style=';
+      let subtitleFilter = 'subtitles=subtitles.srt:fontsdir=.:force_style=';
       const styleOptions = [];
-      
+
       if (currentStyle.prompt.includes('yellow') || currentStyle.prompt.includes('Highlight')) {
         styleOptions.push('PrimaryColour=&H00FFFF', 'OutlineColour=&HFFFFFF', 'Outline=2');
       } else if (currentStyle.prompt.includes('green') || currentStyle.prompt.includes('Framed')) {
