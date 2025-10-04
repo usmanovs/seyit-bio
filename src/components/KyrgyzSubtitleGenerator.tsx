@@ -1030,10 +1030,30 @@ export const KyrgyzSubtitleGenerator = () => {
     }
   };
 
-  // Cloud burning fallback via backend
-  const pollCloudPrediction = async (predictionId: string) => {
+  // Cloud burning fallback via backend with timeout
+  const pollCloudPrediction = async (predictionId: string, startTime: number = Date.now(), attemptCount: number = 0) => {
     setCloudPolling(true);
     setCloudStatus('queued');
+    
+    // 10 minute timeout (600 seconds)
+    const TIMEOUT_MS = 10 * 60 * 1000;
+    const MAX_ATTEMPTS = 150; // 150 attempts * 4s = 10 minutes
+    const elapsed = Date.now() - startTime;
+    
+    if (elapsed > TIMEOUT_MS || attemptCount > MAX_ATTEMPTS) {
+      setCloudPolling(false);
+      setCloudStatus('timeout');
+      toast.error('Cloud processing timed out after 10 minutes. The video may be too large or complex. Try a shorter video or simpler caption style.');
+      return;
+    }
+    
+    // Show progress feedback
+    if (attemptCount === 15) { // After 1 minute
+      toast.info('Still processing... Large videos can take 5-10 minutes');
+    } else if (attemptCount === 45) { // After 3 minutes
+      toast.info('Processing is taking longer than usual. Please be patient...');
+    }
+    
     try {
       const pollOnce = async () => {
         const { data, error } = await supabase.functions.invoke('burn-subtitles-backend', {
@@ -1072,7 +1092,9 @@ export const KyrgyzSubtitleGenerator = () => {
         return false;
       };
       const done = await pollOnce();
-      if (!done) setTimeout(() => pollCloudPrediction(predictionId), 4000);
+      // Use longer polling interval after 2 minutes to reduce server load
+      const pollInterval = attemptCount > 30 ? 6000 : 4000;
+      if (!done) setTimeout(() => pollCloudPrediction(predictionId, startTime, attemptCount + 1), pollInterval);
     } catch (e: any) {
       setCloudPolling(false);
       setCloudStatus('error');
@@ -1101,8 +1123,8 @@ export const KyrgyzSubtitleGenerator = () => {
       if (error) throw error;
       if (data?.predictionId) {
         setCloudPredictionId(data.predictionId);
-        pollCloudPrediction(data.predictionId);
-        toast.info('Started cloud processing...');
+        pollCloudPrediction(data.predictionId, Date.now(), 0);
+        toast.info('Started cloud processing... This may take 2-10 minutes depending on video size.');
       } else if (data?.videoUrl) {
         setCloudVideoUrl(data.videoUrl);
         setCloudStatus('succeeded');
