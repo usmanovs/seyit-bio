@@ -207,7 +207,8 @@ def handler(event, context):
         data=video_data,
         headers={
             'Authorization': f'Bearer {supabase_key}',
-            'Content-Type': 'video/mp4'
+            'Content-Type': 'video/mp4',
+            'x-upsert': 'true'
         },
         method='POST'
     )
@@ -233,7 +234,8 @@ def handler(event, context):
             data=status_payload,
             headers={
                 'Authorization': f'Bearer {supabase_key}',
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'x-upsert': 'true'
             },
             method='POST'
         )
