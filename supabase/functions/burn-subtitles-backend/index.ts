@@ -169,8 +169,8 @@ serve(async (req) => {
         enhancedPrompt = enhancedPrompt.replace('green border box', 'subtle border');
       }
       
-      // Ensure normal word/letter spacing
-      enhancedPrompt += '. Use normal word spacing and letter spacing (no extra gaps between words).';
+      // CRITICAL: Ensure normal spacing - no excessive letter-spacing/tracking
+      enhancedPrompt += '. CRITICAL: Use NORMAL letter-spacing (tracking=0, no extra gaps between letters or characters). NEVER add extra spacing between individual characters.';
       
       // Start Replicate job using predictions API so we can poll from the client
       const prediction = await replicate.predictions.create({
@@ -203,9 +203,11 @@ FONT & EMOJI SUPPORT:
 SUBTITLE STYLE:
 ${enhancedPrompt}
 - Position at bottom center with 40-60px margin from bottom edge
-- Ensure normal word spacing and letter spacing (no extra gaps)
+- CRITICAL: letter-spacing MUST be 0 (zero) - NO extra spacing between characters or letters
+- CRITICAL: Use default/normal character tracking - text should look natural and readable
 - Apply proper anti-aliasing for smooth text rendering
 - Use semi-transparent background box for better readability if needed
+- Support Cyrillic and emoji characters properly without spacing issues
 
 PERFORMANCE:
 - Output format: MP4 (H.264)
