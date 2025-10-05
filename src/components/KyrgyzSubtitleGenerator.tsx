@@ -1022,19 +1022,24 @@ export const KyrgyzSubtitleGenerator = () => {
       await ffmpeg.writeFile('subtitles.srt', new TextEncoder().encode(srtContent));
       setProcessingProgress(20);
 
-      // Load a broad-coverage emoji font into FFmpeg's FS so emojis render
+      // Load emoji-capable fonts into FFmpeg FS so emojis render
       try {
-        console.log(`[${requestId}] Loading emoji font for FFmpeg...`);
-        const fontBinary = await fetchFile('/fonts/Symbola.ttf');
-        await ffmpeg.writeFile('Symbola.ttf', fontBinary); // write at FS root
-        console.log(`[${requestId}] Emoji font loaded`);
+        console.log(`[${requestId}] Loading emoji fonts for FFmpeg...`);
+        // Symbola
+        const symbolaBinary = await fetchFile('/fonts/Symbola.ttf');
+        await ffmpeg.writeFile('Symbola.ttf', symbolaBinary);
+        // Noto Emoji (monochrome)
+        const notoEmojiResp = await fetch('https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoEmoji-Regular.ttf');
+        const notoEmojiBuf = new Uint8Array(await notoEmojiResp.arrayBuffer());
+        await ffmpeg.writeFile('NotoEmoji-Regular.ttf', notoEmojiBuf);
+        console.log(`[${requestId}] Emoji fonts loaded`);
       } catch (e) {
         console.warn(`[${requestId}] Emoji font load failed (will continue without it)`, e);
       }
 
       // Build subtitle style based on user selection
       let subtitleFilter = 'subtitles=subtitles.srt:charenc=UTF-8:fontsdir=.:force_style=';
-      const styleOptions = [];
+      const styleOptions: string[] = [];
 
       if (currentStyle.prompt.includes('yellow') || currentStyle.prompt.includes('Highlight')) {
         styleOptions.push('PrimaryColour=&H00FFFF', 'OutlineColour=&HFFFFFF', 'Outline=2', 'Bold=1');
@@ -1047,15 +1052,15 @@ export const KyrgyzSubtitleGenerator = () => {
         styleOptions.push('PrimaryColour=&HFFFFFF', 'OutlineColour=&H000000', 'Outline=3', 'Bold=1');
       }
       
-      // Use Symbola for emoji support - it works with FFmpeg's subtitle filter
-      // Note: Color emoji fonts (like Noto Color Emoji) don't work with FFmpeg subtitle rendering
-      styleOptions.push('FontSize=18', 'Alignment=2', 'MarginV=20', 'FontName=Symbola');
+      // Use emoji-capable font fallback order
+      // Note: Color emoji fonts are not supported by libass; use monochrome Noto Emoji + Symbola
+      styleOptions.push('FontSize=18', 'Alignment=2', 'MarginV=20', "FontName=Noto Emoji,Symbola");
       subtitleFilter += styleOptions.join(',');
       
       console.log(`[${requestId}] Local FFmpeg subtitle style:`, {
         style: currentStyle.name,
         filter: subtitleFilter,
-        fontLoaded: 'Symbola.ttf'
+        fontsLoaded: ['Symbola.ttf', 'NotoEmoji-Regular.ttf']
       });
 
       console.log(`[${requestId}] Running FFmpeg with filter: ${subtitleFilter}`);

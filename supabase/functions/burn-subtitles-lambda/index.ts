@@ -123,7 +123,9 @@ serve(async (req) => {
 
     const style = styleMapping[styleId] || styleMapping.outline;
     
+    // Build force_style string but exclude FontName (we set it explicitly in Lambda to enable emoji fallbacks)
     const forceStyleParams = Object.entries(style)
+      .filter(([key]) => key !== 'FontName')
       .map(([key, value]) => `${key}=${value}`)
       .join(',');
 
@@ -138,7 +140,7 @@ serve(async (req) => {
     const payload = {
       videoUrl: publicUrl,
       srtUrl: srtUrl,
-      forceStyle: forceStyleParams,
+      forceStyle: `FontName=Noto Emoji,Symbola,${forceStyleParams}`,
       requestId: requestId,
       supabaseUrl: supabaseUrl,
       supabaseKey: supabaseKey,
