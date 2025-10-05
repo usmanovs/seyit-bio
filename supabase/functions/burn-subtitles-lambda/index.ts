@@ -138,6 +138,11 @@ def handler(event, context):
         'body': json.dumps({'videoUrl': result_url})
     }`;
 
+    const ffmpegLayerArn = Deno.env.get('AWS_FFMPEG_LAYER_ARN');
+    if (!ffmpegLayerArn) {
+      throw new Error('AWS_FFMPEG_LAYER_ARN not configured');
+    }
+
     const deployResponse = await fetch(`${supabaseUrl}/functions/v1/deploy-lambda`, {
       method: 'POST',
       headers: {
@@ -150,7 +155,7 @@ def handler(event, context):
         runtime: 'python3.12',
         code: lambdaCode,
         roleArn: Deno.env.get('AWS_LAMBDA_ROLE_ARN') || 'arn:aws:iam::733002311493:role/lambda-ex',
-        layers: 'arn:aws:lambda:us-east-1:145266761615:layer:ffmpeg:4',
+        layers: [ffmpegLayerArn],
       }),
     });
 
