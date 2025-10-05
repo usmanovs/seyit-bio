@@ -406,36 +406,19 @@ def handler(event, context):
 
     if (!videoUrl) {
       const errMsg = result?.errorMessage || 'Lambda returned no video URL';
-      console.error(`[${requestId}] Error: ${errMsg} — falling back to backend burner`);
-
-      // Fallback: use backend burner (Replicate pipeline)
-      try {
-        const { data, error } = await supabase.functions.invoke('burn-subtitles-backend', {
-          body: { requestId, videoPath, subtitles, styleId }
-        });
-        if (error) {
-          console.error(`[${requestId}] Backend fallback error:`, error);
-          return new Response(JSON.stringify({ success: false, error: errMsg, fallbackError: error.message, raw: result }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        if (data?.videoUrl) {
-          return new Response(JSON.stringify({ success: true, videoUrl: data.videoUrl, message: 'Processed via backend fallback' }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        return new Response(JSON.stringify({ success: false, error: 'Fallback returned no video URL', raw: data }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      } catch (fbErr) {
-        console.error(`[${requestId}] Backend fallback exception:`, fbErr);
-        return new Response(JSON.stringify({ success: false, error: errMsg, fallbackError: String(fbErr), raw: result }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+      console.error(`[${requestId}] Lambda processing failed: ${errMsg}`);
+      console.error(`[${requestId}] Full Lambda response:`, JSON.stringify(result, null, 2));
+      
+      // NO FALLBACK - Return error immediately to expose Lambda issue
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: errMsg,
+        lambdaResponse: result,
+        message: 'Lambda failed - check logs for ffmpeg/layer issues'
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     return new Response(
