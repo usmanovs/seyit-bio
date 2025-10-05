@@ -158,61 +158,72 @@ serve(async (req) => {
 
     console.log(`[${requestId}] SRT URL:`, srtUrl.substring(0, 50) + '...');
 
-      // Create clean, readable subtitle style based on user's selection
-      let enhancedPrompt = body.stylePrompt || 'white text with black outline, bold font';
+      // Build FFmpeg subtitle filter with EXPLICIT parameters
+      // Using ASS subtitle format parameters for precise control
+      let stylePrompt = body.stylePrompt || 'white text with black outline, bold font';
       
-      // Fix problematic style prompts to ensure readability
-      if (enhancedPrompt.includes('solid black background')) {
-        enhancedPrompt = enhancedPrompt.replace('solid black background', 'semi-transparent dark background (70% opacity)');
-      }
-      if (enhancedPrompt.includes('green border box')) {
-        enhancedPrompt = enhancedPrompt.replace('green border box', 'subtle border');
-      }
-      
-      // CRITICAL: Ensure normal spacing - no excessive letter-spacing/tracking
-      enhancedPrompt += '. CRITICAL: Use NORMAL letter-spacing (tracking=0, no extra gaps between letters or characters). NEVER add extra spacing between individual characters.';
+      // Parse and normalize the style description
+      const hasBackgroundBox = stylePrompt.includes('background') || stylePrompt.includes('box');
+      const textColor = stylePrompt.includes('yellow') ? 'yellow' : 'white';
       
       // Start Replicate job using predictions API so we can poll from the client
       const prediction = await replicate.predictions.create({
         model: 'fofr/smart-ffmpeg',
         input: {
           files: [publicUrl, srtUrl],
-          prompt: `Burn the subtitles from the SRT file onto the video at the bottom center. 
+          prompt: `Burn subtitles from SRT file onto video using FFmpeg with these EXACT parameters:
 
-VIDEO QUALITY (CRITICAL - HIGHEST PRIORITY):
-- Use libx264 codec with CRF 15 for maximum quality (or CRF 12 for HD/4K content)
-- Use preset "slow" for best compression efficiency
-- Maintain original video resolution and framerate
-- Use pixel format yuv420p for compatibility
-- Set profile:v high and level 4.1
-- NEVER downscale or compress the original video quality
-- Preserve all video metadata
+CRITICAL FFmpeg SUBTITLE FILTER PARAMETERS:
+Use subtitles filter with force_style option. Apply these ASS style parameters:
 
-AUDIO QUALITY:
-- Copy original audio stream if AAC (use -c:a copy)
-- If not AAC, re-encode to AAC at 256kbps (use -c:a aac -b:a 256k)
-- Set -movflags +faststart for web compatibility
-- Preserve all audio channels and sample rate
+FontName=Noto Sans,Arial,sans-serif
+FontSize=24
+PrimaryColour=${textColor === 'yellow' ? '&H00FFFF' : '&HFFFFFF'}
+Bold=1
+Italic=0
+Underline=0
+Spacing=0
+Outline=1
+OutlineColour=&H00000000
+Shadow=2
+BackColour=${hasBackgroundBox ? '&H80000000' : '&H00000000'}
+BorderStyle=${hasBackgroundBox ? '4' : '1'}
+Alignment=2
+MarginL=20
+MarginR=20
+MarginV=40
 
-FONT & EMOJI SUPPORT:
-- Use font family with full emoji support: Noto Color Emoji, Segoe UI Emoji, Apple Color Emoji, or Twemoji
-- Ensure all emoji characters (🎉😊❤️✨🔥 etc.) render correctly as colored graphics
-- Font size: 24-28px for HD, 36-42px for 4K
-- Enable proper emoji rendering with colored glyphs
+SPACING IS CRITICAL:
+- Spacing=0 means NO letter spacing (characters are NOT spread apart)
+- Do NOT add any tracking or letter-spacing
+- Characters should be close together like normal text
+- NO gaps between letters
 
-SUBTITLE STYLE:
-${enhancedPrompt}
-- Position at bottom center with 40-60px margin from bottom edge
-- CRITICAL: letter-spacing MUST be 0 (zero) - NO extra spacing between characters or letters
-- CRITICAL: Use default/normal character tracking - text should look natural and readable
-- Apply proper anti-aliasing for smooth text rendering
-- Use semi-transparent background box for better readability if needed
-- Support Cyrillic and emoji characters properly without spacing issues
+VIDEO QUALITY:
+- Codec: libx264, CRF 15 (CRF 12 for 4K)
+- Preset: slow
+- Profile: high, Level 4.1
+- Pixel format: yuv420p
+- Maintain original resolution and framerate
+- NO downscaling or quality loss
 
-PERFORMANCE:
-- Output format: MP4 (H.264)
-- Maximum 3 processing attempts
-- Optimize for web playback`,
+AUDIO:
+- Copy original audio stream: -c:a copy (if AAC)
+- Or re-encode: -c:a aac -b:a 256k
+- Set -movflags +faststart
+
+EMOJI SUPPORT:
+- Font must support emoji rendering
+- Use Noto Color Emoji, Segoe UI Emoji, or system emoji font
+- Ensure emoji render as colored graphics, not monochrome
+
+OUTPUT:
+- Format: MP4 (H.264)
+- Optimize for web playback
+- Maximum 3 attempts
+
+Example FFmpeg command structure:
+ffmpeg -i video.mp4 -vf "subtitles=subs.srt:force_style='FontName=Noto Sans,FontSize=24,PrimaryColour=&HFFFFFF,Bold=1,Spacing=0,Outline=1,OutlineColour=&H00000000,Shadow=2,BorderStyle=1,Alignment=2,MarginV=40'" -c:v libx264 -crf 15 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4`,
           max_attempts: 3,
         },
       } as any);
@@ -220,7 +231,7 @@ PERFORMANCE:
     console.log(`[${requestId}] REPLICATE JOB CREATED`, {
       predictionId: prediction.id,
       model: 'fofr/smart-ffmpeg',
-      stylePrompt: enhancedPrompt,
+      stylePrompt: body.stylePrompt || 'default',
       timestamp: new Date().toISOString()
     });
 
