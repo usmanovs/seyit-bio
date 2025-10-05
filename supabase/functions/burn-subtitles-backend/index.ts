@@ -164,14 +164,14 @@ serve(async (req) => {
     const styleMapping: Record<string, any> = {
       // Stroke style: White text with thick black outline (matches 2em, bold, 4px shadow in 8 directions)
       outline: {
-        FontName: 'Noto Sans,Arial,sans-serif',
-        FontSize: 28,  // Adjusted to reasonable size for video
+        FontName: 'Noto Color Emoji,Noto Sans,Arial,sans-serif',
+        FontSize: 20,  // Further reduced for better readability
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 1,
         Italic: 0,
         Underline: 0,
         Spacing: 0,  // CRITICAL: No letter spacing
-        Outline: 4,  // Thick outline to match 4px CSS text-shadow
+        Outline: 3,  // Thick outline
         OutlineColour: '&H000000',  // Black
         Shadow: 0,  // No drop shadow, just outline
         BackColour: '&H00000000',  // Transparent
@@ -183,8 +183,8 @@ serve(async (req) => {
       },
       // Subtle style: Light text with semi-transparent background (matches 1.3em, weight 300)
       minimal: {
-        FontName: 'Noto Sans,Arial,sans-serif',
-        FontSize: 22,  // Adjusted to reasonable size
+        FontName: 'Noto Color Emoji,Noto Sans,Arial,sans-serif',
+        FontSize: 18,  // Further reduced
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 0,  // Light weight
         Italic: 0,
@@ -202,8 +202,8 @@ serve(async (req) => {
       },
       // Highlight style: Black text with yellow glow and white outline (matches weight 900)
       green: {
-        FontName: 'Noto Sans,Arial,sans-serif',
-        FontSize: 30,  // Adjusted for emphasis
+        FontName: 'Noto Color Emoji,Noto Sans,Arial,sans-serif',
+        FontSize: 22,  // Further reduced
         PrimaryColour: '&H000000',  // Black text
         Bold: 1,
         Italic: 0,
@@ -222,8 +222,8 @@ serve(async (req) => {
       },
       // Framed style: Bright green text with border and glow (matches 1.6em, bold, green border)
       boxed: {
-        FontName: 'Noto Sans,Arial,sans-serif',
-        FontSize: 32,  // Adjusted for framed style
+        FontName: 'Noto Color Emoji,Noto Sans,Arial,sans-serif',
+        FontSize: 24,  // Further reduced
         PrimaryColour: '&H00FF00',  // Bright green (00FF00 in BGR)
         Bold: 1,
         Italic: 0,
