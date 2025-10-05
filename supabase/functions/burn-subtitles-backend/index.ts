@@ -159,85 +159,85 @@ serve(async (req) => {
     console.log(`[${requestId}] SRT URL:`, srtUrl.substring(0, 50) + '...');
 
     // Style mapping: CSS preview styles to ASS parameters
-    // These parameters are precisely calibrated to match the browser preview
+    // Adjusted based on actual video output feedback
     const styleId = body.styleId || 'outline';
     const styleMapping: Record<string, any> = {
-      // Stroke style: White text with thick black outline (matches 2em, bold, 4px shadow in 8 directions)
+      // Stroke style: White text with thick black outline
       outline: {
-        FontName: 'Noto Color Emoji,Noto Sans,Arial,sans-serif',
-        FontSize: 20,  // Further reduced for better readability
+        FontName: 'Symbola,Noto Color Emoji,Segoe UI Emoji,Apple Color Emoji,Noto Sans,Arial',
+        FontSize: 16,  // Much smaller for better readability
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 1,
         Italic: 0,
         Underline: 0,
-        Spacing: 0,  // CRITICAL: No letter spacing
-        Outline: 3,  // Thick outline
+        Spacing: 0,
+        Outline: 2,  // Reduced outline thickness
         OutlineColour: '&H000000',  // Black
-        Shadow: 0,  // No drop shadow, just outline
-        BackColour: '&H00000000',  // Transparent
-        BorderStyle: 1,  // Outline only
-        Alignment: 2,  // Bottom center
-        MarginL: 20,
-        MarginR: 20,
-        MarginV: 40,
-      },
-      // Subtle style: Light text with semi-transparent background (matches 1.3em, weight 300)
-      minimal: {
-        FontName: 'Noto Color Emoji,Noto Sans,Arial,sans-serif',
-        FontSize: 18,  // Further reduced
-        PrimaryColour: '&HFFFFFF',  // White
-        Bold: 0,  // Light weight
-        Italic: 0,
-        Underline: 0,
-        Spacing: 0,
-        Outline: 1,  // Minimal outline
-        OutlineColour: '&H000000',
-        Shadow: 1,  // Subtle shadow
-        BackColour: '&HB3000000',  // Semi-transparent black (0.7 opacity = B3 in hex)
-        BorderStyle: 4,  // Background box
-        Alignment: 2,
-        MarginL: 20,
-        MarginR: 20,
-        MarginV: 40,
-      },
-      // Highlight style: Black text with yellow glow and white outline (matches weight 900)
-      green: {
-        FontName: 'Noto Color Emoji,Noto Sans,Arial,sans-serif',
-        FontSize: 22,  // Further reduced
-        PrimaryColour: '&H000000',  // Black text
-        Bold: 1,
-        Italic: 0,
-        Underline: 0,
-        Spacing: 0,
-        Outline: 2,  // White outline (2px to match CSS)
-        OutlineColour: '&HFFFFFF',  // White outline
-        Shadow: 6,  // Yellow glow effect
-        SecondaryColour: '&H00B3EA',  // Yellow for glow (EAB300 in BGR)
+        Shadow: 0,
         BackColour: '&H00000000',  // Transparent
         BorderStyle: 1,
         Alignment: 2,
         MarginL: 20,
         MarginR: 20,
-        MarginV: 40,
+        MarginV: 30,
       },
-      // Framed style: Bright green text with border and glow (matches 1.6em, bold, green border)
-      boxed: {
-        FontName: 'Noto Color Emoji,Noto Sans,Arial,sans-serif',
-        FontSize: 24,  // Further reduced
-        PrimaryColour: '&H00FF00',  // Bright green (00FF00 in BGR)
+      // Subtle style: Light text with semi-transparent background
+      minimal: {
+        FontName: 'Symbola,Noto Color Emoji,Segoe UI Emoji,Apple Color Emoji,Noto Sans,Arial',
+        FontSize: 14,
+        PrimaryColour: '&HFFFFFF',  // White
+        Bold: 0,
+        Italic: 0,
+        Underline: 0,
+        Spacing: 0,
+        Outline: 1,
+        OutlineColour: '&H000000',
+        Shadow: 1,
+        BackColour: '&HB3000000',  // Semi-transparent black
+        BorderStyle: 4,  // Background box
+        Alignment: 2,
+        MarginL: 20,
+        MarginR: 20,
+        MarginV: 30,
+      },
+      // Highlight style: Black text with yellow glow and white outline
+      green: {
+        FontName: 'Symbola,Noto Color Emoji,Segoe UI Emoji,Apple Color Emoji,Noto Sans,Arial',
+        FontSize: 18,
+        PrimaryColour: '&H000000',  // Black text
         Bold: 1,
         Italic: 0,
         Underline: 0,
         Spacing: 0,
-        Outline: 4,  // Thick border to match 4px CSS border
+        Outline: 2,
+        OutlineColour: '&HFFFFFF',  // White outline
+        Shadow: 4,  // Yellow glow effect
+        SecondaryColour: '&H00B3EA',  // Yellow for glow
+        BackColour: '&H00000000',  // Transparent
+        BorderStyle: 1,
+        Alignment: 2,
+        MarginL: 20,
+        MarginR: 20,
+        MarginV: 30,
+      },
+      // Framed style: Bright green text with border and glow
+      boxed: {
+        FontName: 'Symbola,Noto Color Emoji,Segoe UI Emoji,Apple Color Emoji,Noto Sans,Arial',
+        FontSize: 18,
+        PrimaryColour: '&H00FF00',  // Bright green
+        Bold: 1,
+        Italic: 0,
+        Underline: 0,
+        Spacing: 0,
+        Outline: 3,
         OutlineColour: '&H00FF00',  // Green border
-        Shadow: 4,  // Green glow
-        BackColour: '&HF2000000',  // Nearly solid black (0.95 opacity = F2 in hex)
+        Shadow: 3,  // Green glow
+        BackColour: '&HF2000000',  // Nearly solid black
         BorderStyle: 4,  // Background box with border
         Alignment: 2,
         MarginL: 20,
         MarginR: 20,
-        MarginV: 40,
+        MarginV: 30,
       },
     };
 
