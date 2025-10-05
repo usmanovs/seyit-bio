@@ -95,21 +95,32 @@ serve(async (req) => {
       console.log(`[DEPLOY-LAMBDA] Generated ZIP with entry: ${handlerFile}, size=${zipContent.byteLength} bytes`);
     }
 
-    // Check if function exists
+    // Check if function exists with proper AWS signature
     const getFunctionUrl = `${endpoint}/${functionName}`;
     
     let functionExists = false;
     try {
+      // Create signature for GET request
+      const getCanonicalUri = `/2015-03-31/functions/${functionName}`;
+      const getCanonicalRequest = `GET\n${getCanonicalUri}\n\nhost:${host}\nx-amz-date:${amzDate}\n\nhost;x-amz-date\n${await sha256('')}`;
+      const getStringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${dateStamp}/${AWS_REGION}/${service}/aws4_request\n${await sha256(getCanonicalRequest)}`;
+      const getSigningKey = await getSignatureKey(AWS_SECRET_ACCESS_KEY, dateStamp, AWS_REGION, service);
+      const getSignatureBuffer = await hmacSha256(getSigningKey, getStringToSign);
+      const getSignature = Array.from(new Uint8Array(getSignatureBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+      const getAuthHeader = `AWS4-HMAC-SHA256 Credential=${AWS_ACCESS_KEY_ID}/${dateStamp}/${AWS_REGION}/${service}/aws4_request, SignedHeaders=host;x-amz-date, Signature=${getSignature}`;
+      
       const getResponse = await fetch(getFunctionUrl, {
         method: 'GET',
         headers: {
           'Host': host,
           'X-Amz-Date': amzDate,
+          'Authorization': getAuthHeader,
         },
       });
       functionExists = getResponse.status === 200;
+      console.log(`[DEPLOY-LAMBDA] Function exists check: ${functionExists}`);
     } catch (e) {
-      console.log('[DEPLOY-LAMBDA] Function check failed, will attempt create');
+      console.log('[DEPLOY-LAMBDA] Function check failed, will attempt create:', e);
     }
 
     // Prepare request
