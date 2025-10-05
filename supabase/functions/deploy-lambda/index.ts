@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -46,7 +47,7 @@ serve(async (req) => {
   }
 
   try {
-    const { functionName, handler, runtime, code, roleArn } = await req.json();
+    const { functionName, handler, runtime, code, roleArn, zipBase64 } = await req.json();
 
     const AWS_ACCESS_KEY_ID = Deno.env.get('AWS_ACCESS_KEY_ID');
     const AWS_SECRET_ACCESS_KEY = Deno.env.get('AWS_SECRET_ACCESS_KEY');
@@ -76,10 +77,23 @@ serve(async (req) => {
     const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
     const dateStamp = amzDate.substring(0, 8);
 
-    // Encode code to base64
-    const encoder = new TextEncoder();
-    const codeBytes = encoder.encode(code);
-    const base64Code = btoa(String.fromCharCode(...codeBytes));
+    // Prepare base64-encoded ZIP for Lambda
+    let base64Zip = '';
+    const handlerFile = (handler?.split('.')?.[0] || 'index') + '.js';
+
+    if (zipBase64 && typeof zipBase64 === 'string' && zipBase64.trim().length > 0) {
+      base64Zip = zipBase64;
+      console.log('[DEPLOY-LAMBDA] Using provided zipBase64');
+    } else {
+      if (!code || typeof code !== 'string' || code.trim().length === 0) {
+        throw new Error('No code provided. Provide raw code or a prebuilt base64 ZIP (zipBase64).');
+      }
+      const zip = new JSZip();
+      zip.file(handlerFile, code);
+      const zipContent: Uint8Array = await zip.generateAsync({ type: 'uint8array' });
+      base64Zip = btoa(String.fromCharCode(...zipContent));
+      console.log(`[DEPLOY-LAMBDA] Generated ZIP with entry: ${handlerFile}, size=${zipContent.byteLength} bytes`);
+    }
 
     // Check if function exists
     const getFunctionUrl = `${endpoint}/${functionName}`;
@@ -103,13 +117,13 @@ serve(async (req) => {
     const url = functionExists ? `${endpoint}/${functionName}/code` : endpoint;
     
     const payload = functionExists 
-      ? { ZipFile: base64Code }
+      ? { ZipFile: base64Zip }
       : {
           FunctionName: functionName,
           Runtime: runtime || 'nodejs20.x',
           Role: roleArn,
           Handler: handler || 'index.handler',
-          Code: { ZipFile: base64Code },
+          Code: { ZipFile: base64Zip },
           Description: `Deployed via Lovable on ${new Date().toISOString()}`,
           Timeout: 30,
           MemorySize: 256,
