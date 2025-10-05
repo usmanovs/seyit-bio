@@ -47,7 +47,7 @@ if not os.path.exists(NOTO_EMOJI_PATH):
     print('Downloading NotoEmoji-Regular.ttf (monochrome)...')
     # Using monochrome version because libass (FFmpeg subtitle renderer) doesn't support color fonts
     urllib.request.urlretrieve(
-        'https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoEmoji-Regular.ttf',
+        'https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoEmoji-VariableFont_wght.ttf',
         NOTO_EMOJI_PATH
     )
     print(f'Noto Emoji font downloaded to {NOTO_EMOJI_PATH}')
