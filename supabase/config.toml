@@ -1,5 +1,8 @@
 project_id = "namcnwyhexvtklawagip"
 
+[functions.burn-subtitles-lambda]
+verify_jwt = true
+
 [functions.deploy-lambda]
 verify_jwt = true
 
