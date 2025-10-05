@@ -1250,8 +1250,8 @@ export const KyrgyzSubtitleGenerator = () => {
       setCloudPolling(true);
       setCloudStartTime(startTime);
       
-      // Try AWS Lambda first for better emoji support
-      console.log('[Download] Attempting AWS Lambda processing...');
+      // Use AWS Lambda for emoji support
+      console.log('[Download] Invoking AWS Lambda processing...');
       const { data: lambdaData, error: lambdaError } = await supabase.functions.invoke('burn-subtitles-lambda', {
         body: {
           videoPath,
@@ -1261,7 +1261,15 @@ export const KyrgyzSubtitleGenerator = () => {
         },
       });
       
-      if (!lambdaError && lambdaData?.success && lambdaData?.videoUrl) {
+      if (lambdaError) {
+        throw new Error(`Lambda processing failed: ${lambdaError.message}`);
+      }
+      
+      if (!lambdaData?.success) {
+        throw new Error(lambdaData?.error || 'Lambda processing failed');
+      }
+      
+      if (lambdaData?.videoUrl) {
         // Lambda succeeded synchronously
         console.log('[Download] Lambda processing succeeded:', lambdaData);
         setCloudVideoUrl(lambdaData.videoUrl);
@@ -1288,63 +1296,15 @@ export const KyrgyzSubtitleGenerator = () => {
         return;
       }
       
-      // Lambda failed or unavailable, fallback to Replicate
-      console.log('[Download] Lambda failed, falling back to Replicate backend...', { lambdaError, lambdaData });
-      toast.info('Using fallback processing (emojis may not render correctly)...');
+      throw new Error('Lambda returned no video URL');
       
-      const { data, error } = await supabase.functions.invoke('burn-subtitles-backend', {
-        body: {
-          videoPath,
-          subtitles: useSubs,
-          styleId: currentStyle.id,
-          requestId: rid,
-        },
-      });
-      console.log('[Download] Backend response:', { data, error });
-      if (error) throw error;
-      if (data?.predictionId) {
-        setCloudPredictionId(data.predictionId);
-        pollCloudPrediction(data.predictionId, startTime, 0);
-        toast.info('Started cloud processing... This may take 2-10 minutes depending on video size.');
-      } else if (data?.videoUrl) {
-        setCloudVideoUrl(data.videoUrl);
-        setCloudStatus('succeeded');
-        setCloudPolling(false);
-        setCloudStartTime(0);
-        
-        // Clear localStorage
-        localStorage.removeItem('cloudPredictionId');
-        localStorage.removeItem('cloudStartTime');
-        
-        toast.success('Cloud video ready! Downloading...');
-        try {
-          const response = await fetch(data.videoUrl);
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `video-with-subtitles-${Date.now()}.mp4`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        } catch (e) {
-          console.error('Auto-download failed, opening in new tab', e);
-          window.open(data.videoUrl, '_blank');
-        }
-      } else if (data?.error) {
-        throw new Error(data.error);
-      }
     } catch (e: any) {
       setCloudStatus('error');
       setCloudPolling(false);
       setCloudStartTime(0);
       
-      // Clear localStorage
-      localStorage.removeItem('cloudPredictionId');
-      localStorage.removeItem('cloudStartTime');
-      
-      toast.error(e.message || 'Failed to start cloud processing');
+      console.error('[Download] Lambda error:', e);
+      toast.error(e.message || 'Failed to process video with Lambda');
     }
   };
 
