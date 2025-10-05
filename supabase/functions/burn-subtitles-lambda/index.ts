@@ -68,22 +68,25 @@ NOTO_EMOJI_PATH = '/tmp/fonts/NotoEmoji-Regular.ttf'
 
 os.makedirs('/tmp/fonts', exist_ok=True)
 
-if not os.path.exists(SYMBOLA_PATH):
-    print('Downloading Symbola.ttf...')
-    urllib.request.urlretrieve(
-        'https://raw.githubusercontent.com/zhm/symbola/master/fonts/Symbola.ttf',
-        SYMBOLA_PATH
-    )
-    print(f'Symbola font downloaded to {SYMBOLA_PATH}')
-
-if not os.path.exists(NOTO_EMOJI_PATH):
-    print('Downloading NotoEmoji-Regular.ttf (monochrome)...')
-    # Using monochrome version because libass (FFmpeg subtitle renderer) doesn't support color fonts
-    urllib.request.urlretrieve(
-        'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/fonts/NotoEmoji-Regular.ttf',
-        NOTO_EMOJI_PATH
-    )
-    print(f'Noto Emoji font downloaded to {NOTO_EMOJI_PATH}')
+try:
+    if not os.path.exists(SYMBOLA_PATH):
+        print('Downloading Symbola.ttf...')
+        try:
+            urllib.request.urlretrieve('https://raw.githubusercontent.com/zhm/symbola/master/fonts/Symbola.ttf', SYMBOLA_PATH)
+            print(f'Symbola font downloaded to {SYMBOLA_PATH}')
+        except Exception as e:
+            print(f'WARNING: Symbola download failed: {e}')
+    
+    if not os.path.exists(NOTO_EMOJI_PATH):
+        print('Downloading NotoEmoji-Regular.ttf (monochrome)...')
+        # Using monochrome version because libass (FFmpeg subtitle renderer) doesn't support color fonts
+        try:
+            urllib.request.urlretrieve('https://raw.githubusercontent.com/googlefonts/noto-emoji/main/fonts/NotoEmoji-Regular.ttf', NOTO_EMOJI_PATH)
+            print(f'Noto Emoji font downloaded to {NOTO_EMOJI_PATH}')
+        except Exception as e:
+            print(f'WARNING: Noto Emoji download failed: {e}')
+except Exception as e:
+    print(f'WARNING: Font init error: {e}')
 
 # Create fontconfig to help FFmpeg find and prioritize emoji fonts
 FONTCONFIG = '/tmp/fonts.conf'
