@@ -945,7 +945,7 @@ export const KyrgyzSubtitleGenerator = () => {
 
     // Check if already processing
     if (cloudPolling) {
-      toast.error("Video is already processing in cloud. Please wait...");
+      toast.error("Video is already processing. Please wait...");
       return;
     }
 
@@ -1647,7 +1647,7 @@ export const KyrgyzSubtitleGenerator = () => {
                                 <div className="flex items-center justify-center gap-2">
                                   <Loader2 className="w-5 h-5 animate-spin" />
                                   <span className="text-sm">
-                                    Processing in Cloud... {Math.floor(cloudElapsedTime / 60)}m {cloudElapsedTime % 60}s elapsed
+                                    Processing... {Math.floor(cloudElapsedTime / 60)}m {cloudElapsedTime % 60}s elapsed
                                   </span>
                                 </div>
                                 <div className="text-xs text-center text-white/70">
