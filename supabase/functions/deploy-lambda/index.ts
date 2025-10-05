@@ -201,6 +201,45 @@ serve(async (req) => {
     const result = await response.json();
     console.log(`[DEPLOY-LAMBDA] Deployment successful`);
 
+    // Always ensure configuration matches requested runtime/handler/layers
+    try {
+      const configPayload = {
+        Handler: handler || 'index.handler',
+        Runtime: runtime || 'python3.12',
+        ...(layersArray.length > 0 && { Layers: layersArray }),
+        Timeout: 900,
+        MemorySize: 2048,
+      };
+      const configStr = JSON.stringify(configPayload);
+      const configHash = await sha256(configStr);
+      const configUri = `/2015-03-31/functions/${functionName}/configuration`;
+      const configHeaders = `host:${host}\nx-amz-date:${amzDate}\n`;
+      const configSignedHeaders = 'host;x-amz-date';
+      const configCanonicalRequest = `PUT\n${configUri}\n\n${configHeaders}\n${configSignedHeaders}\n${configHash}`;
+      const configStringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${credentialScope}\n${await sha256(configCanonicalRequest)}`;
+      const configSignatureBuffer = await hmacSha256(signingKey, configStringToSign);
+      const configSignature = Array.from(new Uint8Array(configSignatureBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+      const configAuthHeader = `AWS4-HMAC-SHA256 Credential=${AWS_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${configSignedHeaders}, Signature=${configSignature}`;
+
+      console.log('[DEPLOY-LAMBDA] Updating function configuration (handler/runtime/layers)');
+      const configResp = await fetch(`https://${host}${configUri}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Host': host,
+          'X-Amz-Date': amzDate,
+          'Authorization': configAuthHeader,
+        },
+        body: configStr,
+      });
+      if (!configResp.ok) {
+        const t = await configResp.text();
+        console.warn('[DEPLOY-LAMBDA] Configuration update failed:', t);
+      }
+    } catch (e) {
+      console.warn('[DEPLOY-LAMBDA] Configuration update error:', e);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
