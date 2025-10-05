@@ -146,10 +146,46 @@ serve(async (req) => {
 
     console.log(`[${requestId}] Invoking Lambda: ${LAMBDA_FUNCTION_NAME}`);
 
+    // Helper function for HMAC-SHA256
+    const hmacSha256 = async (key: ArrayBuffer, message: string): Promise<ArrayBuffer> => {
+      const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        key,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+      return await crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(message));
+    };
+
+    // Helper function for SHA-256
+    const sha256 = async (message: string): Promise<string> => {
+      const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(message));
+      return Array.from(new Uint8Array(hashBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    };
+
+    // Generate AWS SigV4 signing key
+    const getSignatureKey = async (
+      key: string,
+      dateStamp: string,
+      regionName: string,
+      serviceName: string
+    ): Promise<ArrayBuffer> => {
+      const kDate = await hmacSha256(
+        new TextEncoder().encode(`AWS4${key}`).buffer,
+        dateStamp
+      );
+      const kRegion = await hmacSha256(kDate, regionName);
+      const kService = await hmacSha256(kRegion, serviceName);
+      const kSigning = await hmacSha256(kService, 'aws4_request');
+      return kSigning;
+    };
+
     // Create AWS SigV4 signature for Lambda invocation
     const payloadString = JSON.stringify(payload);
-    const payloadHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payloadString));
-    const payloadHashHex = Array.from(new Uint8Array(payloadHash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const payloadHashHex = await sha256(payloadString);
 
     const now = new Date();
     const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
@@ -165,29 +201,15 @@ serve(async (req) => {
     const canonicalRequest = `POST\n${canonicalUri}\n${canonicalQueryString}\n${canonicalHeaders}\n${signedHeaders}\n${payloadHashHex}`;
     
     const credentialScope = `${dateStamp}/${AWS_REGION}/${service}/aws4_request`;
-    const canonicalRequestHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalRequest));
-    const canonicalRequestHashHex = Array.from(new Uint8Array(canonicalRequestHash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const canonicalRequestHashHex = await sha256(canonicalRequest);
     
     const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${credentialScope}\n${canonicalRequestHashHex}`;
     
-    // Generate signing key
-    const getSignatureKey = async (key: string, dateStamp: string, regionName: string, serviceName: string) => {
-      const kDate = await crypto.subtle.importKey('raw', new TextEncoder().encode(`AWS4${key}`), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-      const kDateSig = await crypto.subtle.sign('HMAC', kDate, new TextEncoder().encode(dateStamp));
-      
-      const kRegion = await crypto.subtle.importKey('raw', kDateSig, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-      const kRegionSig = await crypto.subtle.sign('HMAC', kRegion, new TextEncoder().encode(regionName));
-      
-      const kService = await crypto.subtle.importKey('raw', kRegionSig, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-      const kServiceSig = await crypto.subtle.sign('HMAC', kService, new TextEncoder().encode(serviceName));
-      
-      const kSigning = await crypto.subtle.importKey('raw', kServiceSig, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-      return kSigning;
-    };
-    
     const signingKey = await getSignatureKey(AWS_SECRET_ACCESS_KEY, dateStamp, AWS_REGION, service);
-    const signatureBuffer = await crypto.subtle.sign('HMAC', signingKey, new TextEncoder().encode(stringToSign));
-    const signature = Array.from(new Uint8Array(signatureBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const signatureBuffer = await hmacSha256(signingKey, stringToSign);
+    const signature = Array.from(new Uint8Array(signatureBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
     
     const authorizationHeader = `AWS4-HMAC-SHA256 Credential=${AWS_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
     
