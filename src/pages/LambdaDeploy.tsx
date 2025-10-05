@@ -25,20 +25,48 @@ const LambdaDeploy = () => {
     roleArn: "",
     layers: "arn:aws:lambda:us-east-1:145266761615:layer:ffmpeg:4",
     code: `import json
-import boto3
 import subprocess
 import os
 import urllib.request
 
-# Download Symbola font at initialization (runs once per container)
-FONT_PATH = '/tmp/Symbola.ttf'
-if not os.path.exists(FONT_PATH):
+# Download fonts at initialization
+SYMBOLA_PATH = '/tmp/fonts/Symbola.ttf'
+NOTO_EMOJI_PATH = '/tmp/fonts/NotoColorEmoji.ttf'
+
+os.makedirs('/tmp/fonts', exist_ok=True)
+
+if not os.path.exists(SYMBOLA_PATH):
     print('Downloading Symbola.ttf...')
     urllib.request.urlretrieve(
         'https://github.com/stphnwlsh/Symbola-Emoji-Font/raw/master/Symbola.ttf',
-        FONT_PATH
+        SYMBOLA_PATH
     )
-    print(f'Font downloaded to {FONT_PATH}')
+    print(f'Font downloaded to {SYMBOLA_PATH}')
+
+if not os.path.exists(NOTO_EMOJI_PATH):
+    print('Downloading NotoColorEmoji.ttf...')
+    urllib.request.urlretrieve(
+        'https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoColorEmoji.ttf',
+        NOTO_EMOJI_PATH
+    )
+    print(f'Emoji font downloaded to {NOTO_EMOJI_PATH}')
+
+# Create fontconfig
+FONTCONFIG = '/tmp/fonts.conf'
+with open(FONTCONFIG, 'w') as f:
+    f.write(f"""<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <dir>/tmp/fonts</dir>
+  <cachedir>/tmp</cachedir>
+  <alias>
+    <family>Symbola</family>
+    <prefer>
+      <family>Symbola</family>
+      <family>Noto Color Emoji</family>
+    </prefer>
+  </alias>
+</fontconfig>""")
 
 def handler(event, context):
     video_url = event['videoUrl']
@@ -59,11 +87,16 @@ def handler(event, context):
     print(f'Downloading SRT from {srt_url}')
     urllib.request.urlretrieve(srt_url, srt_path)
     
-    # Burn subtitles with FFmpeg using Symbola font
+    # Set fontconfig environment
+    env = os.environ.copy()
+    env['FONTCONFIG_FILE'] = FONTCONFIG
+    env['FONTCONFIG_PATH'] = '/tmp'
+    
+    # Burn subtitles with FFmpeg
     cmd = [
         'ffmpeg',
         '-i', video_path,
-        '-vf', f"subtitles='{srt_path}':fontsdir=/tmp:force_style='{force_style}'",
+        '-vf', f"subtitles={srt_path}:fontsdir=/tmp/fonts:force_style='{force_style}'",
         '-c:v', 'libx264',
         '-crf', '18',
         '-preset', 'slow',
@@ -73,7 +106,7 @@ def handler(event, context):
     ]
     
     print(f'Running FFmpeg: {" ".join(cmd)}')
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, env=env)
     
     if result.returncode != 0:
         print(f'FFmpeg stderr: {result.stderr}')
