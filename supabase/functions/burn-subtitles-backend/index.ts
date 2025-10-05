@@ -161,6 +161,13 @@ serve(async (req) => {
     // Style mapping: CSS preview styles to ASS parameters
     // Adjusted based on actual video output feedback
     const styleId = body.styleId || 'outline';
+    
+    console.log(`[${requestId}] Style selection received:`, {
+      receivedStyleId: body.styleId,
+      usingStyleId: styleId,
+      timestamp: new Date().toISOString()
+    });
+    
     const styleMapping: Record<string, any> = {
       // Stroke style: White text with thick black outline
       outline: {
@@ -256,44 +263,25 @@ serve(async (req) => {
       model: 'fofr/smart-ffmpeg',
       input: {
         files: [publicUrl, srtUrl],
-        prompt: `Burn subtitles from SRT file onto video using FFmpeg with these EXACT parameters:
+        prompt: `CRITICAL: You MUST generate an FFmpeg command that burns SRT subtitles onto the video.
 
-CRITICAL FFmpeg SUBTITLE FILTER PARAMETERS:
-Use subtitles filter with force_style option. Apply these ASS style parameters EXACTLY as specified:
+EXACT FFmpeg command structure required:
+ffmpeg -i input.mp4 -vf "subtitles=subtitles.srt:force_style='${forceStyleParams}'" -c:v libx264 -crf 15 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4
 
-${forceStyleParams}
+CRITICAL RULES:
+1. Use the EXACT force_style parameter string provided above - do NOT modify it
+2. The force_style parameter MUST be in single quotes
+3. ALL style parameters must be applied exactly as specified
+4. Spacing=0 means NO letter spacing
+5. Video quality: CRF 15, preset slow, profile high, level 4.1
+6. Audio: copy original stream with -c:a copy
+7. Set -movflags +faststart for web playback
+8. Maintain original resolution and framerate
 
-SPACING IS CRITICAL:
-- Spacing=0 means NO letter spacing (characters are NOT spread apart)
-- Do NOT add any tracking or letter-spacing
-- Characters should be close together like normal text
-- NO gaps between letters
-
-VIDEO QUALITY:
-- Codec: libx264, CRF 15 (CRF 12 for 4K)
-- Preset: slow
-- Profile: high, Level 4.1
-- Pixel format: yuv420p
-- Maintain original resolution and framerate
-- NO downscaling or quality loss
-
-AUDIO:
-- Copy original audio stream: -c:a copy (if AAC)
-- Or re-encode: -c:a aac -b:a 256k
-- Set -movflags +faststart
-
-EMOJI SUPPORT:
-- Font must support emoji rendering
-- Use Noto Color Emoji, Segoe UI Emoji, or system emoji font
-- Ensure emoji render as colored graphics, not monochrome
-
-OUTPUT:
-- Format: MP4 (H.264)
-- Optimize for web playback
-- Maximum 3 attempts
-
-Example FFmpeg command structure:
-ffmpeg -i video.mp4 -vf "subtitles=subs.srt:force_style='${forceStyleParams}'" -c:v libx264 -crf 15 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4`,
+Style being applied: ${styleId}
+Font size: ${style.FontSize}
+Has background: ${style.BorderStyle === 4}
+`,
         max_attempts: 3,
       },
     } as any);

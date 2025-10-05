@@ -1226,6 +1226,13 @@ export const KyrgyzSubtitleGenerator = () => {
     const rid = generateRequestId();
     const startTime = Date.now();
     
+    console.log('[Download] Style selection:', {
+      captionStyle,
+      currentStyleId: currentStyle.id,
+      currentStyleName: currentStyle.name,
+      timestamp: new Date().toISOString()
+    });
+    
     try {
       setCloudStatus('starting');
       setCloudPolling(true);
@@ -1239,6 +1246,7 @@ export const KyrgyzSubtitleGenerator = () => {
           requestId: rid,
         },
       });
+      console.log('[Download] Backend response:', { data, error });
       if (error) throw error;
       if (data?.predictionId) {
         setCloudPredictionId(data.predictionId);
