@@ -6,6 +6,41 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper functions for AWS signature
+const sha256 = async (message: string): Promise<string> => {
+  const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(message));
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+};
+
+const hmacSha256 = async (key: ArrayBuffer, message: string): Promise<ArrayBuffer> => {
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    key,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  return await crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(message));
+};
+
+const getSignatureKey = async (
+  key: string,
+  dateStamp: string,
+  regionName: string,
+  serviceName: string
+): Promise<ArrayBuffer> => {
+  const kDate = await hmacSha256(
+    new TextEncoder().encode(`AWS4${key}`).buffer,
+    dateStamp
+  );
+  const kRegion = await hmacSha256(kDate, regionName);
+  const kService = await hmacSha256(kRegion, serviceName);
+  const kSigning = await hmacSha256(kService, 'aws4_request');
+  return kSigning;
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -172,7 +207,54 @@ def handler(event, context):
       console.error(`[${requestId}] Auto-deployment failed:`, deployError);
       // Continue anyway - function might already exist with correct code
     } else {
-      console.log(`[${requestId}] Lambda auto-deployment successful`);
+      console.log(`[${requestId}] Lambda auto-deployment successful, waiting for function to become active...`);
+      
+      // Wait for Lambda function to become active (AWS needs time to propagate updates)
+      const AWS_ACCESS_KEY_ID = Deno.env.get('AWS_ACCESS_KEY_ID')!;
+      const AWS_SECRET_ACCESS_KEY = Deno.env.get('AWS_SECRET_ACCESS_KEY')!;
+      const AWS_REGION = Deno.env.get('AWS_REGION') || 'us-east-1';
+      
+      for (let i = 0; i < 10; i++) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Check function state using AWS API
+        const now = new Date();
+        const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+        const dateStamp = amzDate.slice(0, 8);
+        const host = `lambda.${AWS_REGION}.amazonaws.com`;
+        const canonicalUri = `/2015-03-31/functions/subtitle-burner`;
+        
+        const emptyHash = await sha256('');
+        const canonicalRequest = `GET\n${canonicalUri}\n\nhost:${host}\nx-amz-date:${amzDate}\n\nhost;x-amz-date\n${emptyHash}`;
+        const canonicalRequestHash = await sha256(canonicalRequest);
+        const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${dateStamp}/${AWS_REGION}/lambda/aws4_request\n${canonicalRequestHash}`;
+        
+        const signingKey = await getSignatureKey(AWS_SECRET_ACCESS_KEY, dateStamp, AWS_REGION, 'lambda');
+        const signatureBuffer = await hmacSha256(signingKey, stringToSign);
+        const signature = Array.from(new Uint8Array(signatureBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+        const authHeader = `AWS4-HMAC-SHA256 Credential=${AWS_ACCESS_KEY_ID}/${dateStamp}/${AWS_REGION}/lambda/aws4_request, SignedHeaders=host;x-amz-date, Signature=${signature}`;
+        
+        try {
+          const stateResponse = await fetch(`https://${host}${canonicalUri}`, {
+            headers: {
+              'Host': host,
+              'X-Amz-Date': amzDate,
+              'Authorization': authHeader,
+            },
+          });
+          
+          if (stateResponse.ok) {
+            const stateData = await stateResponse.json();
+            if (stateData.State === 'Active' && stateData.LastUpdateStatus === 'Successful') {
+              console.log(`[${requestId}] Lambda function is active and ready`);
+              break;
+            }
+            console.log(`[${requestId}] Lambda state: ${stateData.State}, update status: ${stateData.LastUpdateStatus}`);
+          }
+        } catch (e) {
+          console.warn(`[${requestId}] State check failed:`, e);
+        }
+      }
     }
 
     // Get public URL for video
@@ -302,43 +384,6 @@ def handler(event, context):
     };
 
     console.log(`[${requestId}] Invoking Lambda: ${LAMBDA_FUNCTION_NAME}`);
-
-    // Helper function for HMAC-SHA256
-    const hmacSha256 = async (key: ArrayBuffer, message: string): Promise<ArrayBuffer> => {
-      const cryptoKey = await crypto.subtle.importKey(
-        'raw',
-        key,
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign']
-      );
-      return await crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(message));
-    };
-
-    // Helper function for SHA-256
-    const sha256 = async (message: string): Promise<string> => {
-      const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(message));
-      return Array.from(new Uint8Array(hashBuffer))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-    };
-
-    // Generate AWS SigV4 signing key
-    const getSignatureKey = async (
-      key: string,
-      dateStamp: string,
-      regionName: string,
-      serviceName: string
-    ): Promise<ArrayBuffer> => {
-      const kDate = await hmacSha256(
-        new TextEncoder().encode(`AWS4${key}`).buffer,
-        dateStamp
-      );
-      const kRegion = await hmacSha256(kDate, regionName);
-      const kService = await hmacSha256(kRegion, serviceName);
-      const kSigning = await hmacSha256(kService, 'aws4_request');
-      return kSigning;
-    };
 
     // Create AWS SigV4 signature for Lambda invocation
     const payloadString = JSON.stringify(payload);
