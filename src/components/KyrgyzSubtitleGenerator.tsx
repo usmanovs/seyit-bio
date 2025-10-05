@@ -1223,9 +1223,80 @@ export const KyrgyzSubtitleGenerator = () => {
     }
   };
 
+  // Poll Lambda status JSON for completion or failure
+  const pollLambdaStatus = async (statusUrl: string, fallbackVideoUrl: string | null, requestId: string, startTime: number) => {
+    const TIMEOUT_MS = 6 * 60 * 1000; // 6 minutes
+    const INTERVAL_MS = 4000;
+    setCloudPolling(true);
+    setCloudStatus('processing');
+
+    while (Date.now() - startTime < TIMEOUT_MS) {
+      try {
+        const res = await fetch(`${statusUrl}?t=${Date.now()}`, { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.status === 'succeeded' && json?.videoUrl) {
+            setCloudStatus('succeeded');
+            setCloudVideoUrl(json.videoUrl);
+            setCloudPolling(false);
+            setCloudStartTime(0);
+
+            toast.success('Video ready! Downloading...');
+            try {
+              const dl = await fetch(json.videoUrl, { cache: 'no-store' });
+              const blob = await dl.blob();
+              const objUrl = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = objUrl;
+              a.download = `video-with-subtitles-${Date.now()}.mp4`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(objUrl);
+            } catch (e) {
+              console.error('Auto-download failed, opening in new tab', e);
+              window.open(json.videoUrl, '_blank');
+            }
+            return;
+          }
+          if (json?.status === 'failed') {
+            setCloudStatus('failed');
+            setCloudPolling(false);
+            setCloudStartTime(0);
+            toast.error(json?.error || 'Cloud processing failed');
+            return;
+          }
+        }
+      } catch (e) {
+        // ignore and continue polling
+      }
+
+      // As a fallback, if a direct video URL is known, also try HEAD check
+      if (fallbackVideoUrl) {
+        try {
+          const head = await fetch(`${fallbackVideoUrl}?t=${Date.now()}`, { method: 'HEAD', cache: 'no-store' });
+          if (head.ok) {
+            setCloudStatus('succeeded');
+            setCloudVideoUrl(fallbackVideoUrl);
+            setCloudPolling(false);
+            setCloudStartTime(0);
+            toast.success('Video ready!');
+            return;
+          }
+        } catch {}
+      }
+      await new Promise((r) => setTimeout(r, INTERVAL_MS));
+    }
+
+    setCloudStatus('timeout');
+    setCloudPolling(false);
+    setCloudStartTime(0);
+    toast.error('Cloud processing timed out. Try a shorter video or simpler caption style.');
+  };
+
   // Poll for AWS Lambda output URL until the processed video appears
   const pollLambdaOutput = async (url: string, requestId: string, startTime: number) => {
-    const TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+    const TIMEOUT_MS = 6 * 60 * 1000; // 6 minutes
     const INTERVAL_MS = 4000;
 
     setCloudPolling(true);
@@ -1317,10 +1388,14 @@ export const KyrgyzSubtitleGenerator = () => {
         throw new Error(lambdaData?.error || 'Lambda processing failed');
       }
 
-      // If processing asynchronously, poll for the output URL
-      if (lambdaData?.processing && lambdaData?.videoUrl) {
+      // If processing asynchronously, poll for status/video
+      if (lambdaData?.processing) {
         console.log('[Download] Lambda started asynchronously, polling for result...', lambdaData);
-        await pollLambdaOutput(lambdaData.videoUrl, rid, startTime);
+        if (lambdaData?.statusUrl) {
+          await pollLambdaStatus(lambdaData.statusUrl, lambdaData?.videoUrl || null, rid, startTime);
+        } else if (lambdaData?.videoUrl) {
+          await pollLambdaOutput(lambdaData.videoUrl, rid, startTime);
+        }
         return;
       }
       

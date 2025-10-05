@@ -55,6 +55,21 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Create initial processing status marker
+    try {
+      const statusKey = `${requestId}.status.json`;
+      const statusBody = JSON.stringify({ status: 'processing', requestId, startedAt: new Date().toISOString() });
+      await supabase.storage
+        .from('videos')
+        .upload(statusKey, new Blob([statusBody], { type: 'application/json' }), {
+          contentType: 'application/json',
+          upsert: true,
+        });
+      console.log(`[${requestId}] Wrote initial status file: ${statusKey}`);
+    } catch (e) {
+      console.warn(`[${requestId}] Failed to write initial status`, e);
+    }
+
     // Auto-deploy Lambda function with latest code before processing
     console.log(`[${requestId}] Auto-deploying Lambda function with latest code...`);
     const lambdaCode = `import json
@@ -203,6 +218,29 @@ def handler(event, context):
     result_url = f'{supabase_url}/storage/v1/object/public/videos/{output_filename}'
     
     print(f'Upload complete: {result_url}')
+    
+    # Update status file to succeeded
+    try:
+        status_key = f"{request_id}.status.json"
+        status_upload_url = f"{supabase_url}/storage/v1/object/videos/{status_key}"
+        status_payload = json.dumps({
+            'status': 'succeeded',
+            'requestId': request_id,
+            'videoUrl': result_url,
+        }).encode('utf-8')
+        status_req = urllib.request.Request(
+            status_upload_url,
+            data=status_payload,
+            headers={
+                'Authorization': f'Bearer {supabase_key}',
+                'Content-Type': 'application/json'
+            },
+            method='POST'
+        )
+        urllib.request.urlopen(status_req)
+        print('Status file updated to succeeded')
+    except Exception as e:
+        print(f'Failed to update status file: {e}')
     
     return {
         'statusCode': 200,
@@ -471,7 +509,10 @@ def handler(event, context):
 
     // Return immediately and let Lambda process asynchronously; frontend will poll the result URL
     const predictedUrl = `${supabaseUrl}/storage/v1/object/public/videos/${requestId}_burned.mp4`;
-    return new Response(JSON.stringify({ success: true, processing: true, videoUrl: predictedUrl, requestId }), {
+    const { data: { publicUrl: statusUrl } } = supabase.storage
+      .from('videos')
+      .getPublicUrl(`${requestId}.status.json`);
+    return new Response(JSON.stringify({ success: true, processing: true, videoUrl: predictedUrl, statusUrl, requestId }), {
       status: 202,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
