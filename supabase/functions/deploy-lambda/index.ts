@@ -1,28 +1,42 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createHash, createHmac } from "https://deno.land/std@0.160.0/node/crypto.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-function hmac(key: Uint8Array | string, message: string): Uint8Array {
-  const hmacInstance = createHmac('sha256', key);
-  hmacInstance.update(message);
-  return new Uint8Array(hmacInstance.digest());
+async function hmacSha256(key: ArrayBuffer, message: string): Promise<ArrayBuffer> {
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    key,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const encoder = new TextEncoder();
+  return await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(message));
 }
 
-function sha256(message: string): string {
-  const hash = createHash('sha256');
-  hash.update(message);
-  return hash.digest('hex');
+async function sha256(message: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
-function getSignatureKey(key: string, dateStamp: string, regionName: string, serviceName: string): Uint8Array {
-  const kDate = hmac('AWS4' + key, dateStamp);
-  const kRegion = hmac(kDate, regionName);
-  const kService = hmac(kRegion, serviceName);
-  const kSigning = hmac(kService, 'aws4_request');
+async function getSignatureKey(
+  key: string,
+  dateStamp: string,
+  regionName: string,
+  serviceName: string
+): Promise<ArrayBuffer> {
+  const encoder = new TextEncoder();
+  const kDate = await hmacSha256(encoder.encode('AWS4' + key).buffer, dateStamp);
+  const kRegion = await hmacSha256(kDate, regionName);
+  const kService = await hmacSha256(kRegion, serviceName);
+  const kSigning = await hmacSha256(kService, 'aws4_request');
   return kSigning;
 }
 
@@ -102,7 +116,7 @@ serve(async (req) => {
         };
 
     const payloadStr = JSON.stringify(payload);
-    const payloadHash = sha256(payloadStr);
+    const payloadHash = await sha256(payloadStr);
 
     // Create canonical request
     const canonicalUri = functionExists ? `/2015-03-31/functions/${functionName}/code` : '/2015-03-31/functions';
@@ -114,11 +128,12 @@ serve(async (req) => {
     // Create string to sign
     const algorithm = 'AWS4-HMAC-SHA256';
     const credentialScope = `${dateStamp}/${AWS_REGION}/${service}/aws4_request`;
-    const stringToSign = `${algorithm}\n${amzDate}\n${credentialScope}\n${sha256(canonicalRequest)}`;
+    const stringToSign = `${algorithm}\n${amzDate}\n${credentialScope}\n${await sha256(canonicalRequest)}`;
 
     // Calculate signature
-    const signingKey = getSignatureKey(AWS_SECRET_ACCESS_KEY, dateStamp, AWS_REGION, service);
-    const signature = Array.from(hmac(signingKey, stringToSign))
+    const signingKey = await getSignatureKey(AWS_SECRET_ACCESS_KEY, dateStamp, AWS_REGION, service);
+    const signatureBuffer = await hmacSha256(signingKey, stringToSign);
+    const signature = Array.from(new Uint8Array(signatureBuffer))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
 
