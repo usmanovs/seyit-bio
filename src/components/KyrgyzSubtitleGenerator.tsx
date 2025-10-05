@@ -75,10 +75,19 @@ export const KyrgyzSubtitleGenerator = () => {
   const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
   const [ffmpegLoading, setFfmpegLoading] = useState(false);
   const [ffmpegError, setFfmpegError] = useState<string | null>(null);
-  const [cloudPredictionId, setCloudPredictionId] = useState<string | null>(null);
+  const [cloudPredictionId, setCloudPredictionId] = useState<string | null>(() => {
+    return localStorage.getItem('cloudPredictionId');
+  });
   const [cloudStatus, setCloudStatus] = useState<string>('');
   const [cloudPolling, setCloudPolling] = useState<boolean>(false);
-  const [cloudVideoUrl, setCloudVideoUrl] = useState<string | null>(null);
+  const [cloudVideoUrl, setCloudVideoUrl] = useState<string | null>(() => {
+    return localStorage.getItem('cloudVideoUrl');
+  });
+  const [cloudStartTime, setCloudStartTime] = useState<number>(() => {
+    const saved = localStorage.getItem('cloudStartTime');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+  const [cloudElapsedTime, setCloudElapsedTime] = useState<number>(0);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const captionStyles = [{
     id: 'outline',
@@ -115,6 +124,70 @@ export const KyrgyzSubtitleGenerator = () => {
   // Check video processing count on mount
   useEffect(() => {
     fetchVideosProcessedCount();
+  }, []);
+
+  // Persist cloud state to localStorage
+  useEffect(() => {
+    if (cloudPredictionId) {
+      localStorage.setItem('cloudPredictionId', cloudPredictionId);
+    } else {
+      localStorage.removeItem('cloudPredictionId');
+    }
+  }, [cloudPredictionId]);
+
+  useEffect(() => {
+    if (cloudVideoUrl) {
+      localStorage.setItem('cloudVideoUrl', cloudVideoUrl);
+    } else {
+      localStorage.removeItem('cloudVideoUrl');
+    }
+  }, [cloudVideoUrl]);
+
+  useEffect(() => {
+    if (cloudStartTime > 0) {
+      localStorage.setItem('cloudStartTime', cloudStartTime.toString());
+    } else {
+      localStorage.removeItem('cloudStartTime');
+    }
+  }, [cloudStartTime]);
+
+  // Track elapsed time for cloud processing
+  useEffect(() => {
+    if (!cloudPolling || cloudStartTime === 0) {
+      setCloudElapsedTime(0);
+      return;
+    }
+    
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - cloudStartTime) / 1000);
+      setCloudElapsedTime(elapsed);
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [cloudPolling, cloudStartTime]);
+
+  // Restore cloud processing state on mount
+  useEffect(() => {
+    const savedPredictionId = localStorage.getItem('cloudPredictionId');
+    const savedStartTime = localStorage.getItem('cloudStartTime');
+    
+    if (savedPredictionId && savedStartTime) {
+      const startTime = parseInt(savedStartTime, 10);
+      const elapsed = Date.now() - startTime;
+      
+      // Only resume polling if less than 15 minutes have passed
+      if (elapsed < 900000) {
+        console.log('[Cloud] Resuming cloud processing from previous session...');
+        setCloudPolling(true);
+        setCloudStartTime(startTime);
+        pollCloudPrediction(savedPredictionId, startTime, Math.floor(elapsed / 4000));
+        toast.info('Resuming video processing from previous session...');
+      } else {
+        // Clear stale data
+        localStorage.removeItem('cloudPredictionId');
+        localStorage.removeItem('cloudStartTime');
+      }
+    }
   }, []);
 
   // FFmpeg loader with retry and timeout
@@ -357,6 +430,17 @@ export const KyrgyzSubtitleGenerator = () => {
     setProcessingStatus('');
     setProcessingProgress(0);
     setHasUnsavedChanges(false);
+    
+    // Clear cloud processing state
+    setCloudPredictionId(null);
+    setCloudVideoUrl(null);
+    setCloudStatus('');
+    setCloudPolling(false);
+    setCloudStartTime(0);
+    setCloudElapsedTime(0);
+    localStorage.removeItem('cloudPredictionId');
+    localStorage.removeItem('cloudVideoUrl');
+    localStorage.removeItem('cloudStartTime');
     setIsUploading(true);
     setUploadProgress(0);
     
@@ -859,6 +943,12 @@ export const KyrgyzSubtitleGenerator = () => {
       return;
     }
 
+    // Check if already processing
+    if (cloudPolling) {
+      toast.error("Video is already processing in cloud. Please wait...");
+      return;
+    }
+
     // Prefer local FFmpeg processing when available; otherwise use cloud
     if (!ffmpegLoaded) {
       if (cloudVideoUrl) {
@@ -882,7 +972,7 @@ export const KyrgyzSubtitleGenerator = () => {
           return;
         }
       }
-      toast.info("Using cloud processing...");
+      toast.info("Starting cloud processing...");
       await burnVideoInCloud();
       return;
     }
@@ -1064,6 +1154,12 @@ export const KyrgyzSubtitleGenerator = () => {
           setCloudStatus('succeeded');
           setCloudVideoUrl(data.videoUrl);
           setCloudPolling(false);
+          setCloudStartTime(0);
+          
+          // Clear localStorage
+          localStorage.removeItem('cloudPredictionId');
+          localStorage.removeItem('cloudStartTime');
+          
           toast.success('Cloud video ready! Downloading...');
           try {
             const response = await fetch(data.videoUrl);
@@ -1085,6 +1181,12 @@ export const KyrgyzSubtitleGenerator = () => {
         if (data?.status === 'failed') {
           setCloudStatus('failed');
           setCloudPolling(false);
+          setCloudStartTime(0);
+          
+          // Clear localStorage
+          localStorage.removeItem('cloudPredictionId');
+          localStorage.removeItem('cloudStartTime');
+          
           toast.error(data?.error || 'Cloud processing failed');
           return true;
         }
@@ -1098,6 +1200,12 @@ export const KyrgyzSubtitleGenerator = () => {
     } catch (e: any) {
       setCloudPolling(false);
       setCloudStatus('error');
+      setCloudStartTime(0);
+      
+      // Clear localStorage
+      localStorage.removeItem('cloudPredictionId');
+      localStorage.removeItem('cloudStartTime');
+      
       toast.error(e.message || 'Cloud polling error');
     }
   };
@@ -1107,11 +1215,22 @@ export const KyrgyzSubtitleGenerator = () => {
       toast.error('No video or captions available');
       return;
     }
+    
+    // Check if already processing
+    if (cloudPolling) {
+      toast.error('Cloud processing already in progress. Please wait...');
+      return;
+    }
+    
     const useSubs = editedSubtitles || subtitles;
     const rid = generateRequestId();
+    const startTime = Date.now();
+    
     try {
       setCloudStatus('starting');
       setCloudPolling(true);
+      setCloudStartTime(startTime);
+      
       const { data, error } = await supabase.functions.invoke('burn-subtitles-backend', {
         body: {
           videoPath,
@@ -1123,12 +1242,18 @@ export const KyrgyzSubtitleGenerator = () => {
       if (error) throw error;
       if (data?.predictionId) {
         setCloudPredictionId(data.predictionId);
-        pollCloudPrediction(data.predictionId, Date.now(), 0);
+        pollCloudPrediction(data.predictionId, startTime, 0);
         toast.info('Started cloud processing... This may take 2-10 minutes depending on video size.');
       } else if (data?.videoUrl) {
         setCloudVideoUrl(data.videoUrl);
         setCloudStatus('succeeded');
         setCloudPolling(false);
+        setCloudStartTime(0);
+        
+        // Clear localStorage
+        localStorage.removeItem('cloudPredictionId');
+        localStorage.removeItem('cloudStartTime');
+        
         toast.success('Cloud video ready! Downloading...');
         try {
           const response = await fetch(data.videoUrl);
@@ -1150,6 +1275,13 @@ export const KyrgyzSubtitleGenerator = () => {
       }
     } catch (e: any) {
       setCloudStatus('error');
+      setCloudPolling(false);
+      setCloudStartTime(0);
+      
+      // Clear localStorage
+      localStorage.removeItem('cloudPredictionId');
+      localStorage.removeItem('cloudStartTime');
+      
       toast.error(e.message || 'Failed to start cloud processing');
     }
   };
@@ -1511,9 +1643,16 @@ export const KyrgyzSubtitleGenerator = () => {
                                 <Progress value={processingProgress} className="w-full h-2" />
                               </div>
                             ) : cloudPolling ? (
-                              <div className="flex items-center gap-2">
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                <span>Processing in Cloud ({cloudStatus || 'starting'})...</span>
+                              <div className="w-full space-y-2">
+                                <div className="flex items-center justify-center gap-2">
+                                  <Loader2 className="w-5 h-5 animate-spin" />
+                                  <span className="text-sm">
+                                    Processing in Cloud... {Math.floor(cloudElapsedTime / 60)}m {cloudElapsedTime % 60}s elapsed
+                                  </span>
+                                </div>
+                                <div className="text-xs text-center text-white/70">
+                                  Large videos can take 5-10 minutes
+                                </div>
                               </div>
                             ) : (
                               <div className="flex items-center gap-2">
@@ -1524,9 +1663,45 @@ export const KyrgyzSubtitleGenerator = () => {
                           </Button>
                         </div>
 
-                        {!ffmpegLoaded && !isProcessingVideo && !cloudPolling && (
+                        {/* Manual download fallback when cloud video is ready */}
+                        {cloudVideoUrl && !cloudPolling && (
+                          <div className="space-y-2 p-3 rounded-lg border border-primary/20 bg-primary/5">
+                            <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span>Video ready!</span>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => window.open(cloudVideoUrl, '_blank')}
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                              >
+                                <ArrowRight className="w-4 h-4 mr-2" />
+                                Open in New Tab
+                              </Button>
+                              <Button
+                                onClick={async () => {
+                                  try {
+                                    await navigator.clipboard.writeText(cloudVideoUrl);
+                                    toast.success('Video link copied!');
+                                  } catch (e) {
+                                    toast.error('Failed to copy link');
+                                  }
+                                }}
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                              >
+                                Copy Link
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {!ffmpegLoaded && !isProcessingVideo && !cloudPolling && !cloudVideoUrl && (
                           <div className="text-xs text-muted-foreground p-2 rounded border bg-muted/50">
-                            Cloud mode — click once, it will auto-download when ready
+                            Cloud mode — Processing with Replicate AI. Click once and wait for completion.
                           </div>
                         )}
                       </div>
