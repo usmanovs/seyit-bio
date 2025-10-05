@@ -1,4 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { 
+  LambdaClient, 
+  CreateFunctionCommand, 
+  UpdateFunctionCodeCommand,
+  GetFunctionCommand,
+  ResourceNotFoundException 
+} from "https://esm.sh/@aws-sdk/client-lambda@3.637.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,83 +33,61 @@ serve(async (req) => {
     console.log(`[DEPLOY-LAMBDA] Runtime: ${runtime}`);
     console.log(`[DEPLOY-LAMBDA] Handler: ${handler}`);
 
-    // Create AWS signature
-    const timestamp = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
-    const date = timestamp.slice(0, 8);
-
-    // Encode function code to base64
-    const encodedCode = btoa(code);
-
-    // Create Lambda function or update if exists
-    const lambdaEndpoint = `https://lambda.${AWS_REGION}.amazonaws.com/2015-03-31/functions`;
-
-    // First, try to get the function to see if it exists
-    const getFunctionUrl = `${lambdaEndpoint}/${functionName}`;
-    
-    const getHeaders = {
-      'Content-Type': 'application/json',
-      'X-Amz-Date': timestamp,
-    };
-
-    // Sign the request (simplified - you may need proper AWS Signature V4)
-    const getResponse = await fetch(getFunctionUrl, {
-      method: 'GET',
-      headers: getHeaders,
+    // Initialize AWS Lambda client
+    const lambdaClient = new LambdaClient({
+      region: AWS_REGION,
+      credentials: {
+        accessKeyId: AWS_ACCESS_KEY_ID,
+        secretAccessKey: AWS_SECRET_ACCESS_KEY,
+      },
     });
 
-    let deploymentResponse;
-    
-    if (getResponse.status === 404) {
-      // Function doesn't exist, create it
-      console.log(`[DEPLOY-LAMBDA] Function does not exist, creating new function`);
-      
-      const createPayload = {
+    // Convert code string to Uint8Array for Lambda
+    const codeBuffer = new TextEncoder().encode(code);
+
+    let result;
+    let functionExists = false;
+
+    // Check if function exists
+    try {
+      const getCommand = new GetFunctionCommand({ FunctionName: functionName });
+      await lambdaClient.send(getCommand);
+      functionExists = true;
+      console.log(`[DEPLOY-LAMBDA] Function exists, will update code`);
+    } catch (error) {
+      if (error instanceof ResourceNotFoundException) {
+        console.log(`[DEPLOY-LAMBDA] Function does not exist, will create new function`);
+      } else {
+        throw error;
+      }
+    }
+
+    if (functionExists) {
+      // Update existing function
+      const updateCommand = new UpdateFunctionCodeCommand({
+        FunctionName: functionName,
+        ZipFile: codeBuffer,
+      });
+      result = await lambdaClient.send(updateCommand);
+      console.log(`[DEPLOY-LAMBDA] Function code updated successfully`);
+    } else {
+      // Create new function
+      const createCommand = new CreateFunctionCommand({
         FunctionName: functionName,
         Runtime: runtime || 'nodejs20.x',
         Role: roleArn,
         Handler: handler || 'index.handler',
         Code: {
-          ZipFile: encodedCode
+          ZipFile: codeBuffer,
         },
         Description: `Deployed via Lovable on ${new Date().toISOString()}`,
         Timeout: 30,
         MemorySize: 256,
-      };
-
-      deploymentResponse = await fetch(lambdaEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Amz-Date': timestamp,
-        },
-        body: JSON.stringify(createPayload),
       });
-    } else {
-      // Function exists, update it
-      console.log(`[DEPLOY-LAMBDA] Function exists, updating code`);
-      
-      const updateCodeUrl = `${lambdaEndpoint}/${functionName}/code`;
-      const updatePayload = {
-        ZipFile: encodedCode
-      };
-
-      deploymentResponse = await fetch(updateCodeUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Amz-Date': timestamp,
-        },
-        body: JSON.stringify(updatePayload),
-      });
+      result = await lambdaClient.send(createCommand);
+      console.log(`[DEPLOY-LAMBDA] Function created successfully`);
     }
 
-    if (!deploymentResponse.ok) {
-      const errorText = await deploymentResponse.text();
-      console.error(`[DEPLOY-LAMBDA] Deployment failed:`, errorText);
-      throw new Error(`Lambda deployment failed: ${errorText}`);
-    }
-
-    const result = await deploymentResponse.json();
     console.log(`[DEPLOY-LAMBDA] Deployment successful:`, result);
 
     return new Response(
