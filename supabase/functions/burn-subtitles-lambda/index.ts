@@ -86,6 +86,18 @@ def handler(event, context):
     print(f'Downloading SRT from {srt_url}')
     urllib.request.urlretrieve(srt_url, srt_path)
     
+    # Prepare fonts directory and download DejaVu Sans
+    fonts_dir = '/tmp/fonts'
+    os.makedirs(fonts_dir, exist_ok=True)
+    try:
+        font_url = 'https://github.com/dejavu-fonts/dejavu-fonts/raw/version_2_37/ttf/DejaVuSans.ttf'
+        font_dest = os.path.join(fonts_dir, 'DejaVuSans.ttf')
+        print(f'Downloading font from {font_url}')
+        urllib.request.urlretrieve(font_url, font_dest)
+    except Exception as e:
+        print(f'Font download failed: {e}')
+        pass
+    
     # Ensure ffmpeg path is available
     os.environ['PATH'] = '/opt/bin:' + os.environ.get('PATH', '')
     ffmpeg_path = '/opt/bin/ffmpeg' if os.path.exists('/opt/bin/ffmpeg') else 'ffmpeg'
@@ -94,7 +106,7 @@ def handler(event, context):
     cmd = [
         ffmpeg_path,
         '-i', video_path,
-        '-vf', f"subtitles={srt_path}:force_style='{force_style}'",
+        '-vf', f"subtitles={srt_path}:fontsdir={fonts_dir}:force_style='{force_style}'",
         '-c:v', 'libx264',
         '-pix_fmt', 'yuv420p',
         '-crf', '18',
