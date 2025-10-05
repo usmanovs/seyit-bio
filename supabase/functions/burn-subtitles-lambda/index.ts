@@ -206,11 +206,14 @@ def handler(event, context):
           
           if (stateResponse.ok) {
             const stateData = await stateResponse.json();
-            if (stateData.State === 'Active' && stateData.LastUpdateStatus === 'Successful') {
+            const cfg = stateData.Configuration || stateData;
+            const state = cfg?.State;
+            const update = cfg?.LastUpdateStatus;
+            if (state === 'Active' && (update === 'Successful' || update === 'Idle')) {
               console.log(`[${requestId}] Lambda function is active and ready`);
               break;
             }
-            console.log(`[${requestId}] Lambda state: ${stateData.State}, update status: ${stateData.LastUpdateStatus}`);
+            console.log(`[${requestId}] Lambda state: ${state}, update status: ${update}`);
           }
         } catch (e) {
           console.warn(`[${requestId}] State check failed:`, e);

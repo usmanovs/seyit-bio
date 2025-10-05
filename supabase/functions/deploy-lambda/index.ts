@@ -210,31 +210,48 @@ serve(async (req) => {
         Timeout: 900,
         MemorySize: 2048,
       };
-      const configStr = JSON.stringify(configPayload);
-      const configHash = await sha256(configStr);
-      const configUri = `/2015-03-31/functions/${functionName}/configuration`;
-      const configHeaders = `host:${host}\nx-amz-date:${amzDate}\n`;
-      const configSignedHeaders = 'host;x-amz-date';
-      const configCanonicalRequest = `PUT\n${configUri}\n\n${configHeaders}\n${configSignedHeaders}\n${configHash}`;
-      const configStringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${credentialScope}\n${await sha256(configCanonicalRequest)}`;
-      const configSignatureBuffer = await hmacSha256(signingKey, configStringToSign);
-      const configSignature = Array.from(new Uint8Array(configSignatureBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-      const configAuthHeader = `AWS4-HMAC-SHA256 Credential=${AWS_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${configSignedHeaders}, Signature=${configSignature}`;
 
-      console.log('[DEPLOY-LAMBDA] Updating function configuration (handler/runtime/layers)');
-      const configResp = await fetch(`https://${host}${configUri}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Host': host,
-          'X-Amz-Date': amzDate,
-          'Authorization': configAuthHeader,
-        },
-        body: configStr,
-      });
-      if (!configResp.ok) {
+      const maxAttempts = 10;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const nowCfg = new Date();
+        const amzDateCfg = nowCfg.toISOString().replace(/[:-]|\.\d{3}/g, '');
+        const dateStampCfg = amzDateCfg.substring(0, 8);
+        const credentialScopeCfg = `${dateStampCfg}/${AWS_REGION}/${service}/aws4_request`;
+
+        const configStr = JSON.stringify(configPayload);
+        const configHash = await sha256(configStr);
+        const configUri = `/2015-03-31/functions/${functionName}/configuration`;
+        const configHeaders = `host:${host}\nx-amz-date:${amzDateCfg}\n`;
+        const configSignedHeaders = 'host;x-amz-date';
+        const configCanonicalRequest = `PUT\n${configUri}\n\n${configHeaders}\n${configSignedHeaders}\n${configHash}`;
+        const configStringToSign = `AWS4-HMAC-SHA256\n${amzDateCfg}\n${credentialScopeCfg}\n${await sha256(configCanonicalRequest)}`;
+        const signingKeyCfg = await getSignatureKey(AWS_SECRET_ACCESS_KEY, dateStampCfg, AWS_REGION, service);
+        const configSignatureBuffer = await hmacSha256(signingKeyCfg, configStringToSign);
+        const configSignature = Array.from(new Uint8Array(configSignatureBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+        const configAuthHeader = `AWS4-HMAC-SHA256 Credential=${AWS_ACCESS_KEY_ID}/${credentialScopeCfg}, SignedHeaders=${configSignedHeaders}, Signature=${configSignature}`;
+
+        console.log(`[DEPLOY-LAMBDA] Updating function configuration (handler/runtime/layers) attempt ${attempt}/${maxAttempts}`);
+        const configResp = await fetch(`https://${host}${configUri}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Host': host,
+            'X-Amz-Date': amzDateCfg,
+            'Authorization': configAuthHeader,
+          },
+          body: configStr,
+        });
+        if (configResp.ok) {
+          console.log('[DEPLOY-LAMBDA] Configuration update successful');
+          break;
+        }
         const t = await configResp.text();
         console.warn('[DEPLOY-LAMBDA] Configuration update failed:', t);
+        if (attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 1500));
+        } else {
+          console.warn('[DEPLOY-LAMBDA] Configuration update giving up after retries');
+        }
       }
     } catch (e) {
       console.warn('[DEPLOY-LAMBDA] Configuration update error:', e);
