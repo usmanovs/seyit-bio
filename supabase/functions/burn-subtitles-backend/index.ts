@@ -165,7 +165,7 @@ serve(async (req) => {
       // Stroke style: White text with thick black outline (matches 2em, bold, 4px shadow in 8 directions)
       outline: {
         FontName: 'Noto Sans,Arial,sans-serif',
-        FontSize: 48,  // Matches 2em from CSS
+        FontSize: 28,  // Adjusted to reasonable size for video
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 1,
         Italic: 0,
@@ -184,7 +184,7 @@ serve(async (req) => {
       // Subtle style: Light text with semi-transparent background (matches 1.3em, weight 300)
       minimal: {
         FontName: 'Noto Sans,Arial,sans-serif',
-        FontSize: 32,  // Matches 1.3em
+        FontSize: 22,  // Adjusted to reasonable size
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 0,  // Light weight
         Italic: 0,
@@ -203,7 +203,7 @@ serve(async (req) => {
       // Highlight style: Black text with yellow glow and white outline (matches weight 900)
       green: {
         FontName: 'Noto Sans,Arial,sans-serif',
-        FontSize: 40,  // Between default and large for emphasis
+        FontSize: 30,  // Adjusted for emphasis
         PrimaryColour: '&H000000',  // Black text
         Bold: 1,
         Italic: 0,
@@ -223,7 +223,7 @@ serve(async (req) => {
       // Framed style: Bright green text with border and glow (matches 1.6em, bold, green border)
       boxed: {
         FontName: 'Noto Sans,Arial,sans-serif',
-        FontSize: 38,  // Matches 1.6em
+        FontSize: 32,  // Adjusted for framed style
         PrimaryColour: '&H00FF00',  // Bright green (00FF00 in BGR)
         Bold: 1,
         Italic: 0,
