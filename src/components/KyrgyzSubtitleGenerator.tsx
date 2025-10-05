@@ -1287,66 +1287,69 @@ export const KyrgyzSubtitleGenerator = () => {
           <CardDescription>Upload a video and generate Kyrgyz subtitles</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="space-y-2">
-            <input ref={fileInputRef} type="file" accept="video/*" onChange={handleFileSelect} className="hidden" />
-            <div className={`relative border-2 border-dashed rounded-lg p-8 transition-all ${isDragOver ? 'border-primary bg-primary/5 scale-[1.02]' : 'border-muted-foreground/25 hover:border-primary/50'}`} onDragOver={e => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDragOver(true);
-          }} onDragEnter={e => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDragOver(true);
-          }} onDragLeave={e => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDragOver(false);
-          }} onDrop={e => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDragOver(false);
-            const files = e.dataTransfer.files;
-            if (files && files[0]) {
-              const file = files[0];
-              if (file.type.startsWith('video/')) {
-                handleFileSelect({
-                  target: {
-                    files
-                  }
-                } as any);
-              } else {
-                toast.error('Please drop a video file');
+          {/* Only show upload area when no video is uploaded */}
+          {!videoUrl && (
+            <div className="space-y-2">
+              <input ref={fileInputRef} type="file" accept="video/*" onChange={handleFileSelect} className="hidden" />
+              <div className={`relative border-2 border-dashed rounded-lg p-8 transition-all ${isDragOver ? 'border-primary bg-primary/5 scale-[1.02]' : 'border-muted-foreground/25 hover:border-primary/50'}`} onDragOver={e => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragOver(true);
+            }} onDragEnter={e => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragOver(true);
+            }} onDragLeave={e => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragOver(false);
+            }} onDrop={e => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragOver(false);
+              const files = e.dataTransfer.files;
+              if (files && files[0]) {
+                const file = files[0];
+                if (file.type.startsWith('video/')) {
+                  handleFileSelect({
+                    target: {
+                      files
+                    }
+                  } as any);
+                } else {
+                  toast.error('Please drop a video file');
+                }
               }
-            }
-          }}>
-              <div className="flex flex-col items-center gap-3">
-                <div className={`transition-transform ${isDragOver ? 'scale-110' : ''}`}>
-                  <Upload className="w-12 h-12 text-muted-foreground" />
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-semibold mb-1">
-                    {isDragOver ? 'Drop your video here' : 'Drag & drop your video'}
-                  </p>
-                  <p className="text-sm text-muted-foreground mb-4">or</p>
-                  <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading} size="lg" className="text-lg px-8 py-6 font-semibold shadow-lg hover:shadow-xl transition-all">
-                    {isUploading ? <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Uploading... {Math.round(uploadProgress)}%
-                    </> : <>
-                      <Upload className="w-4 h-4 mr-2" />
-                      Choose Video
-                    </>}
-                  </Button>
+            }}>
+                <div className="flex flex-col items-center gap-3">
+                  <div className={`transition-transform ${isDragOver ? 'scale-110' : ''}`}>
+                    <Upload className="w-12 h-12 text-muted-foreground" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg font-semibold mb-1">
+                      {isDragOver ? 'Drop your video here' : 'Drag & drop your video'}
+                    </p>
+                    <p className="text-sm text-muted-foreground mb-4">or</p>
+                    <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading} size="lg" className="text-lg px-8 py-6 font-semibold shadow-lg hover:shadow-xl transition-all">
+                      {isUploading ? <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Uploading... {Math.round(uploadProgress)}%
+                      </> : <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Choose Video
+                      </>}
+                    </Button>
+                  </div>
                 </div>
               </div>
+              {isUploading && <div className="w-full space-y-1">
+                  <Progress value={uploadProgress} className="w-full" />
+                  <p className="text-xs text-muted-foreground">
+                    {uploadProgress < 95 ? "Uploading and generating captions... This may take a few minutes for large files." : "Finalizing upload and caption generation... Large files on mobile can take a few minutes."}
+                  </p>
+                </div>}
             </div>
-            {isUploading && <div className="w-full space-y-1">
-                <Progress value={uploadProgress} className="w-full" />
-                <p className="text-xs text-muted-foreground">
-                  {uploadProgress < 95 ? "Uploading and generating captions... This may take a few minutes for large files." : "Finalizing upload and caption generation... Large files on mobile can take a few minutes."}
-                </p>
-              </div>}
-          </div>
+          )}
 
           {/* Caption Style Selector */}
           {videoUrl && subtitles && <div className="space-y-2">
