@@ -1222,6 +1222,53 @@ export const KyrgyzSubtitleGenerator = () => {
     }
   };
 
+  // Poll for AWS Lambda output URL until the processed video appears
+  const pollLambdaOutput = async (url: string, requestId: string, startTime: number) => {
+    const TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+    const INTERVAL_MS = 4000;
+
+    setCloudPolling(true);
+    setCloudStatus('processing');
+
+    while (Date.now() - startTime < TIMEOUT_MS) {
+      try {
+        const res = await fetch(`${url}?t=${Date.now()}`, { method: 'HEAD', cache: 'no-store' });
+        if (res.ok) {
+          setCloudStatus('succeeded');
+          setCloudVideoUrl(url);
+          setCloudPolling(false);
+          setCloudStartTime(0);
+
+          toast.success('Video ready! Downloading...');
+          try {
+            const dl = await fetch(url, { cache: 'no-store' });
+            const blob = await dl.blob();
+            const objUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = objUrl;
+            a.download = `video-with-subtitles-${Date.now()}.mp4`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(objUrl);
+          } catch (e) {
+            console.error('Auto-download failed, opening in new tab', e);
+            window.open(url, '_blank');
+          }
+          return;
+        }
+      } catch (e) {
+        // ignore and continue polling
+      }
+      await new Promise((r) => setTimeout(r, INTERVAL_MS));
+    }
+
+    setCloudStatus('timeout');
+    setCloudPolling(false);
+    setCloudStartTime(0);
+    toast.error('Cloud processing timed out. Try a shorter video or simpler caption style.');
+  };
+
   const burnVideoInCloud = async () => {
     if (!videoPath || !(editedSubtitles || subtitles)) {
       toast.error('No video or captions available');
@@ -1268,6 +1315,13 @@ export const KyrgyzSubtitleGenerator = () => {
       if (!lambdaData?.success) {
         throw new Error(lambdaData?.error || 'Lambda processing failed');
       }
+
+      // If processing asynchronously, poll for the output URL
+      if (lambdaData?.processing && lambdaData?.videoUrl) {
+        console.log('[Download] Lambda started asynchronously, polling for result...', lambdaData);
+        await pollLambdaOutput(lambdaData.videoUrl, rid, startTime);
+        return;
+      }
       
       if (lambdaData?.videoUrl) {
         // Lambda succeeded synchronously
@@ -1296,7 +1350,7 @@ export const KyrgyzSubtitleGenerator = () => {
         return;
       }
       
-      throw new Error('Lambda returned no video URL');
+      throw new Error('Lambda started but did not return a video URL');
       
     } catch (e: any) {
       setCloudStatus('error');

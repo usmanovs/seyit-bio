@@ -387,7 +387,7 @@ def handler(event, context):
       headers: {
         'Content-Type': 'application/json',
         'X-Amz-Date': amzDate,
-        'X-Amz-Invocation-Type': 'RequestResponse',
+        'X-Amz-Invocation-Type': 'Event',
         'Authorization': authorizationHeader,
         'Host': host,
       },
@@ -397,46 +397,18 @@ def handler(event, context):
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[${requestId}] Lambda invocation failed:`, errorText);
-      throw new Error(`Lambda invocation failed: ${response.status} ${errorText}`);
-    }
-
-    const result = await response.json();
-    console.log(`[${requestId}] Lambda response:`, result);
-
-    // Extract videoUrl from Lambda response (supports {videoUrl}, {statusCode, body}, or error)
-    let videoUrl: string | undefined;
-    try {
-      if (result?.videoUrl) {
-        videoUrl = result.videoUrl;
-      } else if (result?.body) {
-        const bodyObj = typeof result.body === 'string' ? JSON.parse(result.body) : result.body;
-        videoUrl = bodyObj?.videoUrl;
-      }
-    } catch (e) {
-      console.warn(`[${requestId}] Failed parsing Lambda body:`, e);
-    }
-
-    if (!videoUrl) {
-      const errMsg = result?.errorMessage || 'Lambda returned no video URL';
-      console.error(`[${requestId}] Lambda processing failed: ${errMsg}`);
-      console.error(`[${requestId}] Full Lambda response:`, JSON.stringify(result, null, 2));
-      
-      // NO FALLBACK - Return error immediately to expose Lambda issue
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: errMsg,
-        lambdaResponse: result,
-        message: 'Lambda failed - check logs for ffmpeg/layer issues'
-      }), {
+      return new Response(JSON.stringify({ success: false, error: `Lambda invocation failed: ${response.status}`, details: errorText }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    return new Response(
-      JSON.stringify({ success: true, videoUrl, message: 'Video processed successfully with Lambda' }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    // Return immediately and let Lambda process asynchronously; frontend will poll the result URL
+    const predictedUrl = `${supabaseUrl}/storage/v1/object/public/videos/${requestId}_burned.mp4`;
+    return new Response(JSON.stringify({ success: true, processing: true, videoUrl: predictedUrl, requestId }), {
+      status: 202,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
 
   } catch (error) {
     console.error('Error in burn-subtitles-lambda:', error);
