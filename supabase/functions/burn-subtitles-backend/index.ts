@@ -177,7 +177,40 @@ serve(async (req) => {
         model: 'fofr/smart-ffmpeg',
         input: {
           files: [publicUrl, srtUrl],
-          prompt: `Burn the subtitles from the SRT file onto the video at the bottom. CRITICAL VIDEO QUALITY: Use high-quality encoding settings - output must preserve the original video quality with minimal compression (use CRF 18 or lower, preset slow/medium). CRITICAL FONT: Use a font family that fully supports emoji rendering such as Noto Color Emoji, Segoe UI Emoji, Apple Color Emoji, or Twemoji. Ensure all emoji characters (🎉😊❤️ etc.) render correctly as colored graphics. Audio: ensure the output includes the full original audio track; if the source codec is not MP4-compatible, re-encode to AAC at 192k (use -c:a aac -b:a 192k) and set -movflags +faststart for compatibility. Style: ${enhancedPrompt}. Position subtitles at the very bottom with minimal padding. Use clear, readable font size around 18px. Ensure normal word spacing and full emoji support.`,
+          prompt: `Burn the subtitles from the SRT file onto the video at the bottom center. 
+
+VIDEO QUALITY (CRITICAL - HIGHEST PRIORITY):
+- Use libx264 codec with CRF 15 for maximum quality (or CRF 12 for HD/4K content)
+- Use preset "slow" for best compression efficiency
+- Maintain original video resolution and framerate
+- Use pixel format yuv420p for compatibility
+- Set profile:v high and level 4.1
+- NEVER downscale or compress the original video quality
+- Preserve all video metadata
+
+AUDIO QUALITY:
+- Copy original audio stream if AAC (use -c:a copy)
+- If not AAC, re-encode to AAC at 256kbps (use -c:a aac -b:a 256k)
+- Set -movflags +faststart for web compatibility
+- Preserve all audio channels and sample rate
+
+FONT & EMOJI SUPPORT:
+- Use font family with full emoji support: Noto Color Emoji, Segoe UI Emoji, Apple Color Emoji, or Twemoji
+- Ensure all emoji characters (🎉😊❤️✨🔥 etc.) render correctly as colored graphics
+- Font size: 24-28px for HD, 36-42px for 4K
+- Enable proper emoji rendering with colored glyphs
+
+SUBTITLE STYLE:
+${enhancedPrompt}
+- Position at bottom center with 40-60px margin from bottom edge
+- Ensure normal word spacing and letter spacing (no extra gaps)
+- Apply proper anti-aliasing for smooth text rendering
+- Use semi-transparent background box for better readability if needed
+
+PERFORMANCE:
+- Output format: MP4 (H.264)
+- Maximum 3 processing attempts
+- Optimize for web playback`,
           max_attempts: 3,
         },
       } as any);
