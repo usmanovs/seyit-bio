@@ -62,9 +62,25 @@ import subprocess
 import os
 import urllib.request
 
-# Note: We avoid downloading external fonts to ensure reliability.
-# FFmpeg/libass will use default fonts available in the environment.
 
+def normalize_srt(path):
+    try:
+        with open(path, 'r', encoding='utf-8', errors='replace') as f:
+            txt = f.read()
+        # Normalize newlines and remove BOM
+        txt = txt.lstrip('\ufeff').replace('\r\n', '\n').replace('\r', '\n')
+        # Ensure blank lines between cues
+        parts = [p.strip() for p in txt.split('\n\n') if p.strip()]
+        txt = '\n\n'.join(parts) + '\n'
+        # Log preview
+        preview = '\n'.join(txt.splitlines()[:6])
+        print('SRT preview (first lines):\n' + preview)
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(txt)
+        has_arrow = '-->' in txt
+        print(f'SRT validation: {'OK' if has_arrow else 'MISSING TIMELINES'}')
+    except Exception as e:
+        print(f'Failed to normalize SRT: {e}')
 
 
 def handler(event, context):
@@ -85,6 +101,9 @@ def handler(event, context):
     
     print(f'Downloading SRT from {srt_url}')
     urllib.request.urlretrieve(srt_url, srt_path)
+
+    # Normalize SRT for safety
+    normalize_srt(srt_path)
     
     # Prepare fonts directory and download DejaVu Sans
     fonts_dir = '/tmp/fonts'
@@ -102,11 +121,19 @@ def handler(event, context):
     os.environ['PATH'] = '/opt/bin:' + os.environ.get('PATH', '')
     ffmpeg_path = '/opt/bin/ffmpeg' if os.path.exists('/opt/bin/ffmpeg') else 'ffmpeg'
 
-    # Burn subtitles with FFmpeg using provided force_style
+    # Escape style for filter (spaces in font name)
+    force_style_escaped = force_style.replace('DejaVu Sans', 'DejaVu\\ Sans')
+
+    # Build filter expressions
+    filter_expr = f"subtitles={srt_path}:charenc=UTF-8:fontsdir={fonts_dir}:force_style={force_style_escaped}"
+    fallback_filter_expr = f"subtitles={srt_path}:charenc=UTF-8:fontsdir={fonts_dir}"
+
+    # Primary attempt with styling
     cmd = [
         ffmpeg_path,
+        '-y',
         '-i', video_path,
-        '-vf', f"subtitles={srt_path}:fontsdir={fonts_dir}:force_style='{force_style}'",
+        '-vf', filter_expr,
         '-c:v', 'libx264',
         '-pix_fmt', 'yuv420p',
         '-crf', '18',
@@ -115,14 +142,41 @@ def handler(event, context):
         '-movflags', '+faststart',
         output_path
     ]
-    
-    print('Running FFmpeg:', ' '.join(cmd))
+
+    print('Running FFmpeg (primary):', ' '.join(cmd))
     result = subprocess.run(cmd, capture_output=True, text=True)
+    print('FFmpeg stdout (primary):', result.stdout[-1000:])
+    print('FFmpeg stderr (primary):', result.stderr[-2000:])
 
     if result.returncode != 0:
-        print(f'FFmpeg stderr: {result.stderr}')
-        raise Exception(f'FFmpeg failed: {result.stderr}')
-    
+        print('Primary burn failed, attempting minimal fallback...')
+        # Remove existing partial output if any
+        try:
+            if os.path.exists(output_path):
+                os.remove(output_path)
+        except Exception as e:
+            print(f'Failed to remove partial output: {e}')
+        # Fallback attempt without force_style
+        fallback_cmd = [
+            ffmpeg_path,
+            '-y',
+            '-i', video_path,
+            '-vf', fallback_filter_expr,
+            '-c:v', 'libx264',
+            '-pix_fmt', 'yuv420p',
+            '-crf', '18',
+            '-preset', 'slow',
+            '-c:a', 'copy',
+            '-movflags', '+faststart',
+            output_path
+        ]
+        print('Running FFmpeg (fallback):', ' '.join(fallback_cmd))
+        fb = subprocess.run(fallback_cmd, capture_output=True, text=True)
+        print('FFmpeg stdout (fallback):', fb.stdout[-1000:])
+        print('FFmpeg stderr (fallback):', fb.stderr[-2000:])
+        if fb.returncode != 0:
+            raise Exception(f'FFmpeg failed (fallback): {fb.stderr}')
+
     print('Video processing complete')
     
     # Upload result to Supabase Storage

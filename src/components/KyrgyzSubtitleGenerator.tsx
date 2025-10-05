@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Upload, Loader2, Download, Video, Sparkles, Lock, Clock, CheckCircle2, ArrowRight } from "lucide-react";
@@ -1493,6 +1494,11 @@ export const KyrgyzSubtitleGenerator = () => {
         <CardHeader className="text-center">
           <CardTitle>Kyrgyz Video Subtitle Generator</CardTitle>
           <CardDescription>Upload a video and generate Kyrgyz subtitles</CardDescription>
+          <div className="mt-2 flex justify-center">
+            <Badge variant={ffmpegLoaded ? "default" : "outline"}>
+              {ffmpegLoaded ? "Local processor ready" : "Using cloud processing"}
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           {/* Only show upload area when no video is uploaded */}
