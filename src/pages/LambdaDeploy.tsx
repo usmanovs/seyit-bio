@@ -19,18 +19,97 @@ const LambdaDeploy = () => {
   const [deployResult, setDeployResult] = useState<{ success: boolean; message: string; arn?: string } | null>(null);
 
   const [formData, setFormData] = useState({
-    functionName: "",
-    runtime: "nodejs20.x",
+    functionName: "subtitle-burner",
+    runtime: "python3.12",
     handler: "index.handler",
     roleArn: "",
-    layers: "",
-    code: `exports.handler = async (event) => {
-  console.log('Event:', JSON.stringify(event, null, 2));
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ message: 'Hello from Lambda!' })
-  };
-};`
+    layers: "arn:aws:lambda:us-east-1:145266761615:layer:ffmpeg:4",
+    code: `import json
+import boto3
+import subprocess
+import os
+import urllib.request
+
+# Download Symbola font at initialization (runs once per container)
+FONT_PATH = '/tmp/Symbola.ttf'
+if not os.path.exists(FONT_PATH):
+    print('Downloading Symbola.ttf...')
+    urllib.request.urlretrieve(
+        'https://github.com/stphnwlsh/Symbola-Emoji-Font/raw/master/Symbola.ttf',
+        FONT_PATH
+    )
+    print(f'Font downloaded to {FONT_PATH}')
+
+def handler(event, context):
+    video_url = event['videoUrl']
+    srt_url = event['srtUrl']
+    force_style = event['forceStyle']
+    request_id = event['requestId']
+    supabase_url = event['supabaseUrl']
+    supabase_key = event['supabaseKey']
+    
+    # Download files
+    video_path = '/tmp/input.mp4'
+    srt_path = '/tmp/subtitles.srt'
+    output_path = '/tmp/output.mp4'
+    
+    print(f'Downloading video from {video_url}')
+    urllib.request.urlretrieve(video_url, video_path)
+    
+    print(f'Downloading SRT from {srt_url}')
+    urllib.request.urlretrieve(srt_url, srt_path)
+    
+    # Burn subtitles with FFmpeg using Symbola font
+    cmd = [
+        'ffmpeg',
+        '-i', video_path,
+        '-vf', f"subtitles='{srt_path}':fontsdir=/tmp:force_style='{force_style}'",
+        '-c:v', 'libx264',
+        '-crf', '18',
+        '-preset', 'slow',
+        '-c:a', 'copy',
+        '-movflags', '+faststart',
+        output_path
+    ]
+    
+    print(f'Running FFmpeg: {" ".join(cmd)}')
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    
+    if result.returncode != 0:
+        print(f'FFmpeg stderr: {result.stderr}')
+        raise Exception(f'FFmpeg failed: {result.stderr}')
+    
+    print('Video processing complete')
+    
+    # Upload result to Supabase Storage
+    with open(output_path, 'rb') as f:
+        video_data = f.read()
+    
+    output_filename = f'{request_id}_burned.mp4'
+    
+    # Use Supabase REST API to upload
+    upload_url = f'{supabase_url}/storage/v1/object/videos/{output_filename}'
+    req = urllib.request.Request(
+        upload_url,
+        data=video_data,
+        headers={
+            'Authorization': f'Bearer {supabase_key}',
+            'Content-Type': 'video/mp4'
+        },
+        method='POST'
+    )
+    
+    print(f'Uploading to {upload_url}')
+    urllib.request.urlopen(req)
+    
+    result_url = f'{supabase_url}/storage/v1/object/public/videos/{output_filename}'
+    
+    print(f'Upload complete: {result_url}')
+    
+    return {
+        'statusCode': 200,
+        'body': json.dumps({'videoUrl': result_url})
+    }`
   });
 
   const handleDeploy = async (e: React.FormEvent) => {
