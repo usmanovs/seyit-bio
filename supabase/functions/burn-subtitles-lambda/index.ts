@@ -20,6 +20,161 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Auto-deploy Lambda function with latest code before processing
+    console.log(`[${requestId}] Auto-deploying Lambda function with latest code...`);
+    const lambdaCode = `import json
+import subprocess
+import os
+import urllib.request
+
+# Download monochrome emoji fonts at initialization (libass doesn't support color emoji fonts)
+SYMBOLA_PATH = '/tmp/fonts/Symbola.ttf'
+NOTO_EMOJI_PATH = '/tmp/fonts/NotoEmoji-Regular.ttf'
+
+os.makedirs('/tmp/fonts', exist_ok=True)
+
+if not os.path.exists(SYMBOLA_PATH):
+    print('Downloading Symbola.ttf...')
+    urllib.request.urlretrieve(
+        'https://github.com/stphnwlsh/Symbola-Emoji-Font/raw/master/Symbola.ttf',
+        SYMBOLA_PATH
+    )
+    print(f'Symbola font downloaded to {SYMBOLA_PATH}')
+
+if not os.path.exists(NOTO_EMOJI_PATH):
+    print('Downloading NotoEmoji-Regular.ttf (monochrome)...')
+    # Using monochrome version because libass (FFmpeg subtitle renderer) doesn't support color fonts
+    urllib.request.urlretrieve(
+        'https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoEmoji-VariableFont_wght.ttf',
+        NOTO_EMOJI_PATH
+    )
+    print(f'Noto Emoji font downloaded to {NOTO_EMOJI_PATH}')
+
+# Create fontconfig to help FFmpeg find and prioritize emoji fonts
+FONTCONFIG = '/tmp/fonts.conf'
+with open(FONTCONFIG, 'w') as f:
+    f.write("""<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <dir>/tmp/fonts</dir>
+  <cachedir>/tmp</cachedir>
+  <alias>
+    <family>sans-serif</family>
+    <prefer>
+      <family>Noto Emoji</family>
+      <family>Symbola</family>
+    </prefer>
+  </alias>
+  <alias>
+    <family>Symbola</family>
+    <prefer>
+      <family>Noto Emoji</family>
+      <family>Symbola</family>
+    </prefer>
+  </alias>
+</fontconfig>""")
+print(f'Fontconfig created at {FONTCONFIG}')
+
+def handler(event, context):
+    video_url = event['videoUrl']
+    srt_url = event['srtUrl']
+    force_style = event['forceStyle']
+    request_id = event['requestId']
+    supabase_url = event['supabaseUrl']
+    supabase_key = event['supabaseKey']
+    
+    # Download files
+    video_path = '/tmp/input.mp4'
+    srt_path = '/tmp/subtitles.srt'
+    output_path = '/tmp/output.mp4'
+    
+    print(f'Downloading video from {video_url}')
+    urllib.request.urlretrieve(video_url, video_path)
+    
+    print(f'Downloading SRT from {srt_url}')
+    urllib.request.urlretrieve(srt_url, srt_path)
+    
+    # Set fontconfig environment
+    env = os.environ.copy()
+    env['FONTCONFIG_FILE'] = FONTCONFIG
+    env['FONTCONFIG_PATH'] = '/tmp'
+    
+    # Burn subtitles with FFmpeg using provided force_style (already includes FontName fallback)
+    cmd = [
+        'ffmpeg',
+        '-i', video_path,
+        '-vf', f"subtitles={srt_path}:fontsdir=/tmp/fonts:force_style='{force_style}'",
+        '-c:v', 'libx264',
+        '-crf', '18',
+        '-preset', 'slow',
+        '-c:a', 'copy',
+        '-movflags', '+faststart',
+        output_path
+    ]
+    
+    print(f'Running FFmpeg: {" ".join(cmd)}')
+    result = subprocess.run(cmd, capture_output=True, text=True, env=env)
+    
+    if result.returncode != 0:
+        print(f'FFmpeg stderr: {result.stderr}')
+        raise Exception(f'FFmpeg failed: {result.stderr}')
+    
+    print('Video processing complete')
+    
+    # Upload result to Supabase Storage
+    with open(output_path, 'rb') as f:
+        video_data = f.read()
+    
+    output_filename = f'{request_id}_burned.mp4'
+    
+    # Use Supabase REST API to upload
+    upload_url = f'{supabase_url}/storage/v1/object/videos/{output_filename}'
+    req = urllib.request.Request(
+        upload_url,
+        data=video_data,
+        headers={
+            'Authorization': f'Bearer {supabase_key}',
+            'Content-Type': 'video/mp4'
+        },
+        method='POST'
+    )
+    
+    print(f'Uploading to {upload_url}')
+    urllib.request.urlopen(req)
+    
+    result_url = f'{supabase_url}/storage/v1/object/public/videos/{output_filename}'
+    
+    print(f'Upload complete: {result_url}')
+    
+    return {
+        'statusCode': 200,
+        'body': json.dumps({'videoUrl': result_url})
+    }`;
+
+    const deployResponse = await fetch(`${supabaseUrl}/functions/v1/deploy-lambda`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseKey}`,
+      },
+      body: JSON.stringify({
+        functionName: 'subtitle-burner',
+        handler: 'index.handler',
+        runtime: 'python3.12',
+        code: lambdaCode,
+        roleArn: Deno.env.get('AWS_LAMBDA_ROLE_ARN') || 'arn:aws:iam::733002311493:role/lambda-ex',
+        layers: 'arn:aws:lambda:us-east-1:145266761615:layer:ffmpeg:4',
+      }),
+    });
+
+    if (!deployResponse.ok) {
+      const deployError = await deployResponse.text();
+      console.error(`[${requestId}] Auto-deployment failed:`, deployError);
+      // Continue anyway - function might already exist with correct code
+    } else {
+      console.log(`[${requestId}] Lambda auto-deployment successful`);
+    }
+
     // Get public URL for video
     const { data: { publicUrl } } = supabase.storage
       .from('videos')
