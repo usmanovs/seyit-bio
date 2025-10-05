@@ -96,6 +96,7 @@ def handler(event, context):
         '-i', video_path,
         '-vf', f"subtitles={srt_path}:force_style='{force_style}'",
         '-c:v', 'libx264',
+        '-pix_fmt', 'yuv420p',
         '-crf', '18',
         '-preset', 'slow',
         '-c:a', 'copy',
@@ -324,9 +325,8 @@ def handler(event, context):
 
     const style = styleMapping[styleId] || styleMapping.outline;
     
-    // Build force_style string but exclude FontName (we set it explicitly in Lambda to enable emoji fallbacks)
+    // Build force_style string including FontName for proper subtitle rendering
     const forceStyleParams = Object.entries(style)
-      .filter(([key]) => key !== 'FontName')
       .map(([key, value]) => `${key}=${value}`)
       .join(',');
 
