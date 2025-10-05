@@ -62,56 +62,10 @@ import subprocess
 import os
 import urllib.request
 
-# Download monochrome emoji fonts at initialization (libass doesn't support color emoji fonts)
-SYMBOLA_PATH = '/tmp/fonts/Symbola.ttf'
-NOTO_EMOJI_PATH = '/tmp/fonts/NotoEmoji-Regular.ttf'
+# Note: We avoid downloading external fonts to ensure reliability.
+# FFmpeg/libass will use default fonts available in the environment.
 
-os.makedirs('/tmp/fonts', exist_ok=True)
 
-try:
-    if not os.path.exists(SYMBOLA_PATH):
-        print('Downloading Symbola.ttf...')
-        try:
-            urllib.request.urlretrieve('https://raw.githubusercontent.com/zhm/symbola/master/fonts/Symbola.ttf', SYMBOLA_PATH)
-            print(f'Symbola font downloaded to {SYMBOLA_PATH}')
-        except Exception as e:
-            print(f'WARNING: Symbola download failed: {e}')
-    
-    if not os.path.exists(NOTO_EMOJI_PATH):
-        print('Downloading NotoEmoji-Regular.ttf (monochrome)...')
-        # Using monochrome version because libass (FFmpeg subtitle renderer) doesn't support color fonts
-        try:
-            urllib.request.urlretrieve('https://raw.githubusercontent.com/googlefonts/noto-emoji/main/fonts/NotoEmoji-Regular.ttf', NOTO_EMOJI_PATH)
-            print(f'Noto Emoji font downloaded to {NOTO_EMOJI_PATH}')
-        except Exception as e:
-            print(f'WARNING: Noto Emoji download failed: {e}')
-except Exception as e:
-    print(f'WARNING: Font init error: {e}')
-
-# Create fontconfig to help FFmpeg find and prioritize emoji fonts
-FONTCONFIG = '/tmp/fonts.conf'
-with open(FONTCONFIG, 'w') as f:
-    f.write("""<?xml version="1.0"?>
-<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
-<fontconfig>
-  <dir>/tmp/fonts</dir>
-  <cachedir>/tmp</cachedir>
-  <alias>
-    <family>sans-serif</family>
-    <prefer>
-      <family>Noto Emoji</family>
-      <family>Symbola</family>
-    </prefer>
-  </alias>
-  <alias>
-    <family>Symbola</family>
-    <prefer>
-      <family>Noto Emoji</family>
-      <family>Symbola</family>
-    </prefer>
-  </alias>
-</fontconfig>""")
-print(f'Fontconfig created at {FONTCONFIG}')
 
 def handler(event, context):
     video_url = event['videoUrl']
@@ -132,16 +86,11 @@ def handler(event, context):
     print(f'Downloading SRT from {srt_url}')
     urllib.request.urlretrieve(srt_url, srt_path)
     
-    # Set fontconfig environment
-    env = os.environ.copy()
-    env['FONTCONFIG_FILE'] = FONTCONFIG
-    env['FONTCONFIG_PATH'] = '/tmp'
-    
-    # Burn subtitles with FFmpeg using provided force_style (already includes FontName fallback)
+    # Burn subtitles with FFmpeg using provided force_style
     cmd = [
         'ffmpeg',
         '-i', video_path,
-        '-vf', f"subtitles={srt_path}:fontsdir=/tmp/fonts:force_style='{force_style}'",
+        '-vf', f"subtitles={srt_path}:force_style='{force_style}'",
         '-c:v', 'libx264',
         '-crf', '18',
         '-preset', 'slow',
@@ -150,9 +99,9 @@ def handler(event, context):
         output_path
     ]
     
-    print(f'Running FFmpeg: {" ".join(cmd)}')
-    result = subprocess.run(cmd, capture_output=True, text=True, env=env)
-    
+    print(f'Running FFmpeg: {' '.join(cmd)}')
+    result = subprocess.run(cmd, capture_output=True, text=True)
+
     if result.returncode != 0:
         print(f'FFmpeg stderr: {result.stderr}')
         raise Exception(f'FFmpeg failed: {result.stderr}')
@@ -380,7 +329,7 @@ def handler(event, context):
     const payload = {
       videoUrl: publicUrl,
       srtUrl: srtUrl,
-      forceStyle: `FontName=Symbola,Noto Emoji,${forceStyleParams}`,
+      forceStyle: `${forceStyleParams}`,
       requestId: requestId,
       supabaseUrl: supabaseUrl,
       supabaseKey: supabaseKey,
@@ -457,11 +406,36 @@ def handler(event, context):
 
     if (!videoUrl) {
       const errMsg = result?.errorMessage || 'Lambda returned no video URL';
-      console.error(`[${requestId}] Error: ${errMsg}`);
-      return new Response(
-        JSON.stringify({ success: false, error: errMsg, raw: result }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.error(`[${requestId}] Error: ${errMsg} — falling back to backend burner`);
+
+      // Fallback: use backend burner (Replicate pipeline)
+      try {
+        const { data, error } = await supabase.functions.invoke('burn-subtitles-backend', {
+          body: { requestId, videoPath, subtitles, styleId }
+        });
+        if (error) {
+          console.error(`[${requestId}] Backend fallback error:`, error);
+          return new Response(JSON.stringify({ success: false, error: errMsg, fallbackError: error.message, raw: result }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        if (data?.videoUrl) {
+          return new Response(JSON.stringify({ success: true, videoUrl: data.videoUrl, message: 'Processed via backend fallback' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify({ success: false, error: 'Fallback returned no video URL', raw: data }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (fbErr) {
+        console.error(`[${requestId}] Backend fallback exception:`, fbErr);
+        return new Response(JSON.stringify({ success: false, error: errMsg, fallbackError: String(fbErr), raw: result }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     return new Response(
