@@ -71,7 +71,7 @@ os.makedirs('/tmp/fonts', exist_ok=True)
 if not os.path.exists(SYMBOLA_PATH):
     print('Downloading Symbola.ttf...')
     urllib.request.urlretrieve(
-        'https://github.com/stphnwlsh/Symbola-Emoji-Font/raw/master/Symbola.ttf',
+        'https://raw.githubusercontent.com/zhm/symbola/master/fonts/Symbola.ttf',
         SYMBOLA_PATH
     )
     print(f'Symbola font downloaded to {SYMBOLA_PATH}')
