@@ -258,11 +258,11 @@ serve(async (req) => {
 
     console.log(`[${requestId}] Force style string:`, forceStyleParams);
 
-    // Emoji font to ensure glyph coverage - use outline version, not color version
-    // Symbola has excellent emoji coverage and works with FFmpeg's subtitle filter
-    const emojiFontUrl = 'https://www.wfonts.com/download/data/2016/04/23/symbola/symbola.zip';
+    // Emoji font to ensure glyph coverage (non-color, supported by libass)
+    // Provide Symbola.ttf directly so ffmpeg's subtitles filter can find it via fontsdir=.
+    const emojiFontUrl = 'https://github.com/stphnwlsh/Symbola-Emoji-Font/raw/master/Symbola.ttf';
     
-    console.log(`[${requestId}] Emoji font URL:`, emojiFontUrl);
+    console.log(`[${requestId}] Emoji font (TTF) URL:`, emojiFontUrl);
     console.log(`[${requestId}] Using FontName:`, style.FontName);
 
     // Start Replicate job using predictions API
@@ -271,41 +271,28 @@ serve(async (req) => {
       input: {
         files: [publicUrl, srtUrl, emojiFontUrl],
         prompt: `CRITICAL: Generate an FFmpeg command that burns SRT subtitles onto the video with full emoji support.
-
-FILES PROVIDED:
-- Video file at: ${publicUrl}
-- Subtitles file at: ${srtFileName}
-- Emoji font ZIP file: symbola.zip (contains Symbola.ttf - extract it first!)
-
-FONT SETUP STEPS (CRITICAL):
-1. Extract the Symbola.ttf from symbola.zip: unzip symbola.zip
-2. Copy font to system: mkdir -p ~/.fonts && cp Symbola.ttf ~/.fonts/
-3. Refresh font cache: fc-cache -fv
-4. Verify font loaded: fc-list | grep -i symbola
-5. The subtitle filter uses fontsdir=. so also keep Symbola.ttf in current directory
-
-EXACT FFmpeg COMMAND:
-ffmpeg -i "${publicUrl}" -vf "subtitles='${srtFileName}':fontsdir=.:force_style='${forceStyleParams}'" -c:v libx264 -crf 18 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4
-
-CRITICAL REQUIREMENTS:
-1. Use the EXACT force_style string: ${forceStyleParams}
-2. DO NOT modify FontName, FontSize, colors, or any style parameters
-3. Symbola.ttf MUST be accessible to FFmpeg (both in fontsdir and system fonts)
-4. Keep Spacing=0 (no tracking adjustments)
-5. Maintain original video resolution and framerate
-6. Audio: stream copy (no re-encoding)
-
-STYLE CONFIGURATION:
-- Style ID: ${styleId}
-- Font: ${style.FontName}
-- Size: ${style.FontSize}
-- Background box: ${style.BorderStyle === 4 ? 'yes' : 'no'}
-
-DEBUGGING:
-- Log the complete FFmpeg command before execution
-- Log fc-list output to verify Symbola is available
-- If emojis don't render, check font loading in subtitle filter errors
-`,
+        
+        FILES PROVIDED:
+        - Video file at: ${publicUrl}
+        - Subtitles file at: ${srtFileName}
+        - Emoji font file: Symbola.ttf (already provided in the working directory)
+        
+        REQUIREMENTS:
+        1. Ensure Symbola.ttf is present in the current working directory (from the provided files list).
+        2. Use this EXACT subtitles filter: subtitles='${srtFileName}':fontsdir=.:force_style='${forceStyleParams}'
+        3. DO NOT change the force_style string: ${forceStyleParams}
+        4. Maintain original video resolution and framerate
+        5. Audio: stream copy (no re-encoding)
+        
+        EXACT FFmpeg COMMAND:
+        ffmpeg -i "${publicUrl}" -vf "subtitles='${srtFileName}':fontsdir=.:force_style='${forceStyleParams}'" -c:v libx264 -crf 18 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4
+        
+        DEBUGGING:
+        - Print working directory contents: ls -l
+        - Verify font presence: ls -l Symbola.ttf || echo "Symbola.ttf not found"
+        - Echo the full FFmpeg command before running it
+        - If font issues occur, confirm that fontsdir=. is set; no fc-cache needed when using fontsdir
+        `,
         max_attempts: 3,
       },
     } as any);
