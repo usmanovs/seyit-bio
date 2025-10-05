@@ -79,7 +79,9 @@ serve(async (req) => {
 
     // Prepare base64-encoded ZIP for Lambda
     let base64Zip = '';
-    const handlerFile = (handler?.split('.')?.[0] || 'index') + '.js';
+    const moduleName = (handler?.split('.')?.[0] || 'index');
+    const isPython = (runtime || '').toLowerCase().startsWith('python');
+    const handlerFile = `${moduleName}.${isPython ? 'py' : 'js'}`;
 
     if (zipBase64 && typeof zipBase64 === 'string' && zipBase64.trim().length > 0) {
       base64Zip = zipBase64;

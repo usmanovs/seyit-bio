@@ -101,12 +101,11 @@ def handler(event, context):
     env['FONTCONFIG_FILE'] = FONTCONFIG
     env['FONTCONFIG_PATH'] = '/tmp'
     
-    # Burn subtitles with FFmpeg using emoji-capable fonts
-    # Note: FontName must reference monochrome fonts; libass can't render color emoji fonts
+    # Burn subtitles with FFmpeg using provided force_style (already includes FontName fallback)
     cmd = [
         'ffmpeg',
         '-i', video_path,
-        '-vf', f"subtitles={srt_path}:fontsdir=/tmp/fonts:force_style='FontName=Noto Emoji\\,Symbola,{force_style}'",
+        '-vf', f"subtitles={srt_path}:fontsdir=/tmp/fonts:force_style='{force_style}'",
         '-c:v', 'libx264',
         '-crf', '18',
         '-preset', 'slow',
