@@ -258,25 +258,31 @@ serve(async (req) => {
 
     console.log(`[${requestId}] Force style string:`, forceStyleParams);
 
+    // Emoji font to ensure glyph coverage (will be downloaded by the job)
+    const emojiFontUrl = 'https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoEmoji-Regular.ttf';
+
     // Start Replicate job using predictions API
     const prediction = await replicate.predictions.create({
       model: 'fofr/smart-ffmpeg',
       input: {
-        files: [publicUrl, srtUrl],
-        prompt: `CRITICAL: You MUST generate an FFmpeg command that burns SRT subtitles onto the video.
+        files: [publicUrl, srtUrl, emojiFontUrl],
+        prompt: `CRITICAL: Generate an FFmpeg command that burns SRT subtitles onto the video.
+
+FILES PROVIDED:
+- Video file at: ${publicUrl}
+- Subtitles file at: ${srtFileName}
+- Emoji font file: NotoEmoji-Regular.ttf (downloaded from files)
 
 EXACT FFmpeg command structure required:
-ffmpeg -i input.mp4 -vf "subtitles=subtitles.srt:force_style='${forceStyleParams}'" -c:v libx264 -crf 15 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4
+ffmpeg -i "${publicUrl}" -vf "subtitles='${srtFileName}':fontsdir=.:force_style='${forceStyleParams}'" -c:v libx264 -crf 18 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4
 
 CRITICAL RULES:
-1. Use the EXACT force_style parameter string provided above - do NOT modify it
-2. The force_style parameter MUST be in single quotes
-3. ALL style parameters must be applied exactly as specified
-4. Spacing=0 means NO letter spacing
-5. Video quality: CRF 15, preset slow, profile high, level 4.1
-6. Audio: copy original stream with -c:a copy
-7. Set -movflags +faststart for web playback
-8. Maintain original resolution and framerate
+1. Download the emoji font to the current working directory with the exact filename NotoEmoji-Regular.ttf
+2. Use subtitles filter with fontsdir=.
+3. Use the EXACT force_style string above – do NOT change it
+4. Keep Spacing=0 (no tracking)
+5. Maintain original resolution/framerate
+6. Audio: -c:a copy
 
 Style being applied: ${styleId}
 Font size: ${style.FontSize}
