@@ -234,6 +234,47 @@ const Index = () => {
                 </div>
               </div>)}
           </div>
+
+          {/* Subtitle Editing Feature */}
+          <div className="mt-16 pt-16 border-t border-border/40">
+            <div className="text-center mb-12 space-y-4">
+              <h3 className="text-3xl font-bold">
+                Powerful Subtitle Editing
+              </h3>
+              <p className="text-lg text-muted-foreground font-light">
+                Edit subtitles in real-time with our intuitive interface
+              </p>
+            </div>
+            
+            <div className="rounded-2xl overflow-hidden border border-border/40 bg-card shadow-xl">
+              <img 
+                src="/src/assets/editing-example.png"
+                alt="Example of subtitle editing interface showing caption styles, emoji toggle, subtitle editor, and video preview" 
+                className="w-full h-auto"
+              />
+            </div>
+            
+            <div className="grid md:grid-cols-3 gap-6 mt-8">
+              <div className="text-center space-y-2">
+                <div className="text-primary font-semibold">Multiple Styles</div>
+                <p className="text-sm text-muted-foreground">
+                  Choose from 4 beautiful caption styles
+                </p>
+              </div>
+              <div className="text-center space-y-2">
+                <div className="text-primary font-semibold">Real-Time Preview</div>
+                <p className="text-sm text-muted-foreground">
+                  See changes instantly on your video
+                </p>
+              </div>
+              <div className="text-center space-y-2">
+                <div className="text-primary font-semibold">Emoji Support</div>
+                <p className="text-sm text-muted-foreground">
+                  Add emojis to make captions more engaging
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

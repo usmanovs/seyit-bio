@@ -1662,25 +1662,6 @@ export const KyrgyzSubtitleGenerator = () => {
         </Card>
       </div>}
 
-    {/* How it works section - Always visible */}
-    <Card className="max-w-4xl mx-auto mt-6">
-      <CardHeader>
-        <CardTitle className="text-lg">How Subtitle Editing Works</CardTitle>
-        <CardDescription>Preview the powerful editing interface you'll get with Pro</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="rounded-lg overflow-hidden border">
-          <img 
-            src={editingExample} 
-            alt="Example of subtitle editing interface showing caption styles, emoji toggle, subtitle editor, and video preview" 
-            className="w-full h-auto"
-          />
-        </div>
-        <p className="text-sm text-muted-foreground mt-4">
-          Edit subtitles in real-time, choose from multiple caption styles, add emojis, and see changes instantly on your video.
-        </p>
-      </CardContent>
-    </Card>
     
     <SubscriptionModal 
       open={showSubscriptionModal} 
