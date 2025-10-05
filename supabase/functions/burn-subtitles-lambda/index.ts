@@ -86,9 +86,13 @@ def handler(event, context):
     print(f'Downloading SRT from {srt_url}')
     urllib.request.urlretrieve(srt_url, srt_path)
     
+    # Ensure ffmpeg path is available
+    os.environ['PATH'] = '/opt/bin:' + os.environ.get('PATH', '')
+    ffmpeg_path = '/opt/bin/ffmpeg' if os.path.exists('/opt/bin/ffmpeg') else 'ffmpeg'
+
     # Burn subtitles with FFmpeg using provided force_style
     cmd = [
-        'ffmpeg',
+        ffmpeg_path,
         '-i', video_path,
         '-vf', f"subtitles={srt_path}:force_style='{force_style}'",
         '-c:v', 'libx264',
@@ -99,7 +103,7 @@ def handler(event, context):
         output_path
     ]
     
-    print(f'Running FFmpeg: {' '.join(cmd)}')
+    print('Running FFmpeg:', ' '.join(cmd))
     result = subprocess.run(cmd, capture_output=True, text=True)
 
     if result.returncode != 0:
@@ -155,7 +159,7 @@ def handler(event, context):
         runtime: 'python3.12',
         code: lambdaCode,
         roleArn: Deno.env.get('AWS_LAMBDA_ROLE_ARN') || 'arn:aws:iam::733002311493:role/lambda-ex',
-        layers: [ffmpegLayerArn],
+        layers: ffmpegLayerArn,
       }),
     });
 
