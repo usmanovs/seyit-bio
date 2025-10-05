@@ -29,9 +29,9 @@ import subprocess
 import os
 import urllib.request
 
-# Download fonts at initialization
+# Download monochrome emoji fonts at initialization (libass doesn't support color emoji fonts)
 SYMBOLA_PATH = '/tmp/fonts/Symbola.ttf'
-NOTO_EMOJI_PATH = '/tmp/fonts/NotoColorEmoji.ttf'
+NOTO_EMOJI_PATH = '/tmp/fonts/NotoEmoji-Regular.ttf'
 
 os.makedirs('/tmp/fonts', exist_ok=True)
 
@@ -41,32 +41,41 @@ if not os.path.exists(SYMBOLA_PATH):
         'https://github.com/stphnwlsh/Symbola-Emoji-Font/raw/master/Symbola.ttf',
         SYMBOLA_PATH
     )
-    print(f'Font downloaded to {SYMBOLA_PATH}')
+    print(f'Symbola font downloaded to {SYMBOLA_PATH}')
 
 if not os.path.exists(NOTO_EMOJI_PATH):
-    print('Downloading NotoColorEmoji.ttf...')
+    print('Downloading NotoEmoji-Regular.ttf (monochrome)...')
+    # Using monochrome version because libass (FFmpeg subtitle renderer) doesn't support color fonts
     urllib.request.urlretrieve(
-        'https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoColorEmoji.ttf',
+        'https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoEmoji-Regular.ttf',
         NOTO_EMOJI_PATH
     )
-    print(f'Emoji font downloaded to {NOTO_EMOJI_PATH}')
+    print(f'Noto Emoji font downloaded to {NOTO_EMOJI_PATH}')
 
-# Create fontconfig
+# Create fontconfig to help FFmpeg find and prioritize emoji fonts
 FONTCONFIG = '/tmp/fonts.conf'
 with open(FONTCONFIG, 'w') as f:
-    f.write(f"""<?xml version="1.0"?>
+    f.write("""<?xml version="1.0"?>
 <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
 <fontconfig>
   <dir>/tmp/fonts</dir>
   <cachedir>/tmp</cachedir>
   <alias>
+    <family>sans-serif</family>
+    <prefer>
+      <family>Noto Emoji</family>
+      <family>Symbola</family>
+    </prefer>
+  </alias>
+  <alias>
     <family>Symbola</family>
     <prefer>
+      <family>Noto Emoji</family>
       <family>Symbola</family>
-      <family>Noto Color Emoji</family>
     </prefer>
   </alias>
 </fontconfig>""")
+print(f'Fontconfig created at {FONTCONFIG}')
 
 def handler(event, context):
     video_url = event['videoUrl']
@@ -92,11 +101,12 @@ def handler(event, context):
     env['FONTCONFIG_FILE'] = FONTCONFIG
     env['FONTCONFIG_PATH'] = '/tmp'
     
-    # Burn subtitles with FFmpeg
+    # Burn subtitles with FFmpeg using emoji-capable fonts
+    # Note: FontName must reference monochrome fonts; libass can't render color emoji fonts
     cmd = [
         'ffmpeg',
         '-i', video_path,
-        '-vf', f"subtitles={srt_path}:fontsdir=/tmp/fonts:force_style='{force_style}'",
+        '-vf', f"subtitles={srt_path}:fontsdir=/tmp/fonts:force_style='FontName=Noto Emoji\\,Symbola,{force_style}'",
         '-c:v', 'libx264',
         '-crf', '18',
         '-preset', 'slow',

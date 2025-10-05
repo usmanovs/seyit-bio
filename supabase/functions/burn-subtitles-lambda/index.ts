@@ -129,7 +129,7 @@ serve(async (req) => {
 
     console.log(`[${requestId}] Style parameters:`, forceStyleParams);
 
-    // Invoke Lambda function
+    // Invoke Lambda function with AWS SigV4 signing
     const AWS_ACCESS_KEY_ID = Deno.env.get('AWS_ACCESS_KEY_ID')!;
     const AWS_SECRET_ACCESS_KEY = Deno.env.get('AWS_SECRET_ACCESS_KEY')!;
     const AWS_REGION = Deno.env.get('AWS_REGION') || 'us-east-1';
@@ -146,16 +146,64 @@ serve(async (req) => {
 
     console.log(`[${requestId}] Invoking Lambda: ${LAMBDA_FUNCTION_NAME}`);
 
-    // Create AWS signature
-    const lambdaUrl = `https://lambda.${AWS_REGION}.amazonaws.com/2015-03-31/functions/${LAMBDA_FUNCTION_NAME}/invocations`;
+    // Create AWS SigV4 signature for Lambda invocation
+    const payloadString = JSON.stringify(payload);
+    const payloadHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payloadString));
+    const payloadHashHex = Array.from(new Uint8Array(payloadHash)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+    const now = new Date();
+    const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+    const dateStamp = amzDate.slice(0, 8);
+    
+    const service = 'lambda';
+    const host = `lambda.${AWS_REGION}.amazonaws.com`;
+    const canonicalUri = `/2015-03-31/functions/${LAMBDA_FUNCTION_NAME}/invocations`;
+    const canonicalQueryString = '';
+    const canonicalHeaders = `host:${host}\nx-amz-date:${amzDate}\n`;
+    const signedHeaders = 'host;x-amz-date';
+    
+    const canonicalRequest = `POST\n${canonicalUri}\n${canonicalQueryString}\n${canonicalHeaders}\n${signedHeaders}\n${payloadHashHex}`;
+    
+    const credentialScope = `${dateStamp}/${AWS_REGION}/${service}/aws4_request`;
+    const canonicalRequestHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalRequest));
+    const canonicalRequestHashHex = Array.from(new Uint8Array(canonicalRequestHash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${credentialScope}\n${canonicalRequestHashHex}`;
+    
+    // Generate signing key
+    const getSignatureKey = async (key: string, dateStamp: string, regionName: string, serviceName: string) => {
+      const kDate = await crypto.subtle.importKey('raw', new TextEncoder().encode(`AWS4${key}`), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+      const kDateSig = await crypto.subtle.sign('HMAC', kDate, new TextEncoder().encode(dateStamp));
+      
+      const kRegion = await crypto.subtle.importKey('raw', kDateSig, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+      const kRegionSig = await crypto.subtle.sign('HMAC', kRegion, new TextEncoder().encode(regionName));
+      
+      const kService = await crypto.subtle.importKey('raw', kRegionSig, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+      const kServiceSig = await crypto.subtle.sign('HMAC', kService, new TextEncoder().encode(serviceName));
+      
+      const kSigning = await crypto.subtle.importKey('raw', kServiceSig, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+      return kSigning;
+    };
+    
+    const signingKey = await getSignatureKey(AWS_SECRET_ACCESS_KEY, dateStamp, AWS_REGION, service);
+    const signatureBuffer = await crypto.subtle.sign('HMAC', signingKey, new TextEncoder().encode(stringToSign));
+    const signature = Array.from(new Uint8Array(signatureBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    const authorizationHeader = `AWS4-HMAC-SHA256 Credential=${AWS_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+    
+    const lambdaUrl = `https://${host}${canonicalUri}`;
+    console.log(`[${requestId}] Lambda URL: ${lambdaUrl}`);
     
     const response = await fetch(lambdaUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-Amz-Date': amzDate,
         'X-Amz-Invocation-Type': 'RequestResponse',
+        'Authorization': authorizationHeader,
+        'Host': host,
       },
-      body: JSON.stringify(payload),
+      body: payloadString,
     });
 
     if (!response.ok) {

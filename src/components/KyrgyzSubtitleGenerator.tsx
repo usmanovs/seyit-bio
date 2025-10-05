@@ -1245,6 +1245,48 @@ export const KyrgyzSubtitleGenerator = () => {
       setCloudPolling(true);
       setCloudStartTime(startTime);
       
+      // Try AWS Lambda first for better emoji support
+      console.log('[Download] Attempting AWS Lambda processing...');
+      const { data: lambdaData, error: lambdaError } = await supabase.functions.invoke('burn-subtitles-lambda', {
+        body: {
+          videoPath,
+          subtitles: useSubs,
+          styleId: currentStyle.id,
+          requestId: rid,
+        },
+      });
+      
+      if (!lambdaError && lambdaData?.success && lambdaData?.videoUrl) {
+        // Lambda succeeded synchronously
+        console.log('[Download] Lambda processing succeeded:', lambdaData);
+        setCloudVideoUrl(lambdaData.videoUrl);
+        setCloudStatus('succeeded');
+        setCloudPolling(false);
+        setCloudStartTime(0);
+        
+        toast.success('Video ready! Downloading...');
+        try {
+          const response = await fetch(lambdaData.videoUrl);
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `video-with-subtitles-${Date.now()}.mp4`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          console.error('Auto-download failed, opening in new tab', e);
+          window.open(lambdaData.videoUrl, '_blank');
+        }
+        return;
+      }
+      
+      // Lambda failed or unavailable, fallback to Replicate
+      console.log('[Download] Lambda failed, falling back to Replicate backend...', { lambdaError, lambdaData });
+      toast.info('Using fallback processing (emojis may not render correctly)...');
+      
       const { data, error } = await supabase.functions.invoke('burn-subtitles-backend', {
         body: {
           videoPath,
