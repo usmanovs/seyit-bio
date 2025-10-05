@@ -47,7 +47,7 @@ serve(async (req) => {
   }
 
   try {
-    const { functionName, handler, runtime, code, roleArn, zipBase64 } = await req.json();
+    const { functionName, handler, runtime, code, roleArn, zipBase64, layers } = await req.json();
 
     const AWS_ACCESS_KEY_ID = Deno.env.get('AWS_ACCESS_KEY_ID');
     const AWS_SECRET_ACCESS_KEY = Deno.env.get('AWS_SECRET_ACCESS_KEY');
@@ -116,6 +116,16 @@ serve(async (req) => {
     const method = functionExists ? 'PUT' : 'POST';
     const url = functionExists ? `${endpoint}/${functionName}/code` : endpoint;
     
+    // Parse layers if provided (comma or newline separated)
+    let layersArray: string[] = [];
+    if (layers && typeof layers === 'string' && layers.trim().length > 0) {
+      layersArray = layers
+        .split(/[\n,]+/)
+        .map((l: string) => l.trim())
+        .filter((l: string) => l.length > 0);
+      console.log(`[DEPLOY-LAMBDA] Layers to attach:`, layersArray);
+    }
+
     const payload = functionExists 
       ? { ZipFile: base64Zip }
       : {
@@ -125,8 +135,9 @@ serve(async (req) => {
           Handler: handler || 'index.handler',
           Code: { ZipFile: base64Zip },
           Description: `Deployed via Lovable on ${new Date().toISOString()}`,
-          Timeout: 30,
-          MemorySize: 256,
+          Timeout: 900,
+          MemorySize: 2048,
+          ...(layersArray.length > 0 && { Layers: layersArray }),
         };
 
     const payloadStr = JSON.stringify(payload);

@@ -23,6 +23,7 @@ const LambdaDeploy = () => {
     runtime: "nodejs20.x",
     handler: "index.handler",
     roleArn: "",
+    layers: "",
     code: `exports.handler = async (event) => {
   console.log('Event:', JSON.stringify(event, null, 2));
   return {
@@ -50,7 +51,8 @@ const LambdaDeploy = () => {
           handler: formData.handler,
           runtime: formData.runtime,
           code: formData.code,
-          roleArn: formData.roleArn
+          roleArn: formData.roleArn,
+          layers: formData.layers
         }
       });
 
@@ -160,6 +162,20 @@ const LambdaDeploy = () => {
                 />
                 <p className="text-sm text-muted-foreground">
                   The IAM role ARN that Lambda assumes when executing your function
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="layers">Lambda Layers (Optional)</Label>
+                <Textarea
+                  id="layers"
+                  placeholder="arn:aws:lambda:us-east-1:145266761615:layer:ffmpeg:4&#10;arn:aws:lambda:us-east-1:123456:layer:another-layer:1"
+                  value={formData.layers}
+                  onChange={(e) => setFormData({ ...formData, layers: e.target.value })}
+                  className="min-h-[80px] font-mono text-sm"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Enter layer ARNs (one per line). Example: arn:aws:lambda:us-east-1:145266761615:layer:ffmpeg:4
                 </p>
               </div>
 
