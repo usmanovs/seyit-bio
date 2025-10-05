@@ -1047,14 +1047,15 @@ export const KyrgyzSubtitleGenerator = () => {
         styleOptions.push('PrimaryColour=&HFFFFFF', 'OutlineColour=&H000000', 'Outline=3', 'Bold=1');
       }
       
-      // Font fallback chain: prioritize emoji fonts, then fallback to system fonts
-      // Matches the cloud processing font order for consistency
-      styleOptions.push('FontSize=18', 'Alignment=2', 'MarginV=20', 'FontName=Noto Color Emoji,Apple Color Emoji,Segoe UI Emoji,Symbola,Noto Sans,Arial');
+      // Use Symbola for emoji support - it works with FFmpeg's subtitle filter
+      // Note: Color emoji fonts (like Noto Color Emoji) don't work with FFmpeg subtitle rendering
+      styleOptions.push('FontSize=18', 'Alignment=2', 'MarginV=20', 'FontName=Symbola');
       subtitleFilter += styleOptions.join(',');
       
       console.log(`[${requestId}] Local FFmpeg subtitle style:`, {
         style: currentStyle.name,
-        filter: subtitleFilter
+        filter: subtitleFilter,
+        fontLoaded: 'Symbola.ttf'
       });
 
       console.log(`[${requestId}] Running FFmpeg with filter: ${subtitleFilter}`);

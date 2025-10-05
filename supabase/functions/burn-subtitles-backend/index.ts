@@ -171,14 +171,14 @@ serve(async (req) => {
     const styleMapping: Record<string, any> = {
       // Stroke style: White text with thick black outline
       outline: {
-        FontName: 'Noto Color Emoji,Apple Color Emoji,Segoe UI Emoji,Symbola,Noto Sans,Arial',
-        FontSize: 16,  // Much smaller for better readability
+        FontName: 'Symbola,Noto Emoji,Noto Sans,Arial',
+        FontSize: 16,
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 1,
         Italic: 0,
         Underline: 0,
         Spacing: 0,
-        Outline: 2,  // Reduced outline thickness
+        Outline: 2,
         OutlineColour: '&H000000',  // Black
         Shadow: 0,
         BackColour: '&H00000000',  // Transparent
@@ -190,7 +190,7 @@ serve(async (req) => {
       },
       // Subtle style: Light text with semi-transparent background
       minimal: {
-        FontName: 'Noto Color Emoji,Apple Color Emoji,Segoe UI Emoji,Symbola,Noto Sans,Arial',
+        FontName: 'Symbola,Noto Emoji,Noto Sans,Arial',
         FontSize: 14,
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 0,
@@ -209,7 +209,7 @@ serve(async (req) => {
       },
       // Highlight style: Black text with yellow glow and white outline
       green: {
-        FontName: 'Noto Color Emoji,Apple Color Emoji,Segoe UI Emoji,Symbola,Noto Sans,Arial',
+        FontName: 'Symbola,Noto Emoji,Noto Sans,Arial',
         FontSize: 18,
         PrimaryColour: '&H000000',  // Black text
         Bold: 1,
@@ -229,7 +229,7 @@ serve(async (req) => {
       },
       // Framed style: Bright green text with border and glow
       boxed: {
-        FontName: 'Noto Color Emoji,Apple Color Emoji,Segoe UI Emoji,Symbola,Noto Sans,Arial',
+        FontName: 'Symbola,Noto Emoji,Noto Sans,Arial',
         FontSize: 18,
         PrimaryColour: '&H00FF00',  // Bright green
         Bold: 1,
@@ -258,47 +258,53 @@ serve(async (req) => {
 
     console.log(`[${requestId}] Force style string:`, forceStyleParams);
 
-    // Emoji font to ensure glyph coverage (will be downloaded by the job)
-    const emojiFontUrl = 'https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoColorEmoji.ttf';
+    // Emoji font to ensure glyph coverage - use outline version, not color version
+    // Symbola has excellent emoji coverage and works with FFmpeg's subtitle filter
+    const emojiFontUrl = 'https://www.wfonts.com/download/data/2016/04/23/symbola/symbola.zip';
     
     console.log(`[${requestId}] Emoji font URL:`, emojiFontUrl);
+    console.log(`[${requestId}] Using FontName:`, style.FontName);
 
     // Start Replicate job using predictions API
     const prediction = await replicate.predictions.create({
       model: 'fofr/smart-ffmpeg',
       input: {
         files: [publicUrl, srtUrl, emojiFontUrl],
-        prompt: `CRITICAL: Generate an FFmpeg command that burns SRT subtitles onto the video with emoji support.
+        prompt: `CRITICAL: Generate an FFmpeg command that burns SRT subtitles onto the video with full emoji support.
 
 FILES PROVIDED:
 - Video file at: ${publicUrl}
 - Subtitles file at: ${srtFileName}
-- Emoji font file: NotoColorEmoji.ttf (downloaded from files)
+- Emoji font ZIP file: symbola.zip (contains Symbola.ttf - extract it first!)
 
-EXACT FFmpeg command structure required:
+FONT SETUP STEPS (CRITICAL):
+1. Extract the Symbola.ttf from symbola.zip: unzip symbola.zip
+2. Copy font to system: mkdir -p ~/.fonts && cp Symbola.ttf ~/.fonts/
+3. Refresh font cache: fc-cache -fv
+4. Verify font loaded: fc-list | grep -i symbola
+5. The subtitle filter uses fontsdir=. so also keep Symbola.ttf in current directory
+
+EXACT FFmpeg COMMAND:
 ffmpeg -i "${publicUrl}" -vf "subtitles='${srtFileName}':fontsdir=.:force_style='${forceStyleParams}'" -c:v libx264 -crf 18 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4
 
-CRITICAL FONT SETUP:
-1. Download the emoji font NotoColorEmoji.ttf to the current working directory
-2. Set up font directory: mkdir -p ~/.fonts && cp NotoColorEmoji.ttf ~/.fonts/ && fc-cache -f -v
-3. Verify font is available: fc-list | grep -i "noto"
-4. Use subtitles filter with fontsdir=. to reference downloaded fonts
-5. The FontName in force_style includes multiple fallback fonts - ensure all are accessible
+CRITICAL REQUIREMENTS:
+1. Use the EXACT force_style string: ${forceStyleParams}
+2. DO NOT modify FontName, FontSize, colors, or any style parameters
+3. Symbola.ttf MUST be accessible to FFmpeg (both in fontsdir and system fonts)
+4. Keep Spacing=0 (no tracking adjustments)
+5. Maintain original video resolution and framerate
+6. Audio: stream copy (no re-encoding)
 
-ENCODING RULES:
-1. Use the EXACT force_style string provided - do NOT modify it
-2. Keep Spacing=0 (no letter tracking adjustments)
-3. Maintain original video resolution and framerate
-4. Audio: -c:a copy (stream copy, no re-encoding)
-5. Ensure emoji glyphs render by using the Noto Color Emoji font first in fallback chain
+STYLE CONFIGURATION:
+- Style ID: ${styleId}
+- Font: ${style.FontName}
+- Size: ${style.FontSize}
+- Background box: ${style.BorderStyle === 4 ? 'yes' : 'no'}
 
-STYLE INFO:
-- Style: ${styleId}
-- Font size: ${style.FontSize}
-- Has background box: ${style.BorderStyle === 4 ? 'yes' : 'no'}
-- Font fallback chain: ${style.FontName}
-
-DEBUG: Log the actual FFmpeg command before execution to verify font setup.
+DEBUGGING:
+- Log the complete FFmpeg command before execution
+- Log fc-list output to verify Symbola is available
+- If emojis don't render, check font loading in subtitle filter errors
 `,
         max_attempts: 3,
       },
