@@ -1037,19 +1037,25 @@ export const KyrgyzSubtitleGenerator = () => {
       const styleOptions = [];
 
       if (currentStyle.prompt.includes('yellow') || currentStyle.prompt.includes('Highlight')) {
-        styleOptions.push('PrimaryColour=&H00FFFF', 'OutlineColour=&HFFFFFF', 'Outline=2');
+        styleOptions.push('PrimaryColour=&H00FFFF', 'OutlineColour=&HFFFFFF', 'Outline=2', 'Bold=1');
       } else if (currentStyle.prompt.includes('green') || currentStyle.prompt.includes('Framed')) {
-        styleOptions.push('PrimaryColour=&H00FF00', 'OutlineColour=&H000000', 'Outline=2', 'BorderStyle=3');
+        styleOptions.push('PrimaryColour=&H00FF00', 'OutlineColour=&H000000', 'Outline=2', 'BorderStyle=3', 'Bold=1');
       } else if (currentStyle.prompt.includes('minimal') || currentStyle.prompt.includes('Subtle')) {
-        styleOptions.push('PrimaryColour=&HFFFFFF', 'BackColour=&H80000000', 'FontSize=18', 'Bold=0');
+        styleOptions.push('PrimaryColour=&HFFFFFF', 'BackColour=&H80000000', 'FontSize=18', 'Bold=0', 'Outline=1');
       } else {
         // Default: white text with black outline (Stroke style)
         styleOptions.push('PrimaryColour=&HFFFFFF', 'OutlineColour=&H000000', 'Outline=3', 'Bold=1');
       }
       
-      // Use DejaVu Sans which supports emojis better than Arial
-      styleOptions.push('FontSize=18', 'Alignment=2', 'MarginV=20', 'FontName=Symbola');
+      // Font fallback chain: prioritize emoji fonts, then fallback to system fonts
+      // Matches the cloud processing font order for consistency
+      styleOptions.push('FontSize=18', 'Alignment=2', 'MarginV=20', 'FontName=Noto Color Emoji,Apple Color Emoji,Segoe UI Emoji,Symbola,Noto Sans,Arial');
       subtitleFilter += styleOptions.join(',');
+      
+      console.log(`[${requestId}] Local FFmpeg subtitle style:`, {
+        style: currentStyle.name,
+        filter: subtitleFilter
+      });
 
       console.log(`[${requestId}] Running FFmpeg with filter: ${subtitleFilter}`);
       setProcessingProgress(30);
