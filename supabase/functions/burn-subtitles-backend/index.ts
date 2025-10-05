@@ -158,40 +158,110 @@ serve(async (req) => {
 
     console.log(`[${requestId}] SRT URL:`, srtUrl.substring(0, 50) + '...');
 
-      // Build FFmpeg subtitle filter with EXPLICIT parameters
-      // Using ASS subtitle format parameters for precise control
-      let stylePrompt = body.stylePrompt || 'white text with black outline, bold font';
-      
-      // Parse and normalize the style description
-      const hasBackgroundBox = stylePrompt.includes('background') || stylePrompt.includes('box');
-      const textColor = stylePrompt.includes('yellow') ? 'yellow' : 'white';
-      
-      // Start Replicate job using predictions API so we can poll from the client
-      const prediction = await replicate.predictions.create({
-        model: 'fofr/smart-ffmpeg',
-        input: {
-          files: [publicUrl, srtUrl],
-          prompt: `Burn subtitles from SRT file onto video using FFmpeg with these EXACT parameters:
+    // Style mapping: CSS preview styles to ASS parameters
+    // These parameters are precisely calibrated to match the browser preview
+    const styleId = body.styleId || 'outline';
+    const styleMapping: Record<string, any> = {
+      // Stroke style: White text with thick black outline (matches 2em, bold, 4px shadow in 8 directions)
+      outline: {
+        FontName: 'Noto Sans,Arial,sans-serif',
+        FontSize: 48,  // Matches 2em from CSS
+        PrimaryColour: '&HFFFFFF',  // White
+        Bold: 1,
+        Italic: 0,
+        Underline: 0,
+        Spacing: 0,  // CRITICAL: No letter spacing
+        Outline: 4,  // Thick outline to match 4px CSS text-shadow
+        OutlineColour: '&H000000',  // Black
+        Shadow: 0,  // No drop shadow, just outline
+        BackColour: '&H00000000',  // Transparent
+        BorderStyle: 1,  // Outline only
+        Alignment: 2,  // Bottom center
+        MarginL: 20,
+        MarginR: 20,
+        MarginV: 40,
+      },
+      // Subtle style: Light text with semi-transparent background (matches 1.3em, weight 300)
+      minimal: {
+        FontName: 'Noto Sans,Arial,sans-serif',
+        FontSize: 32,  // Matches 1.3em
+        PrimaryColour: '&HFFFFFF',  // White
+        Bold: 0,  // Light weight
+        Italic: 0,
+        Underline: 0,
+        Spacing: 0,
+        Outline: 1,  // Minimal outline
+        OutlineColour: '&H000000',
+        Shadow: 1,  // Subtle shadow
+        BackColour: '&HB3000000',  // Semi-transparent black (0.7 opacity = B3 in hex)
+        BorderStyle: 4,  // Background box
+        Alignment: 2,
+        MarginL: 20,
+        MarginR: 20,
+        MarginV: 40,
+      },
+      // Highlight style: Black text with yellow glow and white outline (matches weight 900)
+      green: {
+        FontName: 'Noto Sans,Arial,sans-serif',
+        FontSize: 40,  // Between default and large for emphasis
+        PrimaryColour: '&H000000',  // Black text
+        Bold: 1,
+        Italic: 0,
+        Underline: 0,
+        Spacing: 0,
+        Outline: 2,  // White outline (2px to match CSS)
+        OutlineColour: '&HFFFFFF',  // White outline
+        Shadow: 6,  // Yellow glow effect
+        SecondaryColour: '&H00B3EA',  // Yellow for glow (EAB300 in BGR)
+        BackColour: '&H00000000',  // Transparent
+        BorderStyle: 1,
+        Alignment: 2,
+        MarginL: 20,
+        MarginR: 20,
+        MarginV: 40,
+      },
+      // Framed style: Bright green text with border and glow (matches 1.6em, bold, green border)
+      boxed: {
+        FontName: 'Noto Sans,Arial,sans-serif',
+        FontSize: 38,  // Matches 1.6em
+        PrimaryColour: '&H00FF00',  // Bright green (00FF00 in BGR)
+        Bold: 1,
+        Italic: 0,
+        Underline: 0,
+        Spacing: 0,
+        Outline: 4,  // Thick border to match 4px CSS border
+        OutlineColour: '&H00FF00',  // Green border
+        Shadow: 4,  // Green glow
+        BackColour: '&HF2000000',  // Nearly solid black (0.95 opacity = F2 in hex)
+        BorderStyle: 4,  // Background box with border
+        Alignment: 2,
+        MarginL: 20,
+        MarginR: 20,
+        MarginV: 40,
+      },
+    };
+
+    const style = styleMapping[styleId] || styleMapping.outline;
+    console.log(`[${requestId}] Using style: ${styleId}`, style);
+
+    // Build force_style string from style parameters
+    const forceStyleParams = Object.entries(style)
+      .map(([key, value]) => `${key}=${value}`)
+      .join(',');
+
+    console.log(`[${requestId}] Force style string:`, forceStyleParams);
+
+    // Start Replicate job using predictions API
+    const prediction = await replicate.predictions.create({
+      model: 'fofr/smart-ffmpeg',
+      input: {
+        files: [publicUrl, srtUrl],
+        prompt: `Burn subtitles from SRT file onto video using FFmpeg with these EXACT parameters:
 
 CRITICAL FFmpeg SUBTITLE FILTER PARAMETERS:
-Use subtitles filter with force_style option. Apply these ASS style parameters:
+Use subtitles filter with force_style option. Apply these ASS style parameters EXACTLY as specified:
 
-FontName=Noto Sans,Arial,sans-serif
-FontSize=24
-PrimaryColour=${textColor === 'yellow' ? '&H00FFFF' : '&HFFFFFF'}
-Bold=1
-Italic=0
-Underline=0
-Spacing=0
-Outline=1
-OutlineColour=&H00000000
-Shadow=2
-BackColour=${hasBackgroundBox ? '&H80000000' : '&H00000000'}
-BorderStyle=${hasBackgroundBox ? '4' : '1'}
-Alignment=2
-MarginL=20
-MarginR=20
-MarginV=40
+${forceStyleParams}
 
 SPACING IS CRITICAL:
 - Spacing=0 means NO letter spacing (characters are NOT spread apart)
@@ -223,15 +293,15 @@ OUTPUT:
 - Maximum 3 attempts
 
 Example FFmpeg command structure:
-ffmpeg -i video.mp4 -vf "subtitles=subs.srt:force_style='FontName=Noto Sans,FontSize=24,PrimaryColour=&HFFFFFF,Bold=1,Spacing=0,Outline=1,OutlineColour=&H00000000,Shadow=2,BorderStyle=1,Alignment=2,MarginV=40'" -c:v libx264 -crf 15 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4`,
-          max_attempts: 3,
-        },
-      } as any);
+ffmpeg -i video.mp4 -vf "subtitles=subs.srt:force_style='${forceStyleParams}'" -c:v libx264 -crf 15 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4`,
+        max_attempts: 3,
+      },
+    } as any);
 
     console.log(`[${requestId}] REPLICATE JOB CREATED`, {
       predictionId: prediction.id,
       model: 'fofr/smart-ffmpeg',
-      stylePrompt: body.stylePrompt || 'default',
+      styleId: styleId,
       timestamp: new Date().toISOString()
     });
 

@@ -1235,7 +1235,7 @@ export const KyrgyzSubtitleGenerator = () => {
         body: {
           videoPath,
           subtitles: useSubs,
-          stylePrompt: currentStyle.prompt,
+          styleId: currentStyle.id,
           requestId: rid,
         },
       });
