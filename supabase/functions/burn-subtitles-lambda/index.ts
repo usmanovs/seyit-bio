@@ -80,7 +80,7 @@ if not os.path.exists(NOTO_EMOJI_PATH):
     print('Downloading NotoEmoji-Regular.ttf (monochrome)...')
     # Using monochrome version because libass (FFmpeg subtitle renderer) doesn't support color fonts
     urllib.request.urlretrieve(
-        'https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoEmoji-VariableFont_wght.ttf',
+        'https://raw.githubusercontent.com/googlefonts/noto-emoji/main/fonts/NotoEmoji-Regular.ttf',
         NOTO_EMOJI_PATH
     )
     print(f'Noto Emoji font downloaded to {NOTO_EMOJI_PATH}')
@@ -377,7 +377,7 @@ def handler(event, context):
     const payload = {
       videoUrl: publicUrl,
       srtUrl: srtUrl,
-      forceStyle: `FontName=Noto Emoji,Symbola,${forceStyleParams}`,
+      forceStyle: `FontName=Symbola,Noto Emoji,${forceStyleParams}`,
       requestId: requestId,
       supabaseUrl: supabaseUrl,
       supabaseKey: supabaseKey,
