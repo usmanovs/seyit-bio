@@ -267,10 +267,10 @@ def handler(event, context):
 
     console.log(`[${requestId}] SRT uploaded: ${srtUrl}`);
 
-    // Style mappings - using ONLY Symbola (no comma-separated fallbacks)
+    // Style mappings - using DejaVu Sans (standard Linux font)
     const styleMapping: Record<string, any> = {
       outline: {
-        FontName: 'Symbola',
+        FontName: 'DejaVu Sans',
         FontSize: 24,
         PrimaryColour: '&H00FFFFFF',
         OutlineColour: '&H00000000',
@@ -283,7 +283,7 @@ def handler(event, context):
         BorderStyle: 1,
       },
       minimal: {
-        FontName: 'Symbola',
+        FontName: 'DejaVu Sans',
         FontSize: 20,
         PrimaryColour: '&H00FFFFFF',
         OutlineColour: '&H00000000',
@@ -296,7 +296,7 @@ def handler(event, context):
         BorderStyle: 1,
       },
       green: {
-        FontName: 'Symbola',
+        FontName: 'DejaVu Sans',
         FontSize: 26,
         PrimaryColour: '&H0000FF00',
         OutlineColour: '&H00000000',
@@ -309,7 +309,7 @@ def handler(event, context):
         BorderStyle: 1,
       },
       boxed: {
-        FontName: 'Symbola',
+        FontName: 'DejaVu Sans',
         FontSize: 22,
         PrimaryColour: '&H00FFFFFF',
         OutlineColour: '&H00000000',
