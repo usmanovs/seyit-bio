@@ -52,6 +52,8 @@ export const KyrgyzSubtitleGenerator = () => {
   const [processingProgress, setProcessingProgress] = useState<number>(0);
   const [processingStartTime, setProcessingStartTime] = useState<number>(0);
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number>(0);
+  const [processedVideoUrl, setProcessedVideoUrl] = useState<string | null>(null);
+  const [predictionId, setPredictionId] = useState<string | null>(null);
   const [captionStyle, setCaptionStyle] = useState<string>('outline');
   const [addEmojis, setAddEmojis] = useState<boolean>(true);
   const [correctSpelling, setCorrectSpelling] = useState<boolean>(true);
@@ -800,6 +802,90 @@ export const KyrgyzSubtitleGenerator = () => {
     toast.success("Subtitles downloaded successfully!");
   };
 
+  const burnSubtitlesWithBackend = async () => {
+    if (!videoPath || !subtitles) {
+      toast.error("Video and subtitles required");
+      return;
+    }
+
+    setIsProcessingVideo(true);
+    setProcessingStatus('Starting video processing...');
+    setProcessingStartTime(Date.now());
+    setPredictionId(null);
+    setProcessedVideoUrl(null);
+
+    try {
+      // Start the backend processing job
+      const { data, error } = await supabase.functions.invoke('burn-subtitles-backend', {
+        body: {
+          videoPath,
+          subtitles,
+          captionStyle: currentStyle.prompt
+        }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (!data?.predictionId) {
+        throw new Error('No prediction ID returned from backend');
+      }
+
+      setPredictionId(data.predictionId);
+      setProcessingStatus('Video processing started...');
+      
+      // Poll for status
+      const pollInterval = setInterval(async () => {
+        try {
+          const { data: statusData, error: statusError } = await supabase.functions.invoke('burn-subtitles-backend', {
+            body: { predictionId: data.predictionId }
+          });
+
+          if (statusError) throw statusError;
+          
+          console.log('Processing status:', statusData);
+
+          if (statusData.status === 'succeeded') {
+            clearInterval(pollInterval);
+            setProcessingStatus('Complete!');
+            setProcessingProgress(100);
+            setIsProcessingVideo(false);
+            
+            if (statusData.output) {
+              const videoUrl = Array.isArray(statusData.output) ? statusData.output[0] : statusData.output;
+              setProcessedVideoUrl(videoUrl);
+              toast.success('Video processed successfully!');
+              
+              // Auto-download
+              const a = document.createElement('a');
+              a.href = videoUrl;
+              a.download = 'video-with-subtitles.mp4';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            }
+          } else if (statusData.status === 'failed') {
+            clearInterval(pollInterval);
+            setIsProcessingVideo(false);
+            throw new Error(statusData.error || 'Video processing failed');
+          } else {
+            setProcessingStatus(`Processing: ${statusData.status}...`);
+          }
+        } catch (pollError: any) {
+          clearInterval(pollInterval);
+          setIsProcessingVideo(false);
+          console.error('Polling error:', pollError);
+          toast.error(pollError.message || 'Failed to check processing status');
+        }
+      }, 3000);
+
+    } catch (error: any) {
+      console.error('Backend processing error:', error);
+      setIsProcessingVideo(false);
+      toast.error(error.message || 'Failed to process video');
+    }
+  };
+
   const generateTitleVariations = async () => {
     if (!transcription) {
       toast.error("No transcription available. Please generate subtitles first.");
@@ -1100,18 +1186,41 @@ export const KyrgyzSubtitleGenerator = () => {
                               Update Captions
                             </Button>}
 
-                          <Button onClick={downloadSubtitles} size="lg" className={`
+                          <Button 
+                            onClick={burnSubtitlesWithBackend} 
+                            size="lg" 
+                            className={`
                               ${hasUnsavedChanges ? "flex-1" : "w-full"}
                               bg-blue-600 hover:bg-blue-700
                               text-white font-semibold
                               shadow-lg hover:shadow-xl
                               transition-all duration-300
-                            `} disabled={!subtitles}>
+                            `} 
+                            disabled={!subtitles || isProcessingVideo}
+                          >
                             <div className="flex items-center gap-2">
-                              <Download className="w-5 h-5" />
-                              <span>Download Subtitles</span>
+                              {isProcessingVideo ? (
+                                <>
+                                  <Loader2 className="w-5 h-5 animate-spin" />
+                                  <span>{processingStatus}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Download className="w-5 h-5" />
+                                  <span>Download Video with Subtitles</span>
+                                </>
+                              )}
                             </div>
                           </Button>
+                          
+                          {isProcessingVideo && (
+                            <div className="space-y-2 mt-3">
+                              <Progress value={processingProgress} className="w-full" />
+                              <p className="text-xs text-muted-foreground text-center">
+                                {formatTimeRemaining(estimatedTimeRemaining)} remaining
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                  </div>}
