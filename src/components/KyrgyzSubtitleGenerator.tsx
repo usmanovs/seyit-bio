@@ -79,19 +79,6 @@ export const KyrgyzSubtitleGenerator = () => {
   const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
   const [ffmpegLoading, setFfmpegLoading] = useState(false);
   const [ffmpegError, setFfmpegError] = useState<string | null>(null);
-  const [cloudPredictionId, setCloudPredictionId] = useState<string | null>(() => {
-    return localStorage.getItem('cloudPredictionId');
-  });
-  const [cloudStatus, setCloudStatus] = useState<string>('');
-  const [cloudPolling, setCloudPolling] = useState<boolean>(false);
-  const [cloudVideoUrl, setCloudVideoUrl] = useState<string | null>(() => {
-    return localStorage.getItem('cloudVideoUrl');
-  });
-  const [cloudStartTime, setCloudStartTime] = useState<number>(() => {
-    const saved = localStorage.getItem('cloudStartTime');
-    return saved ? parseInt(saved, 10) : 0;
-  });
-  const [cloudElapsedTime, setCloudElapsedTime] = useState<number>(0);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const captionStyles = [{
     id: 'outline',
@@ -130,65 +117,6 @@ export const KyrgyzSubtitleGenerator = () => {
     fetchVideosProcessedCount();
   }, []);
 
-  // Persist cloud state to localStorage
-  useEffect(() => {
-    if (cloudPredictionId) {
-      localStorage.setItem('cloudPredictionId', cloudPredictionId);
-    } else {
-      localStorage.removeItem('cloudPredictionId');
-    }
-  }, [cloudPredictionId]);
-  useEffect(() => {
-    if (cloudVideoUrl) {
-      localStorage.setItem('cloudVideoUrl', cloudVideoUrl);
-    } else {
-      localStorage.removeItem('cloudVideoUrl');
-    }
-  }, [cloudVideoUrl]);
-  useEffect(() => {
-    if (cloudStartTime > 0) {
-      localStorage.setItem('cloudStartTime', cloudStartTime.toString());
-    } else {
-      localStorage.removeItem('cloudStartTime');
-    }
-  }, [cloudStartTime]);
-
-  // Track elapsed time for cloud processing
-  useEffect(() => {
-    if (!cloudPolling || cloudStartTime === 0) {
-      setCloudElapsedTime(0);
-      return;
-    }
-    const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - cloudStartTime) / 1000);
-      setCloudElapsedTime(elapsed);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [cloudPolling, cloudStartTime]);
-
-  // Restore cloud processing state on mount
-  useEffect(() => {
-    const savedPredictionId = localStorage.getItem('cloudPredictionId');
-    const savedStartTime = localStorage.getItem('cloudStartTime');
-    if (savedPredictionId && savedStartTime) {
-      const startTime = parseInt(savedStartTime, 10);
-      const elapsed = Date.now() - startTime;
-
-      // Only resume polling if less than 15 minutes have passed
-      if (elapsed < 900000) {
-        console.log('[Cloud] Resuming cloud processing from previous session...');
-        setCloudPolling(true);
-        setCloudStartTime(startTime);
-        pollCloudPrediction(savedPredictionId, startTime, Math.floor(elapsed / 4000));
-        toast.info('Resuming video processing from previous session...');
-      } else {
-        // Clear stale data
-        localStorage.removeItem('cloudPredictionId');
-        localStorage.removeItem('cloudStartTime');
-      }
-    }
-  }, []);
-
   // FFmpeg loader with retry and timeout
   const loadFFmpegCore = async (baseURL: string) => {
     const ffmpeg = ffmpegRef.current;
@@ -221,9 +149,9 @@ export const KyrgyzSubtitleGenerator = () => {
         console.log('[FFmpeg] FFmpeg loaded successfully (jsDelivr)');
         toast.success('Video processor ready!');
       } catch (e2) {
-        console.warn('[FFmpeg] Both CDNs failed, will use cloud processing:', e2);
-        setFfmpegError('Video processor unavailable. Cloud processing will be used.');
-        // Don't show error toast - cloud processing is a valid fallback
+        console.error('[FFmpeg] Failed to load FFmpeg from all CDNs:', e2);
+        setFfmpegError('Video processor unavailable. Please refresh the page to try again.');
+        toast.error('Failed to load video processor. Please refresh the page.');
       }
     } finally {
       setFfmpegLoading(false);
@@ -422,17 +350,6 @@ export const KyrgyzSubtitleGenerator = () => {
     setProcessingStatus('');
     setProcessingProgress(0);
     setHasUnsavedChanges(false);
-
-    // Clear cloud processing state
-    setCloudPredictionId(null);
-    setCloudVideoUrl(null);
-    setCloudStatus('');
-    setCloudPolling(false);
-    setCloudStartTime(0);
-    setCloudElapsedTime(0);
-    localStorage.removeItem('cloudPredictionId');
-    localStorage.removeItem('cloudVideoUrl');
-    localStorage.removeItem('cloudStartTime');
     setIsUploading(true);
     setUploadProgress(0);
 
@@ -922,37 +839,13 @@ export const KyrgyzSubtitleGenerator = () => {
       return;
     }
 
-    // Check if already processing
-    if (cloudPolling) {
-      toast.error("Video is already processing. Please wait...");
-      return;
-    }
-
-    // Prefer local FFmpeg processing when available; otherwise use cloud
+    // Ensure FFmpeg is loaded before processing
     if (!ffmpegLoaded) {
-      if (cloudVideoUrl) {
-        try {
-          const response = await fetch(cloudVideoUrl);
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `video-with-subtitles-${Date.now()}.mp4`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          toast.success("Video downloaded!");
-          return;
-        } catch (error) {
-          console.error("Failed to download cloud video:", error);
-          toast.error("Failed to download. Opening in new tab instead.");
-          window.open(cloudVideoUrl, '_blank');
-          return;
-        }
+      if (ffmpegLoading) {
+        toast.info("Loading video processor... Please wait.");
+        return;
       }
-      toast.info("Starting cloud processing...");
-      await burnVideoInCloud();
+      toast.error("Video processor not ready. Please refresh the page and try again.");
       return;
     }
     const requestId = generateRequestId();
@@ -1080,295 +973,6 @@ export const KyrgyzSubtitleGenerator = () => {
     }
   };
 
-  // Cloud burning fallback via backend with timeout
-  const pollCloudPrediction = async (predictionId: string, startTime: number = Date.now(), attemptCount: number = 0) => {
-    setCloudPolling(true);
-    setCloudStatus('queued');
-
-    // 10 minute timeout (600 seconds)
-    const TIMEOUT_MS = 10 * 60 * 1000;
-    const MAX_ATTEMPTS = 150; // 150 attempts * 4s = 10 minutes
-    const elapsed = Date.now() - startTime;
-    if (elapsed > TIMEOUT_MS || attemptCount > MAX_ATTEMPTS) {
-      setCloudPolling(false);
-      setCloudStatus('timeout');
-      toast.error('Cloud processing timed out after 10 minutes. The video may be too large or complex. Try a shorter video or simpler caption style.');
-      return;
-    }
-
-    // Show progress feedback
-    if (attemptCount === 15) {
-      // After 1 minute
-      toast.info('Still processing... Large videos can take 5-10 minutes');
-    } else if (attemptCount === 45) {
-      // After 3 minutes
-      toast.info('Processing is taking longer than usual. Please be patient...');
-    }
-    try {
-      const pollOnce = async () => {
-        const {
-          data,
-          error
-        } = await supabase.functions.invoke('burn-subtitles-backend', {
-          body: {
-            predictionId,
-            requestId: generateRequestId()
-          }
-        });
-        if (error) throw error;
-        if (data?.status === 'succeeded' && data?.videoUrl) {
-          setCloudStatus('succeeded');
-          setCloudVideoUrl(data.videoUrl);
-          setCloudPolling(false);
-          setCloudStartTime(0);
-
-          // Clear localStorage
-          localStorage.removeItem('cloudPredictionId');
-          localStorage.removeItem('cloudStartTime');
-          toast.success('Cloud video ready! Downloading...');
-          try {
-            const response = await fetch(data.videoUrl);
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `video-with-subtitles-${Date.now()}.mp4`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          } catch (e) {
-            console.error('Auto-download failed, opening in new tab', e);
-            window.open(data.videoUrl, '_blank');
-          }
-          return true;
-        }
-        if (data?.status === 'failed') {
-          setCloudStatus('failed');
-          setCloudPolling(false);
-          setCloudStartTime(0);
-
-          // Clear localStorage
-          localStorage.removeItem('cloudPredictionId');
-          localStorage.removeItem('cloudStartTime');
-          toast.error(data?.error || 'Cloud processing failed');
-          return true;
-        }
-        setCloudStatus(data?.status || 'processing');
-        return false;
-      };
-      const done = await pollOnce();
-      // Use longer polling interval after 2 minutes to reduce server load
-      const pollInterval = attemptCount > 30 ? 6000 : 4000;
-      if (!done) setTimeout(() => pollCloudPrediction(predictionId, startTime, attemptCount + 1), pollInterval);
-    } catch (e: any) {
-      setCloudPolling(false);
-      setCloudStatus('error');
-      setCloudStartTime(0);
-
-      // Clear localStorage
-      localStorage.removeItem('cloudPredictionId');
-      localStorage.removeItem('cloudStartTime');
-      toast.error(e.message || 'Cloud polling error');
-    }
-  };
-
-  // Poll Lambda status JSON for completion or failure
-  const pollLambdaStatus = async (statusUrl: string, fallbackVideoUrl: string | null, requestId: string, startTime: number) => {
-    const TIMEOUT_MS = 6 * 60 * 1000; // 6 minutes
-    const INTERVAL_MS = 4000;
-    setCloudPolling(true);
-    setCloudStatus('processing');
-    while (Date.now() - startTime < TIMEOUT_MS) {
-      try {
-        const res = await fetch(`${statusUrl}?t=${Date.now()}`, {
-          cache: 'no-store'
-        });
-        if (res.ok) {
-          const json = await res.json();
-          if (json?.status === 'succeeded' && json?.videoUrl) {
-            setCloudStatus('succeeded');
-            setCloudVideoUrl(json.videoUrl);
-            setCloudPolling(false);
-            setCloudStartTime(0);
-            toast.success('Video ready! Downloading...');
-            try {
-              const dl = await fetch(json.videoUrl, {
-                cache: 'no-store'
-              });
-              const blob = await dl.blob();
-              const objUrl = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = objUrl;
-              a.download = `video-with-subtitles-${Date.now()}.mp4`;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(objUrl);
-            } catch (e) {
-              console.error('Auto-download failed, opening in new tab', e);
-              window.open(json.videoUrl, '_blank');
-            }
-            return;
-          }
-          if (json?.status === 'failed') {
-            setCloudStatus('failed');
-            setCloudPolling(false);
-            setCloudStartTime(0);
-            toast.error(json?.error || 'Cloud processing failed');
-            return;
-          }
-        }
-      } catch (e) {
-        // ignore and continue polling
-      }
-
-      // As a fallback, if a direct video URL is known, also try HEAD check
-      if (fallbackVideoUrl) {
-        try {
-          const head = await fetch(`${fallbackVideoUrl}?t=${Date.now()}`, {
-            method: 'HEAD',
-            cache: 'no-store'
-          });
-          if (head.ok) {
-            setCloudStatus('succeeded');
-            setCloudVideoUrl(fallbackVideoUrl);
-            setCloudPolling(false);
-            setCloudStartTime(0);
-            toast.success('Video ready!');
-            return;
-          }
-        } catch {}
-      }
-      await new Promise(r => setTimeout(r, INTERVAL_MS));
-    }
-    setCloudStatus('timeout');
-    setCloudPolling(false);
-    setCloudStartTime(0);
-    toast.error('Cloud processing timed out. Try a shorter video or simpler caption style.');
-  };
-
-  // Poll for AWS Lambda output URL until the processed video appears
-  const pollLambdaOutput = async (url: string, requestId: string, startTime: number) => {
-    const TIMEOUT_MS = 6 * 60 * 1000; // 6 minutes
-    const INTERVAL_MS = 4000;
-    setCloudPolling(true);
-    setCloudStatus('processing');
-    while (Date.now() - startTime < TIMEOUT_MS) {
-      try {
-        const res = await fetch(`${url}?t=${Date.now()}`, {
-          method: 'HEAD',
-          cache: 'no-store'
-        });
-        if (res.ok) {
-          setCloudStatus('succeeded');
-          setCloudVideoUrl(url);
-          setCloudPolling(false);
-          setCloudStartTime(0);
-          toast.success('Video ready! Downloading...');
-          try {
-            const dl = await fetch(url, {
-              cache: 'no-store'
-            });
-            const blob = await dl.blob();
-            const objUrl = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = objUrl;
-            a.download = `video-with-subtitles-${Date.now()}.mp4`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(objUrl);
-          } catch (e) {
-            console.error('Auto-download failed, opening in new tab', e);
-            window.open(url, '_blank');
-          }
-          return;
-        }
-      } catch (e) {
-        // ignore and continue polling
-      }
-      await new Promise(r => setTimeout(r, INTERVAL_MS));
-    }
-    setCloudStatus('timeout');
-    setCloudPolling(false);
-    setCloudStartTime(0);
-    toast.error('Cloud processing timed out. Try a shorter video or simpler caption style.');
-  };
-  const burnVideoInCloud = async () => {
-    if (!videoPath || !(editedSubtitles || subtitles)) {
-      toast.error('No video or captions available');
-      return;
-    }
-
-    // Check if already processing
-    if (cloudPolling) {
-      toast.error('Cloud processing already in progress. Please wait...');
-      return;
-    }
-    const useSubs = editedSubtitles || subtitles;
-    const rid = generateRequestId();
-    const startTime = Date.now();
-    console.log('[Download] Style selection:', {
-      captionStyle,
-      currentStyleId: currentStyle.id,
-      currentStyleName: currentStyle.name,
-      timestamp: new Date().toISOString()
-    });
-    try {
-      setCloudStatus('starting');
-      setCloudPolling(true);
-      setCloudStartTime(startTime);
-
-      // Use Replicate for cloud processing
-      console.log('[Download] Starting Replicate cloud processing...', {
-        styleId: currentStyle.id,
-        styleName: currentStyle.name
-      });
-      
-      const {
-        data: replicateData,
-        error: replicateError
-      } = await supabase.functions.invoke('burn-subtitles-backend', {
-        body: {
-          videoPath,
-          subtitles: useSubs,
-          styleId: currentStyle.id,
-          requestId: rid
-        }
-      });
-      
-      if (replicateError) {
-        throw new Error(`Cloud processing failed: ${replicateError.message}`);
-      }
-      
-      if (!replicateData?.success) {
-        throw new Error(replicateData?.error || 'Cloud processing failed to start');
-      }
-      
-      if (!replicateData?.predictionId) {
-        throw new Error('Cloud processing started but no prediction ID returned');
-      }
-      
-      // Poll for completion
-      console.log('[Download] Cloud processing started, polling for result...', {
-        predictionId: replicateData.predictionId
-      });
-      
-      // Save to localStorage for recovery
-      localStorage.setItem('cloudPredictionId', replicateData.predictionId);
-      localStorage.setItem('cloudStartTime', startTime.toString());
-      
-      await pollCloudPrediction(replicateData.predictionId, startTime);
-      
-    } catch (e: any) {
-      setCloudStatus('error');
-      setCloudPolling(false);
-      setCloudStartTime(0);
-      console.error('[Download] Cloud processing error:', e);
-      toast.error(e.message || 'Failed to process video in cloud');
-    }
-  };
   const generateTitleVariations = async () => {
     if (!transcription) {
       toast.error("No transcription available. Please generate subtitles first.");
@@ -1680,8 +1284,13 @@ export const KyrgyzSubtitleGenerator = () => {
                               text-white font-semibold
                               shadow-lg hover:shadow-xl
                               transition-all duration-300
-                            `} disabled={isProcessingVideo || cloudPolling || !subtitles}>
-                            {isProcessingVideo ? <div className="w-full space-y-2">
+                            `} disabled={isProcessingVideo || !subtitles || !ffmpegLoaded}>
+                            {!ffmpegLoaded && ffmpegLoading ? <div className="flex items-center gap-2">
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                <span>Loading video processor...</span>
+                              </div> : !ffmpegLoaded ? <div className="flex items-center gap-2">
+                                <span>Video processor unavailable</span>
+                              </div> : isProcessingVideo ? <div className="w-full space-y-2">
                                 <div className="flex items-center justify-center gap-2">
                                   <Loader2 className="w-5 h-5 animate-spin" />
                                   <span className="text-sm">
@@ -1690,16 +1299,6 @@ export const KyrgyzSubtitleGenerator = () => {
                                   </span>
                                 </div>
                                 <Progress value={processingProgress} className="w-full h-2" />
-                              </div> : cloudPolling ? <div className="w-full space-y-2">
-                                <div className="flex items-center justify-center gap-2">
-                                  <Loader2 className="w-5 h-5 animate-spin" />
-                                  <span className="text-sm">
-                                    Processing... {Math.floor(cloudElapsedTime / 60)}m {cloudElapsedTime % 60}s elapsed
-                                  </span>
-                                </div>
-                                <div className="text-xs text-center text-white/70">
-                                  Large videos can take 5-10 minutes
-                                </div>
                               </div> : <div className="flex items-center gap-2">
                                 <Download className="w-5 h-5" />
                                 <span>Download Video</span>
@@ -1707,32 +1306,8 @@ export const KyrgyzSubtitleGenerator = () => {
                           </Button>
                         </div>
 
-                        {/* Manual download fallback when cloud video is ready */}
-                        {cloudVideoUrl && !cloudPolling && <div className="space-y-2 p-3 rounded-lg border border-primary/20 bg-primary/5">
-                            <div className="flex items-center gap-2 text-sm font-medium text-primary">
-                              <CheckCircle2 className="w-4 h-4" />
-                              <span>Video ready!</span>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button onClick={() => window.open(cloudVideoUrl, '_blank')} variant="outline" size="sm" className="flex-1">
-                                <ArrowRight className="w-4 h-4 mr-2" />
-                                Open in New Tab
-                              </Button>
-                              <Button onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(cloudVideoUrl);
-                        toast.success('Video link copied!');
-                      } catch (e) {
-                        toast.error('Failed to copy link');
-                      }
-                    }} variant="outline" size="sm" className="flex-1">
-                                Copy Link
-                              </Button>
-                            </div>
-                          </div>}
-
-                        {!ffmpegLoaded && !isProcessingVideo && !cloudPolling && !cloudVideoUrl && <div className="text-xs text-muted-foreground p-2 rounded border bg-muted/50">
-                            Cloud mode — Processing with Replicate AI. Click once and wait for completion.
+                        {!ffmpegLoaded && !isProcessingVideo && <div className="text-xs text-muted-foreground p-2 rounded border bg-muted/50">
+                            {ffmpegError || "Video processor unavailable. Please refresh the page to try again."}
                           </div>}
                       </div>
                  </div>}
