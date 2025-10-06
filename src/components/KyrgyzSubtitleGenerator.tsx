@@ -117,42 +117,34 @@ export const KyrgyzSubtitleGenerator = () => {
     fetchVideosProcessedCount();
   }, []);
 
-  // FFmpeg loader with retry and timeout
-  const loadFFmpegCore = async (baseURL: string) => {
-    const ffmpeg = ffmpegRef.current;
-    ffmpeg.on('log', ({
-      message
-    }) => {
-      console.log('[FFmpeg]', message);
-    });
-    await ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm')
-    });
-  };
+
   const loadFFmpeg = async () => {
     if (ffmpegLoaded || ffmpegLoading) return;
     setFfmpegLoading(true);
     setFfmpegError(null);
-    console.log('[FFmpeg] Starting to load FFmpeg...');
+    console.log('[FFmpeg] Starting to load FFmpeg from local files...');
+    
     try {
-      // Try primary CDN (unpkg) with correct version
-      await loadFFmpegCore('https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd');
+      const baseURL = '/ffmpeg';
+      const ffmpeg = ffmpegRef.current;
+      
+      ffmpeg.on('log', ({ message }) => {
+        console.log('[FFmpeg]', message);
+      });
+      
+      await ffmpeg.load({
+        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm')
+      });
+      
       setFfmpegLoaded(true);
-      console.log('[FFmpeg] FFmpeg loaded successfully (unpkg)');
+      console.log('[FFmpeg] FFmpeg loaded successfully from local files');
       toast.success('Video processor ready!');
+      
     } catch (err) {
-      console.warn('[FFmpeg] Primary CDN failed, trying jsDelivr...', err);
-      try {
-        await loadFFmpegCore('https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd');
-        setFfmpegLoaded(true);
-        console.log('[FFmpeg] FFmpeg loaded successfully (jsDelivr)');
-        toast.success('Video processor ready!');
-      } catch (e2) {
-        console.error('[FFmpeg] Failed to load FFmpeg from all CDNs:', e2);
-        setFfmpegError('Video processor unavailable. Please refresh the page to try again.');
-        toast.error('Failed to load video processor. Please refresh the page.');
-      }
+      console.error('[FFmpeg] Failed to load FFmpeg:', err);
+      setFfmpegError('Video processor unavailable. Please refresh the page.');
+      toast.error('Failed to load video processor. Please refresh.');
     } finally {
       setFfmpegLoading(false);
     }
