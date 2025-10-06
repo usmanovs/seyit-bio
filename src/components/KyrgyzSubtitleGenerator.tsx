@@ -116,43 +116,29 @@ export const KyrgyzSubtitleGenerator = () => {
     fetchVideosProcessedCount();
   }, []);
 
-  // Load FFmpeg.wasm (kept for potential future use)
+  // Load FFmpeg.wasm using toBlobURL to convert CDN files to same-origin blobs (works with COEP)
   const loadFFmpeg = async (): Promise<boolean> => {
     if (ffmpegLoaded) return true;
     
     toast.info('Loading video processor... This may take 30-60 seconds on first load.');
     
     try {
-      const bases = [
-        'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm',
-        'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm',
-      ];
+      console.log('[FFmpeg] Loading core from CDN using toBlobURL for COEP compatibility');
+      
+      // toBlobURL fetches from CDN and creates same-origin blob URLs
+      // This works with COEP headers since the blobs are same-origin
+      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm';
+      
+      const coreBlob = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
+      const wasmBlob = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
+      
+      await ffmpeg.load({
+        coreURL: coreBlob,
+        wasmURL: wasmBlob,
+      });
 
-      let loaded = false;
-      for (const base of bases) {
-        try {
-          console.log('[FFmpeg] Attempting to load from', base);
-          
-          // Convert remote assets to same-origin Blob URLs to avoid CORS/COOP issues
-          const coreBlob = await toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript');
-          const wasmBlob = await toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm');
-
-          await ffmpeg.load({
-            coreURL: coreBlob,
-            wasmURL: wasmBlob,
-          });
-
-          console.log('[FFmpeg] Loaded successfully from', base);
-          toast.success('Video processor ready!');
-          loaded = true;
-          break;
-        } catch (e) {
-          console.warn('[FFmpeg] Failed to load from', base, e);
-        }
-      }
-
-      if (!loaded) throw new Error('All FFmpeg sources failed');
-
+      console.log('[FFmpeg] Loaded successfully via toBlobURL');
+      toast.success('Video processor ready!');
       setFfmpegLoaded(true);
       return true;
     } catch (error) {
