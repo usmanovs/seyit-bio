@@ -265,41 +265,36 @@ serve(async (req) => {
     console.log(`[${requestId}] Emoji font (TTF) URL:`, emojiFontUrl);
     console.log(`[${requestId}] Using FontName:`, style.FontName);
 
-    // Start Replicate job using predictions API
+    // Start Replicate job using direct FFmpeg model (no AI prompt generation)
+    console.log(`[${requestId}] Building FFmpeg command with direct model`);
+    
     const prediction = await replicate.predictions.create({
-      model: 'fofr/smart-ffmpeg',
+      model: 'andreasjansson/ffmpeg',
       input: {
-        files: [publicUrl, srtUrl, emojiFontUrl],
-        prompt: `CRITICAL: Generate an FFmpeg command that burns SRT subtitles onto the video with full emoji support.
-        
-        FILES PROVIDED:
-        - Video file at: ${publicUrl}
-        - Subtitles file at: ${srtFileName}
-        - Emoji font file: Symbola.ttf (already provided in the working directory)
-        
-        REQUIREMENTS:
-        1. Ensure Symbola.ttf is present in the current working directory (from the provided files list).
-        2. Use this EXACT subtitles filter: subtitles='${srtFileName}':fontsdir=.:force_style='${forceStyleParams}'
-        3. DO NOT change the force_style string: ${forceStyleParams}
-        4. Maintain original video resolution and framerate
-        5. Audio: stream copy (no re-encoding)
-        
-        EXACT FFmpeg COMMAND:
-        ffmpeg -i "${publicUrl}" -vf "subtitles='${srtFileName}':fontsdir=.:force_style='${forceStyleParams}'" -c:v libx264 -crf 18 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4
-        
-        DEBUGGING:
-        - Print working directory contents: ls -l
-        - Verify font presence: ls -l Symbola.ttf || echo "Symbola.ttf not found"
-        - Echo the full FFmpeg command before running it
-        - If font issues occur, confirm that fontsdir=. is set; no fc-cache needed when using fontsdir
-        `,
-        max_attempts: 3,
-      },
-    } as any);
+        cmd: [
+          '-i', publicUrl,
+          '-i', srtUrl,
+          '-i', emojiFontUrl,
+          '-filter_complex',
+          `[0:v]subtitles='${srtFileName}':fontsdir=.:force_style='${forceStyleParams}'[v]`,
+          '-map', '[v]',
+          '-map', '0:a',
+          '-c:v', 'libx264',
+          '-crf', '18',
+          '-preset', 'slow',
+          '-profile:v', 'high',
+          '-level', '4.1',
+          '-pix_fmt', 'yuv420p',
+          '-c:a', 'copy',
+          '-movflags', '+faststart',
+          'output.mp4'
+        ]
+      }
+    });
 
     console.log(`[${requestId}] REPLICATE JOB CREATED`, {
       predictionId: prediction.id,
-      model: 'fofr/smart-ffmpeg',
+      model: 'andreasjansson/ffmpeg',
       styleId: styleId,
       timestamp: new Date().toISOString()
     });
