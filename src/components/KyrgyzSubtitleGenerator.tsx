@@ -1061,11 +1061,23 @@ export const KyrgyzSubtitleGenerator = () => {
 
       console.log('[Replicate] Downloading from:', videoUrl);
 
-      // Download the video
-      const response = await fetch(videoUrl);
-      if (!response.ok) throw new Error('Failed to download processed video');
+      // Download the video with proper CORS handling
+      const response = await fetch(videoUrl, {
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to download processed video: ${response.status} ${response.statusText}`);
+      }
 
       const blob = await response.blob();
+      console.log('[Replicate] Downloaded blob size:', blob.size, 'bytes');
+      
+      if (blob.size === 0) {
+        throw new Error('Downloaded video is empty');
+      }
+
       const downloadUrl = URL.createObjectURL(blob);
 
       // Auto-download
