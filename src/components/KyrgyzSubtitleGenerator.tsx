@@ -840,69 +840,8 @@ export const KyrgyzSubtitleGenerator = () => {
     toast.success("Subtitles downloaded!");
   };
 
-  // Parse SRT to cue objects for drawtext
-  const parseSrtForDrawtext = (srtText: string) => {
-    const blocks = srtText.trim().split(/\n\n+/);
-    const cues: Array<{ start: string; end: string; text: string }> = [];
 
-    for (const block of blocks) {
-      const lines = block.split('\n');
-      if (lines.length < 3) continue;
-
-      const timeLine = lines[1];
-      const match = timeLine.match(/(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})/);
-      if (!match) continue;
-
-      const [, start, end] = match;
-      const text = lines.slice(2).join(' ').replace(/\r/g, '');
-      
-      cues.push({
-        start: start.replace(',', '.'),
-        end: end.replace(',', '.'),
-        text
-      });
-    }
-
-    return cues;
-  };
-
-  // Generate drawtext filter string from SRT cues
-  const generateDrawtextFilter = (cues: Array<{ start: string; end: string; text: string }>) => {
-    const escapeText = (text: string) => {
-      return text
-        .replace(/\\/g, '\\\\')
-        .replace(/'/g, "\\'")
-        .replace(/:/g, '\\:')
-        .replace(/\[/g, '\\[')
-        .replace(/\]/g, '\\]')
-        .replace(/,/g, '\\,');
-    };
-
-    const filters = cues.map(cue => {
-      const escapedText = escapeText(cue.text);
-      const enableExpr = `between(t,${cue.start.replace(/:/g, '\\:')},${cue.end.replace(/:/g, '\\:')})`;
-      
-      // Use style based on captionStyle
-      let drawtextParams = '';
-      if (captionStyle === 'outline') {
-        drawtextParams = `fontfile=/fonts/Symbola.ttf:text='${escapedText}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=h-th-40:borderw=4:bordercolor=black:enable='${enableExpr}'`;
-      } else if (captionStyle === 'minimal') {
-        drawtextParams = `fontfile=/fonts/Symbola.ttf:text='${escapedText}':fontcolor=white:fontsize=32:x=(w-text_w)/2:y=h-th-40:box=1:boxcolor=black@0.7:boxborderw=10:enable='${enableExpr}'`;
-      } else if (captionStyle === 'green') {
-        drawtextParams = `fontfile=/fonts/Symbola.ttf:text='${escapedText}':fontcolor=black:fontsize=48:x=(w-text_w)/2:y=h-th-40:borderw=3:bordercolor=white:shadowcolor=yellow:shadowx=0:shadowy=0:enable='${enableExpr}'`;
-      } else if (captionStyle === 'boxed') {
-        drawtextParams = `fontfile=/fonts/Symbola.ttf:text='${escapedText}':fontcolor=lime:fontsize=38:x=(w-text_w)/2:y=h-th-40:box=1:boxcolor=black@0.95:boxborderw=4:borderw=4:bordercolor=lime:enable='${enableExpr}'`;
-      } else {
-        drawtextParams = `fontfile=/fonts/Symbola.ttf:text='${escapedText}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=h-th-40:borderw=4:bordercolor=black:enable='${enableExpr}'`;
-      }
-
-      return `drawtext=${drawtextParams}`;
-    });
-
-    return filters.join(',');
-  };
-
-  // Client-side FFmpeg processing for small videos
+  // Client-side FFmpeg processing using subtitles filter (simpler & more reliable)
   const burnSubtitlesInBrowser = async (videoFile: File) => {
     if (!videoFile || !subtitles) {
       toast.error("Video file and subtitles are required");
@@ -916,85 +855,41 @@ export const KyrgyzSubtitleGenerator = () => {
     try {
       // Load FFmpeg if not already loaded
       if (!ffmpegLoaded) {
-        console.log('[FFmpeg] Loading FFmpeg.wasm...');
-        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
-        await ffmpeg.load({
-          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-        });
-        setFfmpegLoaded(true);
-        console.log('[FFmpeg] Loaded successfully');
+        const loaded = await loadFFmpeg();
+        if (!loaded) {
+          throw new Error('Failed to load FFmpeg');
+        }
       }
 
       setProcessingStatus('Preparing video...');
       setProcessingProgress(15);
 
       // Write video file to FFmpeg virtual FS
-      await ffmpeg.writeFile('input.mp4', await fetchFile(videoFile));
+      const videoData = await fetchFile(videoFile);
+      await ffmpeg.writeFile('input.mp4', videoData);
 
-      // Fetch and write the Symbola font
-      setProcessingStatus('Loading font...');
-      setProcessingProgress(20);
-      const fontResponse = await fetch('/fonts/Symbola.ttf');
-      const fontData = await fontResponse.arrayBuffer();
-      await ffmpeg.writeFile('/fonts/Symbola.ttf', new Uint8Array(fontData));
-
-      // Parse SRT and generate drawtext filter
-      setProcessingStatus('Generating subtitles...');
-      setProcessingProgress(30);
+      // Write SRT file directly (no parsing needed - subtitles filter handles it)
+      setProcessingStatus('Writing subtitles...');
+      setProcessingProgress(25);
       const srtToProcess = editedSubtitles || subtitles;
-      const cues = parseSrtForDrawtext(srtToProcess);
-      const drawtextFilter = generateDrawtextFilter(cues);
+      await ffmpeg.writeFile('subs.srt', new TextEncoder().encode(srtToProcess));
 
-      console.log('[FFmpeg] Using drawtext filter with', cues.length, 'cues');
-
-      // Run FFmpeg with libx264 (primary) or mpeg4 (fallback)
+      // Run FFmpeg with subtitles filter (handles SRT natively + styling)
       setProcessingStatus('Processing video (this may take a minute)...');
       setProcessingProgress(40);
 
-      let success = false;
-      const videoFilters = drawtextFilter;
+      console.log('[FFmpeg] Burning subtitles using subtitles filter...');
+      
+      await ffmpeg.exec([
+        '-i', 'input.mp4',
+        '-vf', "subtitles=subs.srt:force_style='FontName=Arial,FontSize=36,Outline=2,BorderStyle=3,Shadow=1,OutlineColour=&H80000000,BackColour=&H80000000'",
+        '-c:a', 'copy',
+        '-preset', 'fast',
+        '-y',
+        'output.mp4'
+      ]);
 
-      // Try libx264 first
-      try {
-        console.log('[FFmpeg] Attempting with libx264 codec...');
-        await ffmpeg.exec([
-          '-i', 'input.mp4',
-          '-vf', videoFilters,
-          '-c:v', 'libx264',
-          '-preset', 'fast',
-          '-crf', '23',
-          '-c:a', 'copy',
-          '-y',
-          'output.mp4'
-        ]);
-        success = true;
-        console.log('[FFmpeg] Success with libx264');
-      } catch (libx264Error) {
-        console.warn('[FFmpeg] libx264 failed, trying mpeg4...', libx264Error);
-        
-        // Fallback to mpeg4
-        try {
-          await ffmpeg.exec([
-            '-i', 'input.mp4',
-            '-vf', videoFilters,
-            '-c:v', 'mpeg4',
-            '-q:v', '5',
-            '-c:a', 'copy',
-            '-y',
-            'output.mp4'
-          ]);
-          success = true;
-          console.log('[FFmpeg] Success with mpeg4');
-        } catch (mpeg4Error) {
-          console.error('[FFmpeg] Both codecs failed:', mpeg4Error);
-          throw new Error('Video encoding failed. Please try downloading subtitles instead.');
-        }
-      }
-
-      if (!success) {
-        throw new Error('Failed to encode video');
-      }
+      console.log('[FFmpeg] Processing complete');
 
       setProcessingStatus('Finalizing...');
       setProcessingProgress(90);
@@ -1019,6 +914,7 @@ export const KyrgyzSubtitleGenerator = () => {
       // Cleanup
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       await ffmpeg.deleteFile('input.mp4');
+      await ffmpeg.deleteFile('subs.srt');
       await ffmpeg.deleteFile('output.mp4');
 
     } catch (error: any) {
