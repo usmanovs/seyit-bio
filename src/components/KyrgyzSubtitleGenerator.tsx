@@ -1296,14 +1296,28 @@ export const KyrgyzSubtitleGenerator = () => {
                               disabled={!subtitles || isProcessingVideo}
                             >
                               <div className="flex items-center gap-2">
-                                <Download className="w-5 h-5" />
+                                {isLoadingFFmpeg ? (
+                                  <Loader2 className="w-5 h-5 animate-spin" />
+                                ) : (
+                                  <Download className="w-5 h-5" />
+                                )}
                                 <span>
-                                  {isLoadingFFmpeg ? 'Loading Processor...' : 
-                                   isProcessingVideo ? 'Processing...' : 
-                                   'Download with Subtitles (Instant)'}
+                                  {isProcessingVideo ? 'Processing...' : 'Download with Subtitles (Instant)'}
                                 </span>
                               </div>
                             </Button>
+                            
+                            {isLoadingFFmpeg && (
+                              <p className="text-xs text-muted-foreground text-center">
+                                Warming up processor for first use...
+                              </p>
+                            )}
+                            
+                            {!subtitles && !isLoadingFFmpeg && (
+                              <p className="text-xs text-muted-foreground text-center">
+                                Generate subtitles first to enable download
+                              </p>
+                            )}
 
                             {isProcessingVideo && (
                               <div className="p-3 rounded-lg bg-muted border border-border space-y-2">
