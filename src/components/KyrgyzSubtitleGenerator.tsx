@@ -122,29 +122,40 @@ export const KyrgyzSubtitleGenerator = () => {
     if (ffmpegLoaded || ffmpegLoading) return;
     setFfmpegLoading(true);
     setFfmpegError(null);
-    console.log('[FFmpeg] Starting to load FFmpeg from local files...');
+    console.log('[FFmpeg] Starting to load FFmpeg from CDN...');
     
     try {
-      const baseURL = '/ffmpeg';
+      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
       const ffmpeg = ffmpegRef.current;
       
       ffmpeg.on('log', ({ message }) => {
         console.log('[FFmpeg]', message);
       });
       
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm')
+      // Create a timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('FFmpeg load timeout after 20 seconds')), 20000);
       });
       
+      // Race between load and timeout
+      await Promise.race([
+        ffmpeg.load({
+          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+          workerURL: await toBlobURL(`${baseURL}/ffmpeg-core.worker.js`, 'text/javascript')
+        }),
+        timeoutPromise
+      ]);
+      
       setFfmpegLoaded(true);
-      console.log('[FFmpeg] FFmpeg loaded successfully from local files');
+      console.log('[FFmpeg] FFmpeg loaded successfully');
       toast.success('Video processor ready!');
       
     } catch (err) {
       console.error('[FFmpeg] Failed to load FFmpeg:', err);
-      setFfmpegError('Video processor unavailable. Please refresh the page.');
-      toast.error('Failed to load video processor. Please refresh.');
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      setFfmpegError(`Video processor unavailable: ${errorMsg}`);
+      toast.error('Failed to load video processor. Please check your internet connection and refresh.');
     } finally {
       setFfmpegLoading(false);
     }
