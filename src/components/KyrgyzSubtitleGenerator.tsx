@@ -125,12 +125,20 @@ export const KyrgyzSubtitleGenerator = () => {
     try {
       const sources = [
         {
-          coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
-          wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
+          coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.15/dist/esm/ffmpeg-core.js',
+          wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.15/dist/esm/ffmpeg-core.wasm',
         },
         {
-          coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
-          wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
+          coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.15/dist/umd/ffmpeg-core.js',
+          wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.15/dist/umd/ffmpeg-core.wasm',
+        },
+        {
+          coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/esm/ffmpeg-core.js',
+          wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/esm/ffmpeg-core.wasm',
+        },
+        {
+          coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/umd/ffmpeg-core.js',
+          wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/umd/ffmpeg-core.wasm',
         },
       ];
 
@@ -146,7 +154,7 @@ export const KyrgyzSubtitleGenerator = () => {
         try {
           await withTimeout(
             ffmpeg.load({ coreURL: s.coreURL, wasmURL: s.wasmURL }),
-            45000
+            120000
           );
           console.log('[FFmpeg] Loaded successfully from', s.coreURL);
           loaded = true;
@@ -866,9 +874,7 @@ export const KyrgyzSubtitleGenerator = () => {
     }
 
     if (!ffmpegLoaded) {
-      toast.error("Video processor not ready. Please wait...");
       await loadFFmpeg();
-      return;
     }
 
     setIsProcessingVideo(true);
@@ -1297,7 +1303,7 @@ export const KyrgyzSubtitleGenerator = () => {
                               onClick={burnSubtitlesWithBackend} 
                               size="lg" 
                               className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-                              disabled={!subtitles || isProcessingVideo || !ffmpegLoaded}
+                              disabled={!subtitles || isProcessingVideo}
                             >
                               <div className="flex items-center gap-2">
                                 <Download className="w-5 h-5" />
