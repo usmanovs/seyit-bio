@@ -126,6 +126,8 @@ export const KyrgyzSubtitleGenerator = () => {
       const bases = [
         'https://unpkg.com/@ffmpeg/core@0.12.15/dist/umd',
         'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/umd',
+        'https://unpkg.com/@ffmpeg/core@0.12.15/dist/esm',
+        'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/esm',
       ];
 
       let loaded = false;
@@ -134,12 +136,10 @@ export const KyrgyzSubtitleGenerator = () => {
           // Convert remote assets to same-origin Blob URLs to avoid CORS/COOP issues
           const coreBlob = await toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript');
           const wasmBlob = await toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm');
-          const workerBlob = await toBlobURL(`${base}/ffmpeg-core.worker.js`, 'text/javascript');
 
           await ffmpeg.load({
             coreURL: coreBlob,
             wasmURL: wasmBlob,
-            workerURL: workerBlob,
           });
 
           console.log('[FFmpeg] Loaded successfully from', base);
