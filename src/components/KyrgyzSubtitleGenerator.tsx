@@ -27,7 +27,11 @@ const generateRequestId = () => {
   return `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 };
 export const KyrgyzSubtitleGenerator = () => {
-  const { user, subscription, refreshSubscription } = useAuth();
+  const {
+    user,
+    subscription,
+    refreshSubscription
+  } = useAuth();
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -60,14 +64,13 @@ export const KyrgyzSubtitleGenerator = () => {
   const [summaries, setSummaries] = useState<string[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [videosProcessedCount, setVideosProcessedCount] = useState<number>(43);
-  
+
   // Track free generations for non-authenticated users
   const [freeGenerationsUsed, setFreeGenerationsUsed] = useState(() => {
     const used = localStorage.getItem('freeGenerationsUsed');
     return used ? parseInt(used, 10) : 0;
   });
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
-  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
@@ -135,7 +138,6 @@ export const KyrgyzSubtitleGenerator = () => {
       localStorage.removeItem('cloudPredictionId');
     }
   }, [cloudPredictionId]);
-
   useEffect(() => {
     if (cloudVideoUrl) {
       localStorage.setItem('cloudVideoUrl', cloudVideoUrl);
@@ -143,7 +145,6 @@ export const KyrgyzSubtitleGenerator = () => {
       localStorage.removeItem('cloudVideoUrl');
     }
   }, [cloudVideoUrl]);
-
   useEffect(() => {
     if (cloudStartTime > 0) {
       localStorage.setItem('cloudStartTime', cloudStartTime.toString());
@@ -158,12 +159,10 @@ export const KyrgyzSubtitleGenerator = () => {
       setCloudElapsedTime(0);
       return;
     }
-    
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - cloudStartTime) / 1000);
       setCloudElapsedTime(elapsed);
     }, 1000);
-    
     return () => clearInterval(interval);
   }, [cloudPolling, cloudStartTime]);
 
@@ -171,11 +170,10 @@ export const KyrgyzSubtitleGenerator = () => {
   useEffect(() => {
     const savedPredictionId = localStorage.getItem('cloudPredictionId');
     const savedStartTime = localStorage.getItem('cloudStartTime');
-    
     if (savedPredictionId && savedStartTime) {
       const startTime = parseInt(savedStartTime, 10);
       const elapsed = Date.now() - startTime;
-      
+
       // Only resume polling if less than 15 minutes have passed
       if (elapsed < 900000) {
         console.log('[Cloud] Resuming cloud processing from previous session...');
@@ -194,21 +192,21 @@ export const KyrgyzSubtitleGenerator = () => {
   // FFmpeg loader with retry and timeout
   const loadFFmpegCore = async (baseURL: string) => {
     const ffmpeg = ffmpegRef.current;
-    ffmpeg.on('log', ({ message }) => {
+    ffmpeg.on('log', ({
+      message
+    }) => {
       console.log('[FFmpeg]', message);
     });
     await ffmpeg.load({
       coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm')
     });
   };
-
   const loadFFmpeg = async () => {
     if (ffmpegLoaded || ffmpegLoading) return;
     setFfmpegLoading(true);
     setFfmpegError(null);
     console.log('[FFmpeg] Starting to load FFmpeg...');
-
     try {
       // Try primary CDN (unpkg) with correct version
       await loadFFmpegCore('https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd');
@@ -231,7 +229,6 @@ export const KyrgyzSubtitleGenerator = () => {
       setFfmpegLoading(false);
     }
   };
-
   useEffect(() => {
     loadFFmpeg();
   }, []);
@@ -242,21 +239,17 @@ export const KyrgyzSubtitleGenerator = () => {
     const now = new Date().getTime();
     const end = new Date(subscription.trialEnd).getTime();
     const remaining = end - now;
-    
     if (remaining <= 0) return 'Trial expired';
-    
     const hours = Math.floor(remaining / (1000 * 60 * 60));
-    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-    
+    const minutes = Math.floor(remaining % (1000 * 60 * 60) / (1000 * 60));
     if (hours > 0) {
       return `${hours}h ${minutes}m remaining`;
     }
     return `${minutes}m remaining`;
   };
-
   const hasAccess = user && (subscription.subscribed || subscription.isInTrial);
   // Allow free generation for both guests and logged-in users
-  const canUseFree = (!user && freeGenerationsUsed < 1) || (user && videosProcessedCount < 1);
+  const canUseFree = !user && freeGenerationsUsed < 1 || user && videosProcessedCount < 1;
   const canGenerate = hasAccess || canUseFree;
 
   // Fetch the user's videos processed count
@@ -341,11 +334,10 @@ export const KyrgyzSubtitleGenerator = () => {
     }
     const interval = setInterval(() => {
       const elapsed = (Date.now() - processingStartTime) / 1000; // seconds
-      
+
       // Dynamic estimation based on elapsed time
       // Start with 90 seconds estimate, adjust as processing continues
       let estimatedTotal = 90;
-      
       if (elapsed > 60) {
         // After 1 minute, extend estimate if still processing
         estimatedTotal = elapsed + 60;
@@ -353,10 +345,9 @@ export const KyrgyzSubtitleGenerator = () => {
         // After 30s, adjust estimate to 120s if needed
         estimatedTotal = Math.max(90, elapsed * 2);
       }
-      
-      const progress = Math.min((elapsed / estimatedTotal) * 100, 90);
+      const progress = Math.min(elapsed / estimatedTotal * 100, 90);
       setProcessingProgress(progress);
-      
+
       // Calculate time remaining
       const timeRemaining = Math.max(estimatedTotal - elapsed, 5); // Always show at least 5s
       setEstimatedTimeRemaining(timeRemaining);
@@ -385,10 +376,8 @@ export const KyrgyzSubtitleGenerator = () => {
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     const requestId = generateRequestId();
     const uploadStartTime = Date.now();
-    
     console.log(`[${requestId}] FILE SELECTED`, {
       fileName: file.name,
       fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
@@ -398,7 +387,9 @@ export const KyrgyzSubtitleGenerator = () => {
 
     // Validate file type
     if (!file.type.startsWith('video/')) {
-      console.error(`[${requestId}] VALIDATION FAILED: Invalid file type`, { fileType: file.type });
+      console.error(`[${requestId}] VALIDATION FAILED: Invalid file type`, {
+        fileType: file.type
+      });
       toast.error("Please select a video file");
       return;
     }
@@ -406,8 +397,8 @@ export const KyrgyzSubtitleGenerator = () => {
     // Validate file size (max 200MB)
     const MAX_SIZE = 200 * 1024 * 1024; // 200MB
     if (file.size > MAX_SIZE) {
-      console.error(`[${requestId}] VALIDATION FAILED: File too large`, { 
-        fileSize: file.size, 
+      console.error(`[${requestId}] VALIDATION FAILED: File too large`, {
+        fileSize: file.size,
         maxSize: MAX_SIZE,
         sizeMB: Math.round(file.size / 1024 / 1024)
       });
@@ -431,7 +422,7 @@ export const KyrgyzSubtitleGenerator = () => {
     setProcessingStatus('');
     setProcessingProgress(0);
     setHasUnsavedChanges(false);
-    
+
     // Clear cloud processing state
     setCloudPredictionId(null);
     setCloudVideoUrl(null);
@@ -444,7 +435,7 @@ export const KyrgyzSubtitleGenerator = () => {
     localStorage.removeItem('cloudStartTime');
     setIsUploading(true);
     setUploadProgress(0);
-    
+
     // Detect mobile device early for upload optimization
     const isMobile = isMobileDevice();
 
@@ -456,7 +447,6 @@ export const KyrgyzSubtitleGenerator = () => {
       const estimatedTime = Math.min(fileSize / (1024 * 1024) * baseTime, 300000);
       const interval = 200;
       const increment = 100 / (estimatedTime / interval) * 1.4;
-
       const timer = setInterval(() => {
         setUploadProgress(prev => {
           // On mobile, stop at 90% to avoid "stuck at 99%" perception
@@ -483,7 +473,6 @@ export const KyrgyzSubtitleGenerator = () => {
       // Generate unique file name (works for both authenticated and guest users)
       const userId = user?.id || 'guest';
       const fileName = `${userId}/${Date.now()}_${file.name}`;
-      
       console.log(`[${requestId}] UPLOAD START`, {
         fileName,
         fileSize: file.size,
@@ -504,7 +493,6 @@ export const KyrgyzSubtitleGenerator = () => {
       const secondsPerMB = isMobile ? 25 : 12;
       const baseTimeout = isMobile ? 45000 : 30000; // 45s vs 30s base
       const timeoutMs = baseTimeout + file.size / (1024 * 1024) * secondsPerMB * 1000;
-      
       console.log(`[${requestId}] UPLOAD CONFIGURATION`, {
         fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
         timeout: `${Math.round(timeoutMs / 1000)}s`,
@@ -521,7 +509,6 @@ export const KyrgyzSubtitleGenerator = () => {
         // More aggressive polling on mobile - check every 2s instead of 3s
         const pollInterval = isMobile ? 2000 : 3000;
         let attempts = 0;
-        
         while (Date.now() - started < timeoutMs) {
           attempts++;
           try {
@@ -542,7 +529,7 @@ export const KyrgyzSubtitleGenerator = () => {
       const existsPromise = pollFileExists();
       const winner: any = await Promise.race([uploadPromise, existsPromise, timeoutPromise]);
       clearInterval(progressTimer);
-      
+
       // Show a brief "finalizing" state before jumping to 100%
       setUploadProgress(98);
       await new Promise(r => setTimeout(r, 200));
@@ -552,7 +539,6 @@ export const KyrgyzSubtitleGenerator = () => {
       if (winner !== 'exists' && winner?.error) {
         throw winner.error;
       }
-      
       const uploadDuration = ((Date.now() - uploadStartTime) / 1000).toFixed(2);
       console.log(`[${requestId}] UPLOAD SUCCESS`, {
         fileName,
@@ -584,7 +570,6 @@ export const KyrgyzSubtitleGenerator = () => {
     } catch (error: any) {
       const isMobile = isMobileDevice();
       const uploadDuration = ((Date.now() - uploadStartTime) / 1000).toFixed(2);
-      
       console.error(`[${requestId}] UPLOAD FAILED`, {
         error: error.message,
         uploadDuration: `${uploadDuration}s`,
@@ -620,7 +605,6 @@ export const KyrgyzSubtitleGenerator = () => {
       toast.error("No subtitles to modify");
       return;
     }
-
     const rid = generateRequestId();
     console.log(`[${rid}] APPLYING MODIFICATIONS TO EXISTING SUBTITLES`, {
       addEmojis,
@@ -628,11 +612,12 @@ export const KyrgyzSubtitleGenerator = () => {
       hasEdits: hasUnsavedChanges,
       timestamp: new Date().toISOString()
     });
-
     setIsGenerating(true);
-
     try {
-      const { data, error } = await supabase.functions.invoke('apply-subtitle-modifications', {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('apply-subtitle-modifications', {
         body: {
           subtitles: editedSubtitles,
           addEmojis,
@@ -640,10 +625,8 @@ export const KyrgyzSubtitleGenerator = () => {
           requestId: rid
         }
       });
-
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-
       console.log(`[${rid}] MODIFICATIONS APPLIED SUCCESSFULLY`);
 
       // Update subtitles with the modified version
@@ -654,10 +637,11 @@ export const KyrgyzSubtitleGenerator = () => {
 
       // Update the video player subtitles
       const webvtt = convertSrtToWebVtt(data.subtitles);
-      const blob = new Blob([webvtt], { type: 'text/vtt' });
+      const blob = new Blob([webvtt], {
+        type: 'text/vtt'
+      });
       const blobUrl = URL.createObjectURL(blob);
       setSubtitleBlobUrl(blobUrl);
-
       toast.success("Captions updated with your changes preserved!");
     } catch (error: any) {
       console.error(`[${rid}] MODIFICATION FAILED`, error);
@@ -666,32 +650,27 @@ export const KyrgyzSubtitleGenerator = () => {
       setIsGenerating(false);
     }
   };
-
   const generateSubtitlesForPath = async (path: string, requestId?: string) => {
     if (!path) {
       toast.error("Please upload a video first");
       return;
     }
-    
     const rid = requestId || generateRequestId();
     const subtitleStartTime = Date.now();
-    
     console.log(`[${rid}] SUBTITLE GENERATION START`, {
       videoPath: path,
       addEmojis,
       correctSpelling,
       timestamp: new Date().toISOString()
     });
-    
     setIsGenerating(true);
-    
+
     // Track free generation usage for non-authenticated users
     if (!user) {
       const newCount = freeGenerationsUsed + 1;
       setFreeGenerationsUsed(newCount);
       localStorage.setItem('freeGenerationsUsed', newCount.toString());
     }
-    
     let responseData: any = null;
     try {
       const {
@@ -718,17 +697,14 @@ export const KyrgyzSubtitleGenerator = () => {
         throw new Error(data.error);
       }
       if (error) throw error;
-      
       const subtitleDuration = ((Date.now() - subtitleStartTime) / 1000).toFixed(2);
       const subtitleCount = parseSrtToCues(data.subtitles).length;
-      
       console.log(`[${rid}] SUBTITLE GENERATION SUCCESS`, {
         subtitleCount,
         transcriptionLength: data.transcription?.length || 0,
         duration: `${subtitleDuration}s`,
         timestamp: new Date().toISOString()
       });
-      
       setSubtitles(data.subtitles);
       setEditedSubtitles(data.subtitles);
       setHasUnsavedChanges(false);
@@ -745,7 +721,7 @@ export const KyrgyzSubtitleGenerator = () => {
       setSubtitleBlobUrl(blobUrl);
       console.log('[KyrgyzSubtitleGenerator] Subtitles generated, cues:', parsedCues.length);
       toast.success("Subtitles generated successfully");
-      
+
       // For logged-in users, increment videos processed count
       if (user) {
         setVideosProcessedCount(prev => prev + 1);
@@ -753,10 +729,16 @@ export const KyrgyzSubtitleGenerator = () => {
 
       // Increment video processing count for authenticated users
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: {
+            user
+          }
+        } = await supabase.auth.getUser();
         if (user) {
           console.log(`[${rid}] Incrementing video counter for user ${user.id.substring(0, 8)}`);
-          const { error: incrementError } = await supabase.rpc('increment_video_processing_count', {
+          const {
+            error: incrementError
+          } = await supabase.rpc('increment_video_processing_count', {
             user_uuid: user.id
           });
           if (incrementError) {
@@ -835,7 +817,6 @@ export const KyrgyzSubtitleGenerator = () => {
       }
     } catch (error: any) {
       const subtitleDuration = ((Date.now() - subtitleStartTime) / 1000).toFixed(2);
-      
       console.error(`[${rid}] SUBTITLE GENERATION FAILED`, {
         error: error.message,
         duration: `${subtitleDuration}s`,
@@ -857,12 +838,9 @@ export const KyrgyzSubtitleGenerator = () => {
   };
   const convertSrtToWebVtt = (srt: string): string => {
     // Robust SRT -> WebVTT conversion: remove code fences, numeric cue IDs, and fix timestamps
-    const normalized = srt
-      .replace(/\r+/g, '')
-      // strip Markdown code fences like ```srt and ```
-      .replace(/```[a-zA-Z]*\n?/g, '')
-      .replace(/```/g, '')
-      .trim();
+    const normalized = srt.replace(/\r+/g, '')
+    // strip Markdown code fences like ```srt and ```
+    .replace(/```[a-zA-Z]*\n?/g, '').replace(/```/g, '').trim();
     const cues = normalized.split('\n\n').map(block => {
       const lines = block.split('\n').filter(l => !/^```/.test(l));
       // Remove numeric cue identifier if present
@@ -875,11 +853,7 @@ export const KyrgyzSubtitleGenerator = () => {
     return 'WEBVTT\n\n' + withDots;
   };
   const parseSrtToCues = (srt: string) => {
-    const normalized = srt
-      .replace(/\r+/g, '')
-      .replace(/```[a-zA-Z]*\n?/g, '')
-      .replace(/```/g, '')
-      .trim();
+    const normalized = srt.replace(/\r+/g, '').replace(/```[a-zA-Z]*\n?/g, '').replace(/```/g, '').trim();
     const blocks = normalized.split('\n\n');
     const cues: Array<{
       start: number;
@@ -896,7 +870,11 @@ export const KyrgyzSubtitleGenerator = () => {
       const start = hmsToSeconds(m[1], m[2]);
       const end = hmsToSeconds(m[3], m[4]);
       const text = lines.join('\n');
-      cues.push({ start, end, text });
+      cues.push({
+        start,
+        end,
+        text
+      });
     }
     return cues;
   };
@@ -977,21 +955,17 @@ export const KyrgyzSubtitleGenerator = () => {
       await burnVideoInCloud();
       return;
     }
-
     const requestId = generateRequestId();
     const processingStartTime = Date.now();
-    
     console.log(`[${requestId}] LOCAL VIDEO PROCESSING START`, {
       subtitlesLength: subtitles.length,
       captionStyle: captionStyle,
       timestamp: new Date().toISOString()
     });
-    
     setIsProcessingVideo(true);
     setProcessingStatus('processing');
     setProcessingProgress(0);
     setProcessingStartTime(processingStartTime);
-
     try {
       toast.info("Processing video locally...");
       const ffmpeg = ffmpegRef.current;
@@ -1000,25 +974,17 @@ export const KyrgyzSubtitleGenerator = () => {
       console.log(`[${requestId}] Writing video file to FFmpeg...`);
       await ffmpeg.writeFile('input.mp4', await fetchFile(videoFile));
       setProcessingProgress(10);
-      
+
       // Clean and prepare SRT content
       let cleanSubtitles = subtitles.trim();
       if (cleanSubtitles.startsWith('```')) {
         cleanSubtitles = cleanSubtitles.replace(/^```[a-z]*\n/, '').replace(/\n?```$/, '');
       }
-      
-      const srtContent = cleanSubtitles
-        .split('\n')
-        .map((line: string) => {
-          const isTiming = /^\d+:\d+:\d+[,.]\d+\s+-->\s+\d+:\d+:\d+[,.]\d+/.test(line);
-          if (isTiming) return line.trim();
-          return line
-            .replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, ' ')
-            .replace(/[ \t]{2,}/g, ' ')
-            .trimEnd();
-        })
-        .join('\n');
-
+      const srtContent = cleanSubtitles.split('\n').map((line: string) => {
+        const isTiming = /^\d+:\d+:\d+[,.]\d+\s+-->\s+\d+:\d+:\d+[,.]\d+/.test(line);
+        if (isTiming) return line.trim();
+        return line.replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, ' ').replace(/[ \t]{2,}/g, ' ').trimEnd();
+      }).join('\n');
       console.log(`[${requestId}] Writing SRT file to FFmpeg...`);
       await ffmpeg.writeFile('subtitles.srt', new TextEncoder().encode(srtContent));
       setProcessingProgress(20);
@@ -1041,7 +1007,6 @@ export const KyrgyzSubtitleGenerator = () => {
       // Build subtitle style based on user selection
       let subtitleFilter = 'subtitles=subtitles.srt:charenc=UTF-8:fontsdir=.:force_style=';
       const styleOptions: string[] = [];
-
       if (currentStyle.prompt.includes('yellow') || currentStyle.prompt.includes('Highlight')) {
         styleOptions.push('PrimaryColour=&H00FFFF', 'OutlineColour=&HFFFFFF', 'Outline=2', 'Bold=1');
       } else if (currentStyle.prompt.includes('green') || currentStyle.prompt.includes('Framed')) {
@@ -1052,46 +1017,33 @@ export const KyrgyzSubtitleGenerator = () => {
         // Default: white text with black outline (Stroke style)
         styleOptions.push('PrimaryColour=&HFFFFFF', 'OutlineColour=&H000000', 'Outline=3', 'Bold=1');
       }
-      
+
       // Use emoji-capable font fallback order
       // Note: Color emoji fonts are not supported by libass; use monochrome Noto Emoji + Symbola
       styleOptions.push('FontSize=18', 'Alignment=2', 'MarginV=20', "FontName=Noto Emoji,Symbola");
       subtitleFilter += styleOptions.join(',');
-      
       console.log(`[${requestId}] Local FFmpeg subtitle style:`, {
         style: currentStyle.name,
         filter: subtitleFilter,
         fontsLoaded: ['Symbola.ttf', 'NotoEmoji-Regular.ttf']
       });
-
       console.log(`[${requestId}] Running FFmpeg with filter: ${subtitleFilter}`);
       setProcessingProgress(30);
 
       // Run FFmpeg to burn subtitles
-      await ffmpeg.exec([
-        '-i', 'input.mp4',
-        '-vf', subtitleFilter,
-        '-c:v', 'libx264',
-        '-preset', 'medium',
-        '-crf', '18',
-        '-c:a', 'aac',
-        '-b:a', '192k',
-        '-movflags', '+faststart',
-        'output.mp4'
-      ]);
-
+      await ffmpeg.exec(['-i', 'input.mp4', '-vf', subtitleFilter, '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', 'output.mp4']);
       console.log(`[${requestId}] FFmpeg processing complete`);
       setProcessingProgress(90);
 
       // Read the output file
       const data = await ffmpeg.readFile('output.mp4');
-      const blob = new Blob([data], { type: 'video/mp4' });
+      const blob = new Blob([data], {
+        type: 'video/mp4'
+      });
       const downloadSizeMB = (blob.size / (1024 * 1024)).toFixed(2);
-      
       console.log(`[${requestId}] Creating download link...`, {
         fileSizeMB: downloadSizeMB
       });
-
       const videoLink = document.createElement('a');
       videoLink.href = URL.createObjectURL(blob);
       videoLink.download = 'video_with_subtitles.mp4';
@@ -1099,31 +1051,26 @@ export const KyrgyzSubtitleGenerator = () => {
       videoLink.click();
       document.body.removeChild(videoLink);
       URL.revokeObjectURL(videoLink.href);
-
       const endToEndDuration = ((Date.now() - processingStartTime) / 1000).toFixed(2);
       console.log(`[${requestId}] DOWNLOAD COMPLETE`, {
         totalDuration: `${endToEndDuration}s`,
         fileSizeMB: downloadSizeMB,
         timestamp: new Date().toISOString()
       });
-
       setProcessingProgress(100);
       toast.success("Video with burned subtitles downloaded successfully!");
-      
+
       // Show signup prompt after successful download if user just used their free generation
       if (!user && freeGenerationsUsed >= 1) {
         setShowSignupPrompt(true);
       }
-
     } catch (error: any) {
       const errorDuration = ((Date.now() - processingStartTime) / 1000).toFixed(2);
-      
       console.error(`[${requestId}] VIDEO PROCESSING FAILED`, {
         error: error.message,
         duration: `${errorDuration}s`,
         timestamp: new Date().toISOString()
       });
-      
       toast.error("Processing failed: " + (error?.message || 'Unknown error'));
     } finally {
       setIsProcessingVideo(false);
@@ -1137,30 +1084,36 @@ export const KyrgyzSubtitleGenerator = () => {
   const pollCloudPrediction = async (predictionId: string, startTime: number = Date.now(), attemptCount: number = 0) => {
     setCloudPolling(true);
     setCloudStatus('queued');
-    
+
     // 10 minute timeout (600 seconds)
     const TIMEOUT_MS = 10 * 60 * 1000;
     const MAX_ATTEMPTS = 150; // 150 attempts * 4s = 10 minutes
     const elapsed = Date.now() - startTime;
-    
     if (elapsed > TIMEOUT_MS || attemptCount > MAX_ATTEMPTS) {
       setCloudPolling(false);
       setCloudStatus('timeout');
       toast.error('Cloud processing timed out after 10 minutes. The video may be too large or complex. Try a shorter video or simpler caption style.');
       return;
     }
-    
+
     // Show progress feedback
-    if (attemptCount === 15) { // After 1 minute
+    if (attemptCount === 15) {
+      // After 1 minute
       toast.info('Still processing... Large videos can take 5-10 minutes');
-    } else if (attemptCount === 45) { // After 3 minutes
+    } else if (attemptCount === 45) {
+      // After 3 minutes
       toast.info('Processing is taking longer than usual. Please be patient...');
     }
-    
     try {
       const pollOnce = async () => {
-        const { data, error } = await supabase.functions.invoke('burn-subtitles-backend', {
-          body: { predictionId, requestId: generateRequestId() },
+        const {
+          data,
+          error
+        } = await supabase.functions.invoke('burn-subtitles-backend', {
+          body: {
+            predictionId,
+            requestId: generateRequestId()
+          }
         });
         if (error) throw error;
         if (data?.status === 'succeeded' && data?.videoUrl) {
@@ -1168,11 +1121,10 @@ export const KyrgyzSubtitleGenerator = () => {
           setCloudVideoUrl(data.videoUrl);
           setCloudPolling(false);
           setCloudStartTime(0);
-          
+
           // Clear localStorage
           localStorage.removeItem('cloudPredictionId');
           localStorage.removeItem('cloudStartTime');
-          
           toast.success('Cloud video ready! Downloading...');
           try {
             const response = await fetch(data.videoUrl);
@@ -1195,11 +1147,10 @@ export const KyrgyzSubtitleGenerator = () => {
           setCloudStatus('failed');
           setCloudPolling(false);
           setCloudStartTime(0);
-          
+
           // Clear localStorage
           localStorage.removeItem('cloudPredictionId');
           localStorage.removeItem('cloudStartTime');
-          
           toast.error(data?.error || 'Cloud processing failed');
           return true;
         }
@@ -1214,11 +1165,10 @@ export const KyrgyzSubtitleGenerator = () => {
       setCloudPolling(false);
       setCloudStatus('error');
       setCloudStartTime(0);
-      
+
       // Clear localStorage
       localStorage.removeItem('cloudPredictionId');
       localStorage.removeItem('cloudStartTime');
-      
       toast.error(e.message || 'Cloud polling error');
     }
   };
@@ -1229,10 +1179,11 @@ export const KyrgyzSubtitleGenerator = () => {
     const INTERVAL_MS = 4000;
     setCloudPolling(true);
     setCloudStatus('processing');
-
     while (Date.now() - startTime < TIMEOUT_MS) {
       try {
-        const res = await fetch(`${statusUrl}?t=${Date.now()}`, { cache: 'no-store' });
+        const res = await fetch(`${statusUrl}?t=${Date.now()}`, {
+          cache: 'no-store'
+        });
         if (res.ok) {
           const json = await res.json();
           if (json?.status === 'succeeded' && json?.videoUrl) {
@@ -1240,10 +1191,11 @@ export const KyrgyzSubtitleGenerator = () => {
             setCloudVideoUrl(json.videoUrl);
             setCloudPolling(false);
             setCloudStartTime(0);
-
             toast.success('Video ready! Downloading...');
             try {
-              const dl = await fetch(json.videoUrl, { cache: 'no-store' });
+              const dl = await fetch(json.videoUrl, {
+                cache: 'no-store'
+              });
               const blob = await dl.blob();
               const objUrl = URL.createObjectURL(blob);
               const a = document.createElement('a');
@@ -1274,7 +1226,10 @@ export const KyrgyzSubtitleGenerator = () => {
       // As a fallback, if a direct video URL is known, also try HEAD check
       if (fallbackVideoUrl) {
         try {
-          const head = await fetch(`${fallbackVideoUrl}?t=${Date.now()}`, { method: 'HEAD', cache: 'no-store' });
+          const head = await fetch(`${fallbackVideoUrl}?t=${Date.now()}`, {
+            method: 'HEAD',
+            cache: 'no-store'
+          });
           if (head.ok) {
             setCloudStatus('succeeded');
             setCloudVideoUrl(fallbackVideoUrl);
@@ -1285,9 +1240,8 @@ export const KyrgyzSubtitleGenerator = () => {
           }
         } catch {}
       }
-      await new Promise((r) => setTimeout(r, INTERVAL_MS));
+      await new Promise(r => setTimeout(r, INTERVAL_MS));
     }
-
     setCloudStatus('timeout');
     setCloudPolling(false);
     setCloudStartTime(0);
@@ -1298,22 +1252,24 @@ export const KyrgyzSubtitleGenerator = () => {
   const pollLambdaOutput = async (url: string, requestId: string, startTime: number) => {
     const TIMEOUT_MS = 6 * 60 * 1000; // 6 minutes
     const INTERVAL_MS = 4000;
-
     setCloudPolling(true);
     setCloudStatus('processing');
-
     while (Date.now() - startTime < TIMEOUT_MS) {
       try {
-        const res = await fetch(`${url}?t=${Date.now()}`, { method: 'HEAD', cache: 'no-store' });
+        const res = await fetch(`${url}?t=${Date.now()}`, {
+          method: 'HEAD',
+          cache: 'no-store'
+        });
         if (res.ok) {
           setCloudStatus('succeeded');
           setCloudVideoUrl(url);
           setCloudPolling(false);
           setCloudStartTime(0);
-
           toast.success('Video ready! Downloading...');
           try {
-            const dl = await fetch(url, { cache: 'no-store' });
+            const dl = await fetch(url, {
+              cache: 'no-store'
+            });
             const blob = await dl.blob();
             const objUrl = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -1332,58 +1288,54 @@ export const KyrgyzSubtitleGenerator = () => {
       } catch (e) {
         // ignore and continue polling
       }
-      await new Promise((r) => setTimeout(r, INTERVAL_MS));
+      await new Promise(r => setTimeout(r, INTERVAL_MS));
     }
-
     setCloudStatus('timeout');
     setCloudPolling(false);
     setCloudStartTime(0);
     toast.error('Cloud processing timed out. Try a shorter video or simpler caption style.');
   };
-
   const burnVideoInCloud = async () => {
     if (!videoPath || !(editedSubtitles || subtitles)) {
       toast.error('No video or captions available');
       return;
     }
-    
+
     // Check if already processing
     if (cloudPolling) {
       toast.error('Cloud processing already in progress. Please wait...');
       return;
     }
-    
     const useSubs = editedSubtitles || subtitles;
     const rid = generateRequestId();
     const startTime = Date.now();
-    
     console.log('[Download] Style selection:', {
       captionStyle,
       currentStyleId: currentStyle.id,
       currentStyleName: currentStyle.name,
       timestamp: new Date().toISOString()
     });
-    
     try {
       setCloudStatus('starting');
       setCloudPolling(true);
       setCloudStartTime(startTime);
-      
+
       // Use AWS Lambda for emoji support
       console.log('[Download] Invoking AWS Lambda processing...');
-      const { data: lambdaData, error: lambdaError } = await supabase.functions.invoke('burn-subtitles-lambda', {
+      const {
+        data: lambdaData,
+        error: lambdaError
+      } = await supabase.functions.invoke('burn-subtitles-lambda', {
         body: {
           videoPath,
           subtitles: useSubs,
           styleId: currentStyle.id,
-          requestId: rid,
-        },
+          requestId: rid
+        }
       });
-      
       if (lambdaError) {
         throw new Error(`Lambda processing failed: ${lambdaError.message}`);
       }
-      
       if (!lambdaData?.success) {
         throw new Error(lambdaData?.error || 'Lambda processing failed');
       }
@@ -1398,7 +1350,6 @@ export const KyrgyzSubtitleGenerator = () => {
         }
         return;
       }
-      
       if (lambdaData?.videoUrl) {
         // Lambda succeeded synchronously
         console.log('[Download] Lambda processing succeeded:', lambdaData);
@@ -1406,7 +1357,6 @@ export const KyrgyzSubtitleGenerator = () => {
         setCloudStatus('succeeded');
         setCloudPolling(false);
         setCloudStartTime(0);
-        
         toast.success('Video ready! Downloading...');
         try {
           const response = await fetch(lambdaData.videoUrl);
@@ -1425,19 +1375,15 @@ export const KyrgyzSubtitleGenerator = () => {
         }
         return;
       }
-      
       throw new Error('Lambda started but did not return a video URL');
-      
     } catch (e: any) {
       setCloudStatus('error');
       setCloudPolling(false);
       setCloudStartTime(0);
-      
       console.error('[Download] Lambda error:', e);
       toast.error(e.message || 'Failed to process video with Lambda');
     }
   };
-
   const generateTitleVariations = async () => {
     if (!transcription) {
       toast.error("No transcription available. Please generate subtitles first.");
@@ -1508,8 +1454,7 @@ export const KyrgyzSubtitleGenerator = () => {
       `}</style>
       
       {/* Trial Countdown Banner */}
-      {user && subscription.isInTrial && (
-        <div className="mb-4 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20">
+      {user && subscription.isInTrial && <div className="mb-4 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Clock className="w-5 h-5 text-primary" />
@@ -1522,53 +1467,27 @@ export const KyrgyzSubtitleGenerator = () => {
               View Plans
             </Button>
           </div>
-        </div>
-      )}
+        </div>}
 
       {/* Subscription Status Badge */}
-      {user && subscription.subscribed && !subscription.isInTrial && (
-        <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
+      {user && subscription.subscribed && !subscription.isInTrial && <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-primary" />
             <span className="text-sm font-medium">Pro Subscription Active</span>
           </div>
-        </div>
-      )}
+        </div>}
       
       {/* Counter at the top of the page */}
       {videosProcessedCount > 0}
       
       {/* Free Generation Banner */}
-      {!hasAccess && (
-        <div className="mb-4 p-4 rounded-lg border bg-primary/10 border-primary/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-primary" />
-              <div>
-                <p className="font-medium text-sm">
-                  {canUseFree ? 'Free Trial Available' : 'Free Trial Used'}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {canUseFree 
-                    ? (user ? '1 free video generation for your account' : '1 free video - no signup required')
-                    : 'Start a free trial for unlimited videos'}
-                </p>
-              </div>
-            </div>
-            {!canUseFree && (
-              <Button onClick={() => setShowSubscriptionModal(true)} size="sm" className="rounded-full">
-                Start Free Trial
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
+      {!hasAccess}
       
       <Card className="max-w-4xl mx-auto relative">
 
         <CardHeader className="text-center">
-          <CardTitle>Kyrgyz Video Subtitle Generator</CardTitle>
-          <CardDescription>Upload a video and generate Kyrgyz subtitles</CardDescription>
+          <CardTitle>Video Subtitle Generator</CardTitle>
+          <CardDescription>Upload a video and generate subtitles</CardDescription>
           <div className="mt-2 flex justify-center">
             <Badge variant={ffmpegLoaded ? "default" : "outline"}>
               {ffmpegLoaded ? "Local processor ready" : "Using cloud processing"}
@@ -1577,39 +1496,38 @@ export const KyrgyzSubtitleGenerator = () => {
         </CardHeader>
         <CardContent className="space-y-3">
           {/* Only show upload area when no video is uploaded */}
-          {!videoUrl && (
-            <div className="space-y-2">
+          {!videoUrl && <div className="space-y-2">
               <input ref={fileInputRef} type="file" accept="video/*" onChange={handleFileSelect} className="hidden" />
               <div className={`relative border-2 border-dashed rounded-lg p-8 transition-all ${isDragOver ? 'border-primary bg-primary/5 scale-[1.02]' : 'border-muted-foreground/25 hover:border-primary/50'}`} onDragOver={e => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsDragOver(true);
-            }} onDragEnter={e => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsDragOver(true);
-            }} onDragLeave={e => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsDragOver(false);
-            }} onDrop={e => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsDragOver(false);
-              const files = e.dataTransfer.files;
-              if (files && files[0]) {
-                const file = files[0];
-                if (file.type.startsWith('video/')) {
-                  handleFileSelect({
-                    target: {
-                      files
-                    }
-                  } as any);
-                } else {
-                  toast.error('Please drop a video file');
-                }
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOver(true);
+          }} onDragEnter={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOver(true);
+          }} onDragLeave={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOver(false);
+          }} onDrop={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOver(false);
+            const files = e.dataTransfer.files;
+            if (files && files[0]) {
+              const file = files[0];
+              if (file.type.startsWith('video/')) {
+                handleFileSelect({
+                  target: {
+                    files
+                  }
+                } as any);
+              } else {
+                toast.error('Please drop a video file');
               }
-            }}>
+            }
+          }}>
                 <div className="flex flex-col items-center gap-3">
                   <div className={`transition-transform ${isDragOver ? 'scale-110' : ''}`}>
                     <Upload className="w-12 h-12 text-muted-foreground" />
@@ -1637,8 +1555,7 @@ export const KyrgyzSubtitleGenerator = () => {
                     {uploadProgress < 95 ? "Uploading and generating captions... This may take a few minutes for large files." : "Finalizing upload and caption generation... Large files on mobile can take a few minutes."}
                   </p>
                 </div>}
-            </div>
-          )}
+            </div>}
 
           {/* Caption Style Selector */}
           {videoUrl && subtitles && <div className="space-y-2">
@@ -1718,14 +1635,14 @@ export const KyrgyzSubtitleGenerator = () => {
                   <div className="flex items-center gap-2">
                     <Switch id="emoji-toggle" checked={addEmojis} onCheckedChange={setAddEmojis} />
                     {subtitles && <Button size="sm" variant="secondary" onClick={() => {
-                        // If user has manual edits, apply modifications to preserve them
-                        if (hasUnsavedChanges || editedSubtitles !== subtitles) {
-                          applyModificationsToExistingSubtitles();
-                        } else {
-                          // No manual edits, safe to regenerate from video
-                          videoPath && generateSubtitlesForPath(videoPath);
-                        }
-                      }} disabled={isGenerating}>
+                  // If user has manual edits, apply modifications to preserve them
+                  if (hasUnsavedChanges || editedSubtitles !== subtitles) {
+                    applyModificationsToExistingSubtitles();
+                  } else {
+                    // No manual edits, safe to regenerate from video
+                    videoPath && generateSubtitlesForPath(videoPath);
+                  }
+                }} disabled={isGenerating}>
                         {isGenerating ? 'Regenerating...' : 'Regenerate'}
                       </Button>}
                   </div>
@@ -1768,28 +1685,18 @@ export const KyrgyzSubtitleGenerator = () => {
                    </div>
                       <div className="space-y-2">
                         <div className="flex gap-2 items-center flex-wrap">
-                          {hasUnsavedChanges && (
-                            <Button onClick={applySubtitleChanges} className="flex-1 min-w-[160px]">
+                          {hasUnsavedChanges && <Button onClick={applySubtitleChanges} className="flex-1 min-w-[160px]">
                               Update Captions
-                            </Button>
-                          )}
+                            </Button>}
 
-                          <Button
-                            onClick={downloadVideoWithSubtitles}
-                            size="lg"
-                            className={`
+                          <Button onClick={downloadVideoWithSubtitles} size="lg" className={`
                               ${hasUnsavedChanges ? "flex-1" : "w-full"}
                               bg-blue-600 hover:bg-blue-700
                               text-white font-semibold
                               shadow-lg hover:shadow-xl
                               transition-all duration-300
-                            `}
-                            disabled={
-                              isProcessingVideo || cloudPolling || !subtitles
-                            }
-                          >
-                            {isProcessingVideo ? (
-                              <div className="w-full space-y-2">
+                            `} disabled={isProcessingVideo || cloudPolling || !subtitles}>
+                            {isProcessingVideo ? <div className="w-full space-y-2">
                                 <div className="flex items-center justify-center gap-2">
                                   <Loader2 className="w-5 h-5 animate-spin" />
                                   <span className="text-sm">
@@ -1798,9 +1705,7 @@ export const KyrgyzSubtitleGenerator = () => {
                                   </span>
                                 </div>
                                 <Progress value={processingProgress} className="w-full h-2" />
-                              </div>
-                            ) : cloudPolling ? (
-                              <div className="w-full space-y-2">
+                              </div> : cloudPolling ? <div className="w-full space-y-2">
                                 <div className="flex items-center justify-center gap-2">
                                   <Loader2 className="w-5 h-5 animate-spin" />
                                   <span className="text-sm">
@@ -1810,57 +1715,40 @@ export const KyrgyzSubtitleGenerator = () => {
                                 <div className="text-xs text-center text-white/70">
                                   Large videos can take 5-10 minutes
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
+                              </div> : <div className="flex items-center gap-2">
                                 <Download className="w-5 h-5" />
                                 <span>Download Video</span>
-                              </div>
-                            )}
+                              </div>}
                           </Button>
                         </div>
 
                         {/* Manual download fallback when cloud video is ready */}
-                        {cloudVideoUrl && !cloudPolling && (
-                          <div className="space-y-2 p-3 rounded-lg border border-primary/20 bg-primary/5">
+                        {cloudVideoUrl && !cloudPolling && <div className="space-y-2 p-3 rounded-lg border border-primary/20 bg-primary/5">
                             <div className="flex items-center gap-2 text-sm font-medium text-primary">
                               <CheckCircle2 className="w-4 h-4" />
                               <span>Video ready!</span>
                             </div>
                             <div className="flex gap-2">
-                              <Button
-                                onClick={() => window.open(cloudVideoUrl, '_blank')}
-                                variant="outline"
-                                size="sm"
-                                className="flex-1"
-                              >
+                              <Button onClick={() => window.open(cloudVideoUrl, '_blank')} variant="outline" size="sm" className="flex-1">
                                 <ArrowRight className="w-4 h-4 mr-2" />
                                 Open in New Tab
                               </Button>
-                              <Button
-                                onClick={async () => {
-                                  try {
-                                    await navigator.clipboard.writeText(cloudVideoUrl);
-                                    toast.success('Video link copied!');
-                                  } catch (e) {
-                                    toast.error('Failed to copy link');
-                                  }
-                                }}
-                                variant="outline"
-                                size="sm"
-                                className="flex-1"
-                              >
+                              <Button onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(cloudVideoUrl);
+                        toast.success('Video link copied!');
+                      } catch (e) {
+                        toast.error('Failed to copy link');
+                      }
+                    }} variant="outline" size="sm" className="flex-1">
                                 Copy Link
                               </Button>
                             </div>
-                          </div>
-                        )}
+                          </div>}
 
-                        {!ffmpegLoaded && !isProcessingVideo && !cloudPolling && !cloudVideoUrl && (
-                          <div className="text-xs text-muted-foreground p-2 rounded border bg-muted/50">
+                        {!ffmpegLoaded && !isProcessingVideo && !cloudPolling && !cloudVideoUrl && <div className="text-xs text-muted-foreground p-2 rounded border bg-muted/50">
                             Cloud mode — Processing with Replicate AI. Click once and wait for completion.
-                          </div>
-                        )}
+                          </div>}
                       </div>
                  </div>}
               </div>
@@ -1880,16 +1768,7 @@ export const KyrgyzSubtitleGenerator = () => {
                     for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
                   }
                 }}>
-                      {subtitleBlobUrl && (
-                        <track
-                          kind="captions"
-                          src={subtitleBlobUrl}
-                          srcLang={selectedLanguage}
-                          label={selectedLanguage === 'ky' ? 'Kyrgyz' : selectedLanguage === 'kk' ? 'Kazakh' : selectedLanguage === 'uz' ? 'Uzbek' : selectedLanguage === 'ru' ? 'Russian' : 'Turkish'}
-                          default
-                          ref={trackRef}
-                        />
-                      )}
+                      {subtitleBlobUrl && <track kind="captions" src={subtitleBlobUrl} srcLang={selectedLanguage} label={selectedLanguage === 'ky' ? 'Kyrgyz' : selectedLanguage === 'kk' ? 'Kazakh' : selectedLanguage === 'uz' ? 'Uzbek' : selectedLanguage === 'ru' ? 'Russian' : 'Turkish'} default ref={trackRef} />}
                     </video>
                   </div>
                 </div>
@@ -1995,10 +1874,7 @@ export const KyrgyzSubtitleGenerator = () => {
       </div>}
 
     
-    <SubscriptionModal 
-      open={showSubscriptionModal} 
-      onOpenChange={setShowSubscriptionModal}
-    />
+    <SubscriptionModal open={showSubscriptionModal} onOpenChange={setShowSubscriptionModal} />
     
     {/* Signup Prompt Dialog for Free Users */}
     <Dialog open={showSignupPrompt} onOpenChange={setShowSignupPrompt}>
