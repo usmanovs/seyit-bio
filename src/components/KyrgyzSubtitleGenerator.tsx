@@ -67,6 +67,7 @@ export const KyrgyzSubtitleGenerator = () => {
   const [videosProcessedCount, setVideosProcessedCount] = useState<number>(43);
   const [ffmpeg] = useState(() => new FFmpeg());
   const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   // Track free generations for non-authenticated users
   const [freeGenerationsUsed, setFreeGenerationsUsed] = useState(() => {
@@ -339,6 +340,7 @@ export const KyrgyzSubtitleGenerator = () => {
     // Reset all state when uploading a new video
     setVideoUrl(null);
     setVideoPath(null);
+    setUploadedFile(null);
     setSubtitles("");
     setEditedSubtitles("");
     setTranscription("");
@@ -475,6 +477,7 @@ export const KyrgyzSubtitleGenerator = () => {
       } = supabase.storage.from('videos').getPublicUrl(fileName);
       setVideoUrl(publicUrl);
       setVideoPath(fileName);
+      setUploadedFile(file); // Store the File object for client-side processing
       toast.success("Video uploaded successfully");
 
       // Reset upload progress before generating subtitles
@@ -1184,17 +1187,13 @@ export const KyrgyzSubtitleGenerator = () => {
       return;
     }
 
-    // Get the original file if available (from file input)
-    const fileInput = fileInputRef.current;
-    const file = fileInput?.files?.[0];
-
-    if (file) {
-      const fileSizeMB = file.size / (1024 * 1024);
+    if (uploadedFile) {
+      const fileSizeMB = uploadedFile.size / (1024 * 1024);
       console.log(`[Video] File size: ${fileSizeMB.toFixed(2)}MB`);
 
       if (fileSizeMB <= 20) {
         console.log('[Video] Using client-side processing (file <= 20MB)');
-        await burnSubtitlesInBrowser(file);
+        await burnSubtitlesInBrowser(uploadedFile);
       } else {
         console.log('[Video] Using server-side processing (file > 20MB)');
         await burnSubtitlesWithBackend();
