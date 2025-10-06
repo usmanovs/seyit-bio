@@ -848,14 +848,6 @@ export const KyrgyzSubtitleGenerator = () => {
       return;
     }
 
-    // Runtime check: SharedArrayBuffer requires cross-origin isolation (COOP/COEP)
-    if (typeof crossOriginIsolated === 'boolean' && !crossOriginIsolated) {
-      console.warn('[FFmpeg] crossOriginIsolated is false - falling back to server processing');
-      toast.warning('Your browser is not cross-origin isolated. Using server processing instead.');
-      await burnSubtitlesWithBackend();
-      return;
-    }
-
     setIsProcessingVideo(true);
     setProcessingStatus('Loading FFmpeg...');
     setProcessingProgress(5);
@@ -1060,6 +1052,8 @@ export const KyrgyzSubtitleGenerator = () => {
       }
 
       console.log('[Replicate] Downloading from:', videoUrl);
+      console.log('[Replicate] Video URL type:', typeof videoUrl);
+      console.log('[Replicate] Video URL length:', String(videoUrl).length);
 
       // Download the video with proper CORS handling
       const response = await fetch(videoUrl, {
@@ -1104,19 +1098,27 @@ export const KyrgyzSubtitleGenerator = () => {
     }
   };
 
-  // Main handler: choose client-side or server-side based on file size
+  // Main handler: check cross-origin isolation first, then choose processing method
   const handleBurnSubtitles = async () => {
     if (!videoUrl || !subtitles) {
       toast.error("Video file and subtitles are required");
       return;
     }
 
+    // Check if browser supports cross-origin isolation (required for FFmpeg client-side)
+    if (typeof crossOriginIsolated === 'boolean' && !crossOriginIsolated) {
+      console.warn('[Video] crossOriginIsolated is false - using server processing');
+      await burnSubtitlesWithBackend();
+      return;
+    }
+
+    // If cross-origin isolated, choose based on file size
     if (uploadedFile) {
       const fileSizeMB = uploadedFile.size / (1024 * 1024);
       console.log(`[Video] File size: ${fileSizeMB.toFixed(2)}MB`);
 
       if (fileSizeMB <= 20) {
-        console.log('[Video] Using client-side processing (file <= 20MB)');
+        console.log('[Video] Using client-side processing (file <= 20MB, cross-origin isolated)');
         await burnSubtitlesInBrowser(uploadedFile);
       } else {
         console.log('[Video] Using server-side processing (file > 20MB)');
