@@ -151,9 +151,6 @@ export const KyrgyzSubtitleGenerator = () => {
       setFfmpegLoading(false);
     }
   };
-  useEffect(() => {
-    loadFFmpeg();
-  }, []);
 
   // Calculate time remaining in trial
   const getTrialTimeRemaining = () => {
@@ -1071,11 +1068,6 @@ export const KyrgyzSubtitleGenerator = () => {
         <CardHeader className="text-center">
           <CardTitle>Video Subtitle Generator</CardTitle>
           <CardDescription>Upload a video and generate subtitles</CardDescription>
-          <div className="mt-2 flex justify-center">
-            <Badge variant={ffmpegLoaded ? "default" : ffmpegLoading ? "secondary" : "destructive"}>
-              {ffmpegLoaded ? "Processor ready" : ffmpegLoading ? "Loading processor..." : "Processor unavailable"}
-            </Badge>
-          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           {/* Only show upload area when no video is uploaded */}
