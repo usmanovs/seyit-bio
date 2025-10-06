@@ -857,12 +857,6 @@ export const KyrgyzSubtitleGenerator = () => {
       return;
     }
 
-    // Confirm with user that this will take time
-    const ok = window.confirm(
-      "This will process your video on our servers. Processing typically takes 1-2 minutes. Continue?"
-    );
-    if (!ok) return;
-
     setIsProcessingVideo(true);
     setProcessingStatus('Starting server processing...');
     setProcessingProgress(5);
