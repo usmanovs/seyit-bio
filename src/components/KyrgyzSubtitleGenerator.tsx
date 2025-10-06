@@ -122,30 +122,22 @@ export const KyrgyzSubtitleGenerator = () => {
     if (ffmpegLoaded || ffmpegLoading) return;
     setFfmpegLoading(true);
     setFfmpegError(null);
-    console.log('[FFmpeg] Starting to load FFmpeg from CDN...');
+    console.log('[FFmpeg] Starting to load FFmpeg...');
     
     try {
-      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
       const ffmpeg = ffmpegRef.current;
       
       ffmpeg.on('log', ({ message }) => {
         console.log('[FFmpeg]', message);
       });
       
-      // Create a timeout promise
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('FFmpeg load timeout after 20 seconds')), 20000);
-      });
+      // Use jsdelivr with correct version and single-threaded mode (no worker needed)
+      const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
       
-      // Race between load and timeout
-      await Promise.race([
-        ffmpeg.load({
-          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-          workerURL: await toBlobURL(`${baseURL}/ffmpeg-core.worker.js`, 'text/javascript')
-        }),
-        timeoutPromise
-      ]);
+      await ffmpeg.load({
+        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+      });
       
       setFfmpegLoaded(true);
       console.log('[FFmpeg] FFmpeg loaded successfully');
@@ -153,9 +145,8 @@ export const KyrgyzSubtitleGenerator = () => {
       
     } catch (err) {
       console.error('[FFmpeg] Failed to load FFmpeg:', err);
-      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-      setFfmpegError(`Video processor unavailable: ${errorMsg}`);
-      toast.error('Failed to load video processor. Please check your internet connection and refresh.');
+      setFfmpegError('Video processor unavailable. Try using backend processing instead.');
+      toast.error('Local video processor unavailable. Use backend processing for subtitle burning.');
     } finally {
       setFfmpegLoading(false);
     }
