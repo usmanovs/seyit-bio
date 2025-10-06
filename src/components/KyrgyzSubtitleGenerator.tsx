@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { SubscriptionModal } from "./SubscriptionModal";
 import editingExample from "@/assets/editing-example.png";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { fetchFile } from "@ffmpeg/util";
+import { fetchFile, toBlobURL } from "@ffmpeg/util";
 
 // Detect if user is on mobile device
 const isMobileDevice = () => {
@@ -118,60 +118,46 @@ export const KyrgyzSubtitleGenerator = () => {
   }, []);
 
   // Load FFmpeg.wasm
-  const loadFFmpeg = async () => {
-    if (ffmpegLoaded) return;
+  const loadFFmpeg = async (): Promise<boolean> => {
+    if (ffmpegLoaded) return true;
     
     setIsLoadingFFmpeg(true);
     try {
-      const sources = [
-        {
-          coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.15/dist/esm/ffmpeg-core.js',
-          wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.15/dist/esm/ffmpeg-core.wasm',
-        },
-        {
-          coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.15/dist/umd/ffmpeg-core.js',
-          wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.15/dist/umd/ffmpeg-core.wasm',
-        },
-        {
-          coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/esm/ffmpeg-core.js',
-          wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/esm/ffmpeg-core.wasm',
-        },
-        {
-          coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/umd/ffmpeg-core.js',
-          wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/umd/ffmpeg-core.wasm',
-        },
+      const bases = [
+        'https://unpkg.com/@ffmpeg/core@0.12.15/dist/umd',
+        'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/umd',
       ];
 
-      // Try sources sequentially with a timeout
-      const withTimeout = (p: Promise<any>, ms: number) =>
-        Promise.race([
-          p,
-          new Promise((_, reject) => setTimeout(() => reject(new Error('FFmpeg load timeout')), ms)),
-        ]);
-
       let loaded = false;
-      for (const s of sources) {
+      for (const base of bases) {
         try {
-          await withTimeout(
-            ffmpeg.load({ coreURL: s.coreURL, wasmURL: s.wasmURL }),
-            120000
-          );
-          console.log('[FFmpeg] Loaded successfully from', s.coreURL);
+          // Convert remote assets to same-origin Blob URLs to avoid CORS/COOP issues
+          const coreBlob = await toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript');
+          const wasmBlob = await toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm');
+          const workerBlob = await toBlobURL(`${base}/ffmpeg-core.worker.js`, 'text/javascript');
+
+          await ffmpeg.load({
+            coreURL: coreBlob,
+            wasmURL: wasmBlob,
+            workerURL: workerBlob,
+          });
+
+          console.log('[FFmpeg] Loaded successfully from', base);
           loaded = true;
           break;
         } catch (e) {
-          console.warn('[FFmpeg] Failed to load from source, trying next...', e);
+          console.warn('[FFmpeg] Failed to load from', base, e);
         }
       }
 
-      if (!loaded) {
-        throw new Error('All FFmpeg sources failed');
-      }
+      if (!loaded) throw new Error('All FFmpeg sources failed');
 
       setFfmpegLoaded(true);
+      return true;
     } catch (error) {
       console.error('[FFmpeg] Failed to load:', error);
-      toast.error('Failed to load video processor. Please refresh and try again.');
+      toast.error('Failed to load video processor. Please try again.');
+      return false;
     } finally {
       setIsLoadingFFmpeg(false);
     }
@@ -874,7 +860,8 @@ export const KyrgyzSubtitleGenerator = () => {
     }
 
     if (!ffmpegLoaded) {
-      await loadFFmpeg();
+      const ok = await loadFFmpeg();
+      if (!ok) return;
     }
 
     setIsProcessingVideo(true);
