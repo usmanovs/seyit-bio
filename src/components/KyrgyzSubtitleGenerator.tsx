@@ -67,7 +67,6 @@ export const KyrgyzSubtitleGenerator = () => {
   const [videosProcessedCount, setVideosProcessedCount] = useState<number>(43);
   const [ffmpeg] = useState(() => new FFmpeg());
   const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
-  const [isLoadingFFmpeg, setIsLoadingFFmpeg] = useState(false);
 
   // Track free generations for non-authenticated users
   const [freeGenerationsUsed, setFreeGenerationsUsed] = useState(() => {
@@ -111,17 +110,15 @@ export const KyrgyzSubtitleGenerator = () => {
     return `${minutes}m ${remainingSeconds}s`;
   };
 
-  // Check video processing count on mount and load FFmpeg
+  // Check video processing count on mount
   useEffect(() => {
     fetchVideosProcessedCount();
-    loadFFmpeg();
   }, []);
 
-  // Load FFmpeg.wasm
+  // Load FFmpeg.wasm (kept for potential future use)
   const loadFFmpeg = async (): Promise<boolean> => {
     if (ffmpegLoaded) return true;
     
-    setIsLoadingFFmpeg(true);
     toast.info('Loading video processor... This may take 30-60 seconds on first load.');
     
     try {
@@ -161,8 +158,6 @@ export const KyrgyzSubtitleGenerator = () => {
       console.error('[FFmpeg] Failed to load:', error);
       toast.error('Failed to load video processor. Please refresh the page and try again.');
       return false;
-    } finally {
-      setIsLoadingFFmpeg(false);
     }
   };
 
@@ -862,121 +857,121 @@ export const KyrgyzSubtitleGenerator = () => {
       return;
     }
 
-    if (!ffmpegLoaded) {
-      const ok = await loadFFmpeg();
-      if (!ok) return;
-    }
+    // Confirm with user that this will take time
+    const ok = window.confirm(
+      "This will process your video on our servers. Processing typically takes 1-2 minutes. Continue?"
+    );
+    if (!ok) return;
 
     setIsProcessingVideo(true);
-    setProcessingStatus('Loading video...');
-    setProcessingProgress(0);
+    setProcessingStatus('Starting server processing...');
+    setProcessingProgress(5);
     setProcessingStartTime(Date.now());
 
     try {
-      // Setup progress tracking
-      ffmpeg.on('progress', ({ progress }) => {
-        const percent = Math.round(progress * 100);
-        setProcessingProgress(Math.min(percent, 95));
-        setProcessingStatus(`Processing: ${percent}%`);
-      });
+      // Step 1: Start the Replicate job
+      console.log('[Replicate] Starting video processing...');
+      const { data: startData, error: startError } = await supabase.functions.invoke(
+        'burn-subtitles-backend',
+        {
+          body: {
+            videoPath: videoPath,
+            subtitles: editedSubtitles || subtitles,
+            captionStyle: captionStyle,
+            requestId: generateRequestId()
+          }
+        }
+      );
 
-      // Load video file
-      setProcessingStatus('Loading video file...');
-      setProcessingProgress(5);
-      const videoData = await fetchFile(videoUrl);
-      await ffmpeg.writeFile('input.mp4', videoData);
+      if (startError) throw startError;
+      if (startData?.error) throw new Error(startData.error);
+      if (!startData?.predictionId) throw new Error('No prediction ID returned');
 
-      // Get selected style
-      const style = captionStyles.find(s => s.id === captionStyle) || captionStyles[0];
-      
-      // Parse subtitles to build drawtext filters
-      setProcessingStatus('Preparing subtitles...');
-      setProcessingProgress(10);
-      const cues = parseSrtToCues(editedSubtitles || subtitles);
-      
-      // Convert style to FFmpeg parameters
-      let fontcolor = 'white';
-      let fontsize = 48;
-      let borderw = 0;
-      let bordercolor = 'black';
-      let box = 0;
-      let boxcolor = 'black@0.7';
-      let shadowx = 0;
-      let shadowy = 0;
+      const predictionId = startData.predictionId;
+      console.log('[Replicate] Job started with ID:', predictionId);
 
-      if (captionStyle === 'outline') {
-        fontcolor = 'white';
-        fontsize = 64;
-        borderw = 4;
-        bordercolor = 'black';
-      } else if (captionStyle === 'minimal') {
-        fontcolor = 'white';
-        fontsize = 42;
-        box = 1;
-        boxcolor = 'black@0.7';
-        shadowx = 2;
-        shadowy = 2;
-      } else if (captionStyle === 'green') {
-        fontcolor = 'black';
-        fontsize = 56;
-        borderw = 3;
-        bordercolor = 'white';
-        shadowx = 0;
-        shadowy = 0;
-      } else if (captionStyle === 'boxed') {
-        fontcolor = '#00ff00';
-        fontsize = 52;
-        box = 1;
-        boxcolor = 'black@0.95';
-        borderw = 2;
-        bordercolor = '#00ff00';
+      setProcessingStatus('Video processing on server...');
+      setProcessingProgress(15);
+
+      // Step 2: Poll for status
+      let attempts = 0;
+      const maxAttempts = 120; // 10 minutes max (120 * 5 seconds)
+      let prediction: any = null;
+
+      while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+        attempts++;
+
+        console.log(`[Replicate] Checking status (attempt ${attempts})...`);
+        const { data: statusData, error: statusError } = await supabase.functions.invoke(
+          'burn-subtitles-backend',
+          {
+            body: { predictionId }
+          }
+        );
+
+        if (statusError) {
+          console.error('[Replicate] Status check error:', statusError);
+          continue; // Retry
+        }
+
+        prediction = statusData;
+        console.log('[Replicate] Status:', prediction?.status);
+
+        // Update progress based on time elapsed
+        const elapsed = attempts * 5;
+        const estimatedTotal = 120; // 2 minutes estimate
+        const progress = Math.min(15 + (elapsed / estimatedTotal) * 70, 85);
+        setProcessingProgress(progress);
+
+        if (prediction?.status === 'succeeded') {
+          console.log('[Replicate] Processing succeeded!');
+          break;
+        }
+
+        if (prediction?.status === 'failed') {
+          throw new Error(prediction?.error || 'Video processing failed on server');
+        }
+
+        if (prediction?.status === 'canceled') {
+          throw new Error('Video processing was canceled');
+        }
+
+        // Update status message
+        if (elapsed < 30) {
+          setProcessingStatus('Processing video (this may take 1-2 minutes)...');
+        } else if (elapsed < 60) {
+          setProcessingStatus('Still processing (about 1 minute remaining)...');
+        } else {
+          setProcessingStatus('Almost done...');
+        }
       }
 
-      // Build drawtext filters for each cue
-      const drawtextFilters = cues.map((cue, index) => {
-        const text = cue.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
-        return `drawtext=text='${text}':fontcolor=${fontcolor}:fontsize=${fontsize}:` +
-               `x=(w-text_w)/2:y=h-th-50:borderw=${borderw}:bordercolor=${bordercolor}:` +
-               `box=${box}:boxcolor=${boxcolor}:shadowx=${shadowx}:shadowy=${shadowy}:` +
-               `enable='between(t,${cue.start},${cue.end})'`;
-      }).join(',');
-
-      // Run FFmpeg command
-      setProcessingStatus('Burning subtitles...');
-      setProcessingProgress(20);
-      
-      console.log('[FFmpeg] Running command with', cues.length, 'subtitle cues');
-      
-      await ffmpeg.exec([
-        '-i', 'input.mp4',
-        '-vf', drawtextFilters,
-        '-c:a', 'copy',
-        '-preset', 'ultrafast',
-        'output.mp4'
-      ]);
-
-      // Read output file
-      setProcessingStatus('Finalizing...');
-      setProcessingProgress(95);
-      
-      console.log('[FFmpeg] Reading output file...');
-      const outputData = await ffmpeg.readFile('output.mp4');
-      console.log('[FFmpeg] Output data type:', typeof outputData, outputData instanceof Uint8Array ? `Uint8Array with ${outputData.length} bytes` : 'Not Uint8Array');
-      
-      if (!outputData || (outputData instanceof Uint8Array && outputData.length === 0)) {
-        throw new Error('FFmpeg produced an empty output file');
+      if (!prediction || prediction.status !== 'succeeded') {
+        throw new Error('Video processing timed out or failed');
       }
-      
-      // Create download link
-      const outputBlob = new Blob([outputData], { type: 'video/mp4' });
-      console.log('[FFmpeg] Created blob with size:', outputBlob.size, 'bytes');
-      
-      const outputUrl = URL.createObjectURL(outputBlob);
-      setProcessedVideoUrl(outputUrl);
-      
+
+      // Step 3: Download the processed video
+      setProcessingStatus('Downloading processed video...');
+      setProcessingProgress(90);
+
+      const videoUrl = prediction.output?.[0] || prediction.output;
+      if (!videoUrl) {
+        throw new Error('No output video URL received');
+      }
+
+      console.log('[Replicate] Downloading from:', videoUrl);
+
+      // Download the video
+      const response = await fetch(videoUrl);
+      if (!response.ok) throw new Error('Failed to download processed video');
+
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+
       // Auto-download
       const link = document.createElement('a');
-      link.href = outputUrl;
+      link.href = downloadUrl;
       link.download = 'video_with_subtitles.mp4';
       document.body.appendChild(link);
       link.click();
@@ -984,14 +979,13 @@ export const KyrgyzSubtitleGenerator = () => {
 
       setProcessingProgress(100);
       setProcessingStatus('Complete!');
-      toast.success('Video processed instantly!');
+      toast.success('Video processed successfully!');
 
       // Cleanup
-      await ffmpeg.deleteFile('input.mp4');
-      await ffmpeg.deleteFile('output.mp4');
-      
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+
     } catch (error: any) {
-      console.error('[FFmpeg] Processing error:', error);
+      console.error('[Replicate] Processing error:', error);
       toast.error(error.message || 'Failed to process video');
     } finally {
       setIsProcessingVideo(false);
@@ -1307,26 +1301,20 @@ export const KyrgyzSubtitleGenerator = () => {
                               disabled={!subtitles || isProcessingVideo}
                             >
                               <div className="flex items-center gap-2">
-                                {isLoadingFFmpeg ? (
+                                {isProcessingVideo ? (
                                   <Loader2 className="w-5 h-5 animate-spin" />
                                 ) : (
                                   <Download className="w-5 h-5" />
                                 )}
                                 <span>
-                                  {isProcessingVideo ? 'Processing...' : 'Download with Subtitles (Instant)'}
+                                  {isProcessingVideo ? 'Processing...' : 'Process with Subtitles'}
                                 </span>
                               </div>
                             </Button>
                             
-                            {isLoadingFFmpeg && (
+                            {!subtitles && (
                               <p className="text-xs text-muted-foreground text-center">
-                                Warming up processor for first use...
-                              </p>
-                            )}
-                            
-                            {!subtitles && !isLoadingFFmpeg && (
-                              <p className="text-xs text-muted-foreground text-center">
-                                Generate subtitles first to enable download
+                                Generate subtitles first to enable processing
                               </p>
                             )}
 
@@ -1342,11 +1330,9 @@ export const KyrgyzSubtitleGenerator = () => {
                                     style={{ width: `${processingProgress}%` }}
                                   />
                                 </div>
-                                {estimatedTimeRemaining > 0 && (
-                                  <p className="text-xs text-muted-foreground text-center">
-                                    ~{Math.round(estimatedTimeRemaining / 1000)}s remaining
-                                  </p>
-                                )}
+                                <p className="text-xs text-muted-foreground text-center italic">
+                                  Server-side processing typically takes 1-2 minutes
+                                </p>
                               </div>
                             )}
                           </div>
