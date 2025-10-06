@@ -1297,19 +1297,6 @@ export const KyrgyzSubtitleGenerator = () => {
                                 )}
                               </div>
                             )}
-                            
-                            <Button 
-                              onClick={downloadSubtitles} 
-                              variant="outline"
-                              size="lg" 
-                              className="w-full"
-                              disabled={!subtitles}
-                            >
-                              <div className="flex items-center gap-2">
-                                <Download className="w-5 h-5" />
-                                <span>Download Subtitles Only (SRT)</span>
-                              </div>
-                            </Button>
                           </div>
                         </div>
                       </div>
