@@ -848,6 +848,14 @@ export const KyrgyzSubtitleGenerator = () => {
       return;
     }
 
+    // Runtime check: SharedArrayBuffer requires cross-origin isolation (COOP/COEP)
+    if (typeof crossOriginIsolated === 'boolean' && !crossOriginIsolated) {
+      console.warn('[FFmpeg] crossOriginIsolated is false - falling back to server processing');
+      toast.warning('Your browser is not cross-origin isolated. Using server processing instead.');
+      await burnSubtitlesWithBackend();
+      return;
+    }
+
     setIsProcessingVideo(true);
     setProcessingStatus('Loading FFmpeg...');
     setProcessingProgress(5);
@@ -860,6 +868,12 @@ export const KyrgyzSubtitleGenerator = () => {
           throw new Error('Failed to load FFmpeg');
         }
       }
+
+      // Forward ffmpeg logs to console for easier debugging
+      try {
+        // @ts-ignore - on is available at runtime
+        ffmpeg.on?.('log', ({ message }: any) => console.log('[FFmpeg]', message));
+      } catch {}
 
       setProcessingStatus('Preparing video...');
       setProcessingProgress(15);
@@ -919,7 +933,23 @@ export const KyrgyzSubtitleGenerator = () => {
 
     } catch (error: any) {
       console.error('[FFmpeg] Processing error:', error);
-      toast.error(error.message || 'Failed to process video. Try downloading subtitles separately.');
+      const msg = String(error?.message || error || '');
+      const needsServerFallback =
+        msg.includes('SharedArrayBuffer') ||
+        msg.includes('cross-origin') ||
+        msg.includes('No such filter') ||
+        msg.includes('subtitles');
+
+      if (needsServerFallback) {
+        toast.warning('In-browser processing unavailable on this environment. Switching to server processing...');
+        try {
+          await burnSubtitlesWithBackend();
+          return;
+        } catch (e) {
+          console.error('[Fallback] Server processing also failed:', e);
+        }
+      }
+      toast.error(msg || 'Failed to process video. Try downloading subtitles separately.');
     } finally {
       setIsProcessingVideo(false);
       setProcessingStatus('');
