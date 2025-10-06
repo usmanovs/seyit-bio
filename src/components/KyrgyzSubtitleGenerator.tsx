@@ -945,6 +945,8 @@ export const KyrgyzSubtitleGenerator = () => {
       setProcessingStatus('Burning subtitles...');
       setProcessingProgress(20);
       
+      console.log('[FFmpeg] Running command with', cues.length, 'subtitle cues');
+      
       await ffmpeg.exec([
         '-i', 'input.mp4',
         '-vf', drawtextFilters,
@@ -956,10 +958,19 @@ export const KyrgyzSubtitleGenerator = () => {
       // Read output file
       setProcessingStatus('Finalizing...');
       setProcessingProgress(95);
+      
+      console.log('[FFmpeg] Reading output file...');
       const outputData = await ffmpeg.readFile('output.mp4');
+      console.log('[FFmpeg] Output data type:', typeof outputData, outputData instanceof Uint8Array ? `Uint8Array with ${outputData.length} bytes` : 'Not Uint8Array');
+      
+      if (!outputData || (outputData instanceof Uint8Array && outputData.length === 0)) {
+        throw new Error('FFmpeg produced an empty output file');
+      }
       
       // Create download link
       const outputBlob = new Blob([outputData], { type: 'video/mp4' });
+      console.log('[FFmpeg] Created blob with size:', outputBlob.size, 'bytes');
+      
       const outputUrl = URL.createObjectURL(outputBlob);
       setProcessedVideoUrl(outputUrl);
       
