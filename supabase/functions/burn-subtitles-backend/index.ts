@@ -48,6 +48,7 @@ serve(async (req) => {
       console.log(`[${requestId}] Current status: ${prediction.status}`);
 
       if (prediction.status === 'succeeded') {
+        // smart-ffmpeg returns output as a URL or array of URLs
         const outputUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
         console.log(`[${requestId}] PREDICTION SUCCESS`, {
           predictionId,
@@ -55,7 +56,7 @@ serve(async (req) => {
           timestamp: new Date().toISOString()
         });
         return new Response(
-          JSON.stringify({ success: true, status: prediction.status, videoUrl: outputUrl }),
+          JSON.stringify({ success: true, status: prediction.status, output: outputUrl }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -265,39 +266,29 @@ serve(async (req) => {
     console.log(`[${requestId}] Emoji font (TTF) URL:`, emojiFontUrl);
     console.log(`[${requestId}] Using FontName:`, style.FontName);
 
-    // Start Replicate job using direct FFmpeg model (no AI prompt generation)
-    console.log(`[${requestId}] Building FFmpeg command with direct model`);
+    // Start Replicate job using smart-ffmpeg model (async)
+    console.log(`[${requestId}] Creating prediction for smart-ffmpeg model`);
     
     const prediction = await replicate.predictions.create({
-      model: 'andreasjansson/ffmpeg',
+      model: "fofr/smart-ffmpeg",
       input: {
-        cmd: [
-          '-i', publicUrl,
-          '-i', srtUrl,
-          '-i', emojiFontUrl,
-          '-filter_complex',
-          `[0:v]subtitles='${srtFileName}':fontsdir=.:force_style='${forceStyleParams}'[v]`,
-          '-map', '[v]',
-          '-map', '0:a',
-          '-c:v', 'libx264',
-          '-crf', '18',
-          '-preset', 'slow',
-          '-profile:v', 'high',
-          '-level', '4.1',
-          '-pix_fmt', 'yuv420p',
-          '-c:a', 'copy',
-          '-movflags', '+faststart',
-          'output.mp4'
-        ]
+        files: [publicUrl],
+        prompt: `Add subtitles from this SRT file ${srtUrl} to the video. Use white text with thick black outline for maximum visibility. Font size should be ${style.FontSize}. Output as high-quality MP4.`
       }
     });
 
     console.log(`[${requestId}] REPLICATE JOB CREATED`, {
       predictionId: prediction.id,
-      model: 'andreasjansson/ffmpeg',
+      model: 'fofr/smart-ffmpeg',
       styleId: styleId,
       timestamp: new Date().toISOString()
     });
+
+    // Return immediately with predictionId for client-side polling
+    return new Response(
+      JSON.stringify({ success: true, predictionId: prediction.id }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 202 }
+    );
 
     // Return immediately with predictionId for client-side polling
     return new Response(
