@@ -129,166 +129,84 @@ serve(async (req) => {
           .trimEnd();
       })
       .join('\n');
-    const srtBlob = new Blob([srtContent], { type: 'text/plain' });
-    const srtFileName = `subtitles_${Date.now()}.srt`;
     
-    console.log(`[${requestId}] SRT file prepared`, {
-      fileName: srtFileName,
-      sizeBytes: srtBlob.size,
+    console.log(`[${requestId}] SRT content prepared`, {
+      contentLength: srtContent.length,
       timestamp: new Date().toISOString()
     });
-    
-    // Upload SRT to storage temporarily
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('videos')
-      .upload(`temp/${srtFileName}`, srtBlob, {
-        contentType: 'text/plain',
-        upsert: true
-      });
 
-    if (uploadError) {
-      console.error(`[${requestId}] SRT UPLOAD ERROR`, uploadError);
-      throw new Error('Failed to upload subtitle file');
+    // Parse SRT and convert to FFmpeg drawtext filters
+    function parseTimestamp(timestamp: string): number {
+      const [time, ms] = timestamp.replace(',', '.').split('.');
+      const [hours, minutes, seconds] = time.split(':').map(Number);
+      return hours * 3600 + minutes * 60 + seconds + (ms ? parseFloat(`0.${ms}`) : 0);
     }
-    
-    console.log(`[${requestId}] SRT uploaded successfully to temp/${srtFileName}`);
 
-    const { data: { publicUrl: srtUrl } } = supabase.storage
-      .from('videos')
-      .getPublicUrl(`temp/${srtFileName}`);
+    function escapeText(text: string): string {
+      return text
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/:/g, '\\:')
+        .replace(/\n/g, ' ')
+        .trim();
+    }
 
-    console.log(`[${requestId}] SRT URL:`, srtUrl.substring(0, 50) + '...');
+    function buildDrawtextFilters(srtContent: string): string {
+      const blocks = srtContent.split(/\n\s*\n/).filter(block => block.trim());
+      const filters: string[] = [];
 
-    // Style mapping: CSS preview styles to ASS parameters
-    // Adjusted based on actual video output feedback
-    const styleId = body.styleId || 'outline';
-    
-    console.log(`[${requestId}] Style selection received:`, {
-      receivedStyleId: body.styleId,
-      usingStyleId: styleId,
+      for (const block of blocks) {
+        const lines = block.split('\n').filter(line => line.trim());
+        if (lines.length < 3) continue;
+
+        // Line 0: index, Line 1: timing, Line 2+: text
+        const timingLine = lines[1];
+        const match = timingLine.match(/(\d{2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{3})/);
+        
+        if (!match) continue;
+
+        const startTime = parseTimestamp(match[1]);
+        const endTime = parseTimestamp(match[2]);
+        const text = lines.slice(2).join(' ');
+        
+        if (!text.trim()) continue;
+
+        const escapedText = escapeText(text);
+        
+        // Build drawtext filter for this subtitle
+        filters.push(
+          `drawtext=text='${escapedText}':fontsize=28:fontcolor=white:borderw=3:bordercolor=black:` +
+          `x=(w-text_w)/2:y=h-80:enable='between(t,${startTime},${endTime})'`
+        );
+      }
+
+      return filters.join(',');
+    }
+
+    const drawtextFilters = buildDrawtextFilters(srtContent);
+    console.log(`[${requestId}] Generated drawtext filters`, {
+      filterCount: drawtextFilters.split(',').length,
+      totalLength: drawtextFilters.length,
       timestamp: new Date().toISOString()
     });
-    
-    const styleMapping: Record<string, any> = {
-      // Stroke style: White text with thick black outline
-      outline: {
-        FontName: 'Symbola,Noto Emoji,Noto Sans,Arial',
-        FontSize: 16,
-        PrimaryColour: '&HFFFFFF',  // White
-        Bold: 1,
-        Italic: 0,
-        Underline: 0,
-        Spacing: 0,
-        Outline: 2,
-        OutlineColour: '&H000000',  // Black
-        Shadow: 0,
-        BackColour: '&H00000000',  // Transparent
-        BorderStyle: 1,
-        Alignment: 2,
-        MarginL: 20,
-        MarginR: 20,
-        MarginV: 30,
-      },
-      // Subtle style: Light text with semi-transparent background
-      minimal: {
-        FontName: 'Symbola,Noto Emoji,Noto Sans,Arial',
-        FontSize: 14,
-        PrimaryColour: '&HFFFFFF',  // White
-        Bold: 0,
-        Italic: 0,
-        Underline: 0,
-        Spacing: 0,
-        Outline: 1,
-        OutlineColour: '&H000000',
-        Shadow: 1,
-        BackColour: '&HB3000000',  // Semi-transparent black
-        BorderStyle: 4,  // Background box
-        Alignment: 2,
-        MarginL: 20,
-        MarginR: 20,
-        MarginV: 30,
-      },
-      // Highlight style: Black text with yellow glow and white outline
-      green: {
-        FontName: 'Symbola,Noto Emoji,Noto Sans,Arial',
-        FontSize: 18,
-        PrimaryColour: '&H000000',  // Black text
-        Bold: 1,
-        Italic: 0,
-        Underline: 0,
-        Spacing: 0,
-        Outline: 2,
-        OutlineColour: '&HFFFFFF',  // White outline
-        Shadow: 4,  // Yellow glow effect
-        SecondaryColour: '&H00B3EA',  // Yellow for glow
-        BackColour: '&H00000000',  // Transparent
-        BorderStyle: 1,
-        Alignment: 2,
-        MarginL: 20,
-        MarginR: 20,
-        MarginV: 30,
-      },
-      // Framed style: Bright green text with border and glow
-      boxed: {
-        FontName: 'Symbola,Noto Emoji,Noto Sans,Arial',
-        FontSize: 18,
-        PrimaryColour: '&H00FF00',  // Bright green
-        Bold: 1,
-        Italic: 0,
-        Underline: 0,
-        Spacing: 0,
-        Outline: 3,
-        OutlineColour: '&H00FF00',  // Green border
-        Shadow: 3,  // Green glow
-        BackColour: '&HF2000000',  // Nearly solid black
-        BorderStyle: 4,  // Background box with border
-        Alignment: 2,
-        MarginL: 20,
-        MarginR: 20,
-        MarginV: 30,
-      },
-    };
 
-    const style = styleMapping[styleId] || styleMapping.outline;
-    console.log(`[${requestId}] Using style: ${styleId}`, style);
-
-    // Build force_style string from style parameters
-    const forceStyleParams = Object.entries(style)
-      .map(([key, value]) => `${key}=${value}`)
-      .join(',');
-
-    console.log(`[${requestId}] Force style string:`, forceStyleParams);
-
-    // Emoji font to ensure glyph coverage (non-color, supported by libass)
-    // Provide Symbola.ttf directly so ffmpeg's subtitles filter can find it via fontsdir=.
-    const emojiFontUrl = 'https://github.com/stphnwlsh/Symbola-Emoji-Font/raw/master/Symbola.ttf';
-    
-    console.log(`[${requestId}] Emoji font (TTF) URL:`, emojiFontUrl);
-    console.log(`[${requestId}] Using FontName:`, style.FontName);
 
     // Start Replicate job using smart-ffmpeg model (async)
-    console.log(`[${requestId}] Creating prediction for smart-ffmpeg model`);
+    console.log(`[${requestId}] Creating prediction for smart-ffmpeg model with embedded subtitles`);
     
     const prediction = await replicate.predictions.create({
       model: "fofr/smart-ffmpeg",
       input: {
         files: [publicUrl],
-        prompt: `Add subtitles from this SRT file ${srtUrl} to the video. Use white text with thick black outline for maximum visibility. Font size should be ${style.FontSize}. Output as high-quality MP4.`
+        prompt: `Apply this FFmpeg video filter to embed subtitles: ${drawtextFilters}. Keep the original video quality, resolution, and audio. Output as MP4 with H.264 codec.`
       }
     });
 
     console.log(`[${requestId}] REPLICATE JOB CREATED`, {
       predictionId: prediction.id,
       model: 'fofr/smart-ffmpeg',
-      styleId: styleId,
       timestamp: new Date().toISOString()
     });
-
-    // Return immediately with predictionId for client-side polling
-    return new Response(
-      JSON.stringify({ success: true, predictionId: prediction.id }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 202 }
-    );
 
     // Return immediately with predictionId for client-side polling
     return new Response(

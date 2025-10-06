@@ -798,9 +798,97 @@ export const KyrgyzSubtitleGenerator = () => {
     document.body.removeChild(downloadLink);
     URL.revokeObjectURL(downloadLink.href);
     
-    toast.success("Subtitles downloaded! Use VLC or DaVinci Resolve to burn them into your video.", {
-      duration: 5000
-    });
+    toast.success("Subtitles downloaded!");
+  };
+
+  const burnSubtitlesWithBackend = async () => {
+    if (!videoPath || !subtitles) {
+      toast.error("Video file and subtitles are required");
+      return;
+    }
+
+    setIsProcessingVideo(true);
+    setProcessingStatus('Preparing video...');
+    setProcessingProgress(0);
+    setProcessingStartTime(Date.now());
+
+    try {
+      const requestId = `req_${Date.now()}`;
+
+      // Start backend processing
+      setProcessingStatus('Starting video processing...');
+      setProcessingProgress(10);
+
+      const { data, error } = await supabase.functions.invoke('burn-subtitles-backend', {
+        body: {
+          videoPath,
+          subtitles: editedSubtitles || subtitles,
+          styleId: captionStyle,
+          requestId
+        }
+      });
+
+      if (error) throw error;
+      if (!data.success || !data.predictionId) throw new Error('Failed to start processing');
+
+      const predictionId = data.predictionId;
+      setProcessingStatus('Processing video with subtitles...');
+      setProcessingProgress(30);
+
+      // Poll for status
+      const pollInterval = setInterval(async () => {
+        try {
+          const { data: statusData, error: statusError } = await supabase.functions.invoke(
+            'burn-subtitles-backend',
+            {
+              body: { predictionId, requestId }
+            }
+          );
+
+          if (statusError) throw statusError;
+
+          if (statusData.status === 'succeeded') {
+            clearInterval(pollInterval);
+            setProcessingProgress(100);
+            setProcessingStatus('Download ready!');
+            setProcessedVideoUrl(statusData.output);
+            
+            // Auto-download the video
+            const link = document.createElement('a');
+            link.href = statusData.output;
+            link.download = 'video_with_subtitles.mp4';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            toast.success('Video processed successfully!');
+            setIsProcessingVideo(false);
+          } else if (statusData.status === 'failed') {
+            clearInterval(pollInterval);
+            throw new Error(statusData.error || 'Processing failed');
+          } else {
+            // Update progress based on time elapsed
+            const elapsed = Date.now() - processingStartTime;
+            const estimatedTotal = 60000; // Estimate 60 seconds
+            const progress = Math.min(90, 30 + (elapsed / estimatedTotal) * 60);
+            setProcessingProgress(progress);
+            setEstimatedTimeRemaining(Math.max(0, estimatedTotal - elapsed));
+          }
+        } catch (pollError: any) {
+          clearInterval(pollInterval);
+          console.error('Polling error:', pollError);
+          toast.error(pollError.message || 'Processing failed');
+          setIsProcessingVideo(false);
+          setProcessingStatus('');
+        }
+      }, 3000);
+
+    } catch (error: any) {
+      console.error('Video processing error:', error);
+      toast.error(error.message || 'Failed to process video');
+      setIsProcessingVideo(false);
+      setProcessingStatus('');
+    }
   };
 
   const generateTitleVariations = async () => {
@@ -1105,22 +1193,49 @@ export const KyrgyzSubtitleGenerator = () => {
 
                           <div className="space-y-3">
                             <Button 
-                              onClick={downloadSubtitles} 
+                              onClick={burnSubtitlesWithBackend} 
                               size="lg" 
-                              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                              disabled={!subtitles || isProcessingVideo}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Download className="w-5 h-5" />
+                                <span>{isProcessingVideo ? 'Processing...' : 'Download Video with Subtitles'}</span>
+                              </div>
+                            </Button>
+
+                            {isProcessingVideo && (
+                              <div className="p-3 rounded-lg bg-muted border border-border space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground">{processingStatus}</span>
+                                  <span className="font-semibold text-foreground">{Math.round(processingProgress)}%</span>
+                                </div>
+                                <div className="w-full bg-muted-foreground/20 rounded-full h-2 overflow-hidden">
+                                  <div 
+                                    className="bg-gradient-to-r from-purple-600 to-blue-600 h-full transition-all duration-300"
+                                    style={{ width: `${processingProgress}%` }}
+                                  />
+                                </div>
+                                {estimatedTimeRemaining > 0 && (
+                                  <p className="text-xs text-muted-foreground text-center">
+                                    ~{Math.round(estimatedTimeRemaining / 1000)}s remaining
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                            
+                            <Button 
+                              onClick={downloadSubtitles} 
+                              variant="outline"
+                              size="lg" 
+                              className="w-full"
                               disabled={!subtitles}
                             >
                               <div className="flex items-center gap-2">
                                 <Download className="w-5 h-5" />
-                                <span>Download Subtitles (SRT)</span>
+                                <span>Download Subtitles Only (SRT)</span>
                               </div>
                             </Button>
-                            
-                            <div className="p-3 rounded-lg bg-muted/50 border border-border">
-                              <p className="text-xs text-muted-foreground leading-relaxed">
-                                <strong className="text-foreground">Tip:</strong> Use free tools like <strong>VLC Media Player</strong>, <strong>DaVinci Resolve</strong>, or <strong>HandBrake</strong> to burn these subtitles permanently into your video on your computer.
-                              </p>
-                            </div>
                           </div>
                         </div>
                       </div>
