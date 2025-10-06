@@ -1,10 +1,12 @@
 project_id = "namcnwyhexvtklawagip"
 
-[functions.burn-subtitles-lambda]
-verify_jwt = true
+# [functions.burn-subtitles-lambda]
+# verify_jwt = true
+# DISABLED: Using burn-subtitles-backend (Replicate) instead
 
-[functions.deploy-lambda]
-verify_jwt = true
+# [functions.deploy-lambda]
+# verify_jwt = true
+# DISABLED: Not needed for Replicate-based processing
 
 [functions.create-checkout]
 verify_jwt = true

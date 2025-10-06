@@ -1320,12 +1320,16 @@ export const KyrgyzSubtitleGenerator = () => {
       setCloudPolling(true);
       setCloudStartTime(startTime);
 
-      // Use AWS Lambda for emoji support
-      console.log('[Download] Invoking AWS Lambda processing...');
+      // Use Replicate for cloud processing
+      console.log('[Download] Starting Replicate cloud processing...', {
+        styleId: currentStyle.id,
+        styleName: currentStyle.name
+      });
+      
       const {
-        data: lambdaData,
-        error: lambdaError
-      } = await supabase.functions.invoke('burn-subtitles-lambda', {
+        data: replicateData,
+        error: replicateError
+      } = await supabase.functions.invoke('burn-subtitles-backend', {
         body: {
           videoPath,
           subtitles: useSubs,
@@ -1333,55 +1337,36 @@ export const KyrgyzSubtitleGenerator = () => {
           requestId: rid
         }
       });
-      if (lambdaError) {
-        throw new Error(`Lambda processing failed: ${lambdaError.message}`);
+      
+      if (replicateError) {
+        throw new Error(`Cloud processing failed: ${replicateError.message}`);
       }
-      if (!lambdaData?.success) {
-        throw new Error(lambdaData?.error || 'Lambda processing failed');
+      
+      if (!replicateData?.success) {
+        throw new Error(replicateData?.error || 'Cloud processing failed to start');
       }
-
-      // If processing asynchronously, poll for status/video
-      if (lambdaData?.processing) {
-        console.log('[Download] Lambda started asynchronously, polling for result...', lambdaData);
-        if (lambdaData?.statusUrl) {
-          await pollLambdaStatus(lambdaData.statusUrl, lambdaData?.videoUrl || null, rid, startTime);
-        } else if (lambdaData?.videoUrl) {
-          await pollLambdaOutput(lambdaData.videoUrl, rid, startTime);
-        }
-        return;
+      
+      if (!replicateData?.predictionId) {
+        throw new Error('Cloud processing started but no prediction ID returned');
       }
-      if (lambdaData?.videoUrl) {
-        // Lambda succeeded synchronously
-        console.log('[Download] Lambda processing succeeded:', lambdaData);
-        setCloudVideoUrl(lambdaData.videoUrl);
-        setCloudStatus('succeeded');
-        setCloudPolling(false);
-        setCloudStartTime(0);
-        toast.success('Video ready! Downloading...');
-        try {
-          const response = await fetch(lambdaData.videoUrl);
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `video-with-subtitles-${Date.now()}.mp4`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        } catch (e) {
-          console.error('Auto-download failed, opening in new tab', e);
-          window.open(lambdaData.videoUrl, '_blank');
-        }
-        return;
-      }
-      throw new Error('Lambda started but did not return a video URL');
+      
+      // Poll for completion
+      console.log('[Download] Cloud processing started, polling for result...', {
+        predictionId: replicateData.predictionId
+      });
+      
+      // Save to localStorage for recovery
+      localStorage.setItem('cloudPredictionId', replicateData.predictionId);
+      localStorage.setItem('cloudStartTime', startTime.toString());
+      
+      await pollCloudPrediction(replicateData.predictionId, startTime);
+      
     } catch (e: any) {
       setCloudStatus('error');
       setCloudPolling(false);
       setCloudStartTime(0);
-      console.error('[Download] Lambda error:', e);
-      toast.error(e.message || 'Failed to process video with Lambda');
+      console.error('[Download] Cloud processing error:', e);
+      toast.error(e.message || 'Failed to process video in cloud');
     }
   };
   const generateTitleVariations = async () => {

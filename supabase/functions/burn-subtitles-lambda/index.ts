@@ -1,3 +1,9 @@
+/*
+ * DEPRECATED: This AWS Lambda-based subtitle burning function is currently disabled.
+ * The project now uses the Replicate-based 'burn-subtitles-backend' function instead.
+ * This file is kept for reference and potential future use.
+ */
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
