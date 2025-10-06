@@ -122,17 +122,19 @@ export const KyrgyzSubtitleGenerator = () => {
     if (ffmpegLoaded) return true;
     
     setIsLoadingFFmpeg(true);
+    toast.info('Loading video processor... This may take 30-60 seconds on first load.');
+    
     try {
       const bases = [
-        'https://unpkg.com/@ffmpeg/core@0.12.15/dist/umd',
-        'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/umd',
-        'https://unpkg.com/@ffmpeg/core@0.12.15/dist/esm',
-        'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.15/dist/esm',
+        'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm',
+        'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm',
       ];
 
       let loaded = false;
       for (const base of bases) {
         try {
+          console.log('[FFmpeg] Attempting to load from', base);
+          
           // Convert remote assets to same-origin Blob URLs to avoid CORS/COOP issues
           const coreBlob = await toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript');
           const wasmBlob = await toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm');
@@ -143,6 +145,7 @@ export const KyrgyzSubtitleGenerator = () => {
           });
 
           console.log('[FFmpeg] Loaded successfully from', base);
+          toast.success('Video processor ready!');
           loaded = true;
           break;
         } catch (e) {
@@ -156,7 +159,7 @@ export const KyrgyzSubtitleGenerator = () => {
       return true;
     } catch (error) {
       console.error('[FFmpeg] Failed to load:', error);
-      toast.error('Failed to load video processor. Please try again.');
+      toast.error('Failed to load video processor. Please refresh the page and try again.');
       return false;
     } finally {
       setIsLoadingFFmpeg(false);
