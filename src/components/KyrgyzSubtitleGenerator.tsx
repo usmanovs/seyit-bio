@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/contexts/AuthContext";
 import { SubscriptionModal } from "./SubscriptionModal";
 import editingExample from "@/assets/editing-example.png";
+import { FFmpeg } from "@ffmpeg/ffmpeg";
+import { fetchFile } from "@ffmpeg/util";
 
 // Detect if user is on mobile device
 const isMobileDevice = () => {
@@ -63,6 +65,9 @@ export const KyrgyzSubtitleGenerator = () => {
   const [summaries, setSummaries] = useState<string[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [videosProcessedCount, setVideosProcessedCount] = useState<number>(43);
+  const [ffmpeg] = useState(() => new FFmpeg());
+  const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
+  const [isLoadingFFmpeg, setIsLoadingFFmpeg] = useState(false);
 
   // Track free generations for non-authenticated users
   const [freeGenerationsUsed, setFreeGenerationsUsed] = useState(() => {
@@ -106,10 +111,32 @@ export const KyrgyzSubtitleGenerator = () => {
     return `${minutes}m ${remainingSeconds}s`;
   };
 
-  // Check video processing count on mount
+  // Check video processing count on mount and load FFmpeg
   useEffect(() => {
     fetchVideosProcessedCount();
+    loadFFmpeg();
   }, []);
+
+  // Load FFmpeg.wasm
+  const loadFFmpeg = async () => {
+    if (ffmpegLoaded) return;
+    
+    setIsLoadingFFmpeg(true);
+    try {
+      await ffmpeg.load({
+        coreURL: '/ffmpeg/ffmpeg-core.js',
+        wasmURL: '/ffmpeg/ffmpeg-core.wasm',
+        workerURL: '/ffmpeg/ffmpeg-core.worker.js',
+      });
+      setFfmpegLoaded(true);
+      console.log('[FFmpeg] Loaded successfully');
+    } catch (error) {
+      console.error('[FFmpeg] Failed to load:', error);
+      toast.error('Failed to load video processor');
+    } finally {
+      setIsLoadingFFmpeg(false);
+    }
+  };
 
 
 
@@ -802,90 +829,133 @@ export const KyrgyzSubtitleGenerator = () => {
   };
 
   const burnSubtitlesWithBackend = async () => {
-    if (!videoPath || !subtitles) {
+    if (!videoUrl || !subtitles) {
       toast.error("Video file and subtitles are required");
       return;
     }
 
+    if (!ffmpegLoaded) {
+      toast.error("Video processor not ready. Please wait...");
+      await loadFFmpeg();
+      return;
+    }
+
     setIsProcessingVideo(true);
-    setProcessingStatus('Preparing video...');
+    setProcessingStatus('Loading video...');
     setProcessingProgress(0);
     setProcessingStartTime(Date.now());
 
     try {
-      const requestId = `req_${Date.now()}`;
-
-      // Start backend processing
-      setProcessingStatus('Starting video processing...');
-      setProcessingProgress(10);
-
-      const { data, error } = await supabase.functions.invoke('burn-subtitles-backend', {
-        body: {
-          videoPath,
-          subtitles: editedSubtitles || subtitles,
-          styleId: captionStyle,
-          requestId
-        }
+      // Setup progress tracking
+      ffmpeg.on('progress', ({ progress }) => {
+        const percent = Math.round(progress * 100);
+        setProcessingProgress(Math.min(percent, 95));
+        setProcessingStatus(`Processing: ${percent}%`);
       });
 
-      if (error) throw error;
-      if (!data.success || !data.predictionId) throw new Error('Failed to start processing');
+      // Load video file
+      setProcessingStatus('Loading video file...');
+      setProcessingProgress(5);
+      const videoData = await fetchFile(videoUrl);
+      await ffmpeg.writeFile('input.mp4', videoData);
 
-      const predictionId = data.predictionId;
-      setProcessingStatus('Processing video with subtitles...');
-      setProcessingProgress(30);
+      // Get selected style
+      const style = captionStyles.find(s => s.id === captionStyle) || captionStyles[0];
+      
+      // Parse subtitles to build drawtext filters
+      setProcessingStatus('Preparing subtitles...');
+      setProcessingProgress(10);
+      const cues = parseSrtToCues(editedSubtitles || subtitles);
+      
+      // Convert style to FFmpeg parameters
+      let fontcolor = 'white';
+      let fontsize = 48;
+      let borderw = 0;
+      let bordercolor = 'black';
+      let box = 0;
+      let boxcolor = 'black@0.7';
+      let shadowx = 0;
+      let shadowy = 0;
 
-      // Poll for status
-      const pollInterval = setInterval(async () => {
-        try {
-          const { data: statusData, error: statusError } = await supabase.functions.invoke(
-            'burn-subtitles-backend',
-            {
-              body: { predictionId, requestId }
-            }
-          );
+      if (captionStyle === 'outline') {
+        fontcolor = 'white';
+        fontsize = 64;
+        borderw = 4;
+        bordercolor = 'black';
+      } else if (captionStyle === 'minimal') {
+        fontcolor = 'white';
+        fontsize = 42;
+        box = 1;
+        boxcolor = 'black@0.7';
+        shadowx = 2;
+        shadowy = 2;
+      } else if (captionStyle === 'green') {
+        fontcolor = 'black';
+        fontsize = 56;
+        borderw = 3;
+        bordercolor = 'white';
+        shadowx = 0;
+        shadowy = 0;
+      } else if (captionStyle === 'boxed') {
+        fontcolor = '#00ff00';
+        fontsize = 52;
+        box = 1;
+        boxcolor = 'black@0.95';
+        borderw = 2;
+        bordercolor = '#00ff00';
+      }
 
-          if (statusError) throw statusError;
+      // Build drawtext filters for each cue
+      const drawtextFilters = cues.map((cue, index) => {
+        const text = cue.text.replace(/'/g, "\\'").replace(/:/g, "\\:");
+        return `drawtext=text='${text}':fontcolor=${fontcolor}:fontsize=${fontsize}:` +
+               `x=(w-text_w)/2:y=h-th-50:borderw=${borderw}:bordercolor=${bordercolor}:` +
+               `box=${box}:boxcolor=${boxcolor}:shadowx=${shadowx}:shadowy=${shadowy}:` +
+               `enable='between(t,${cue.start},${cue.end})'`;
+      }).join(',');
 
-          if (statusData.status === 'succeeded') {
-            clearInterval(pollInterval);
-            setProcessingProgress(100);
-            setProcessingStatus('Download ready!');
-            setProcessedVideoUrl(statusData.output);
-            
-            // Auto-download the video
-            const link = document.createElement('a');
-            link.href = statusData.output;
-            link.download = 'video_with_subtitles.mp4';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            toast.success('Video processed successfully!');
-            setIsProcessingVideo(false);
-          } else if (statusData.status === 'failed') {
-            clearInterval(pollInterval);
-            throw new Error(statusData.error || 'Processing failed');
-          } else {
-            // Update progress based on time elapsed
-            const elapsed = Date.now() - processingStartTime;
-            const estimatedTotal = 60000; // Estimate 60 seconds
-            const progress = Math.min(90, 30 + (elapsed / estimatedTotal) * 60);
-            setProcessingProgress(progress);
-            setEstimatedTimeRemaining(Math.max(0, estimatedTotal - elapsed));
-          }
-        } catch (pollError: any) {
-          clearInterval(pollInterval);
-          console.error('Polling error:', pollError);
-          toast.error(pollError.message || 'Processing failed');
-          setIsProcessingVideo(false);
-          setProcessingStatus('');
-        }
-      }, 3000);
+      // Run FFmpeg command
+      setProcessingStatus('Burning subtitles...');
+      setProcessingProgress(20);
+      
+      await ffmpeg.exec([
+        '-i', 'input.mp4',
+        '-vf', drawtextFilters,
+        '-c:a', 'copy',
+        '-preset', 'ultrafast',
+        'output.mp4'
+      ]);
 
+      // Read output file
+      setProcessingStatus('Finalizing...');
+      setProcessingProgress(95);
+      const outputData = await ffmpeg.readFile('output.mp4');
+      
+      // Create download link
+      const outputBlob = new Blob([outputData], { type: 'video/mp4' });
+      const outputUrl = URL.createObjectURL(outputBlob);
+      setProcessedVideoUrl(outputUrl);
+      
+      // Auto-download
+      const link = document.createElement('a');
+      link.href = outputUrl;
+      link.download = 'video_with_subtitles.mp4';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setProcessingProgress(100);
+      setProcessingStatus('Complete!');
+      toast.success('Video processed instantly!');
+
+      // Cleanup
+      await ffmpeg.deleteFile('input.mp4');
+      await ffmpeg.deleteFile('output.mp4');
+      
     } catch (error: any) {
-      console.error('Video processing error:', error);
+      console.error('[FFmpeg] Processing error:', error);
       toast.error(error.message || 'Failed to process video');
+    } finally {
       setIsProcessingVideo(false);
       setProcessingStatus('');
     }
@@ -1196,11 +1266,15 @@ export const KyrgyzSubtitleGenerator = () => {
                               onClick={burnSubtitlesWithBackend} 
                               size="lg" 
                               className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-                              disabled={!subtitles || isProcessingVideo}
+                              disabled={!subtitles || isProcessingVideo || !ffmpegLoaded}
                             >
                               <div className="flex items-center gap-2">
                                 <Download className="w-5 h-5" />
-                                <span>{isProcessingVideo ? 'Processing...' : 'Download Video with Subtitles'}</span>
+                                <span>
+                                  {isLoadingFFmpeg ? 'Loading Processor...' : 
+                                   isProcessingVideo ? 'Processing...' : 
+                                   'Download with Subtitles (Instant)'}
+                                </span>
                               </div>
                             </Button>
 

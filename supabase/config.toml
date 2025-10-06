@@ -1,7 +1,8 @@
 project_id = "namcnwyhexvtklawagip"
 
-[functions.burn-subtitles-backend]
-verify_jwt = true
+# [functions.burn-subtitles-backend]
+# verify_jwt = true
+# DEPRECATED: Switched to client-side FFmpeg.wasm processing
 
 # [functions.burn-subtitles-lambda]
 # verify_jwt = true
