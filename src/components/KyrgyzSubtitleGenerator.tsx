@@ -124,15 +124,13 @@ export const KyrgyzSubtitleGenerator = () => {
     setIsLoadingFFmpeg(true);
     try {
       await ffmpeg.load({
-        coreURL: '/ffmpeg/ffmpeg-core.js',
-        wasmURL: '/ffmpeg/ffmpeg-core.wasm',
-        workerURL: '/ffmpeg/ffmpeg-core.worker.js',
+        coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
       });
       setFfmpegLoaded(true);
       console.log('[FFmpeg] Loaded successfully');
     } catch (error) {
       console.error('[FFmpeg] Failed to load:', error);
-      toast.error('Failed to load video processor');
+      toast.error('Failed to load video processor. Please refresh and try again.');
     } finally {
       setIsLoadingFFmpeg(false);
     }
