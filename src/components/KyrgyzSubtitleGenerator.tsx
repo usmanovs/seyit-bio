@@ -123,11 +123,44 @@ export const KyrgyzSubtitleGenerator = () => {
     
     setIsLoadingFFmpeg(true);
     try {
-      await ffmpeg.load({
-        coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
-      });
+      const sources = [
+        {
+          coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
+          wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
+        },
+        {
+          coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
+          wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm',
+        },
+      ];
+
+      // Try sources sequentially with a timeout
+      const withTimeout = (p: Promise<any>, ms: number) =>
+        Promise.race([
+          p,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('FFmpeg load timeout')), ms)),
+        ]);
+
+      let loaded = false;
+      for (const s of sources) {
+        try {
+          await withTimeout(
+            ffmpeg.load({ coreURL: s.coreURL, wasmURL: s.wasmURL }),
+            45000
+          );
+          console.log('[FFmpeg] Loaded successfully from', s.coreURL);
+          loaded = true;
+          break;
+        } catch (e) {
+          console.warn('[FFmpeg] Failed to load from source, trying next...', e);
+        }
+      }
+
+      if (!loaded) {
+        throw new Error('All FFmpeg sources failed');
+      }
+
       setFfmpegLoaded(true);
-      console.log('[FFmpeg] Loaded successfully');
     } catch (error) {
       console.error('[FFmpeg] Failed to load:', error);
       toast.error('Failed to load video processor. Please refresh and try again.');
