@@ -5,8 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Upload, Loader2, Download, Video, Sparkles, Lock, Clock, CheckCircle2, ArrowRight } from "lucide-react";
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
@@ -75,11 +73,6 @@ export const KyrgyzSubtitleGenerator = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLTrackElement>(null);
   const subtitleRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const ffmpegRef = useRef(new FFmpeg());
-  const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
-  const [ffmpegLoading, setFfmpegLoading] = useState(false);
-  const [ffmpegError, setFfmpegError] = useState<string | null>(null);
-  const [videoFile, setVideoFile] = useState<File | null>(null);
   const captionStyles = [{
     id: 'outline',
     name: 'Stroke',
@@ -118,39 +111,6 @@ export const KyrgyzSubtitleGenerator = () => {
   }, []);
 
 
-  const loadFFmpeg = async () => {
-    if (ffmpegLoaded || ffmpegLoading) return;
-    setFfmpegLoading(true);
-    setFfmpegError(null);
-    console.log('[FFmpeg] Starting to load FFmpeg...');
-    
-    try {
-      const ffmpeg = ffmpegRef.current;
-      
-      ffmpeg.on('log', ({ message }) => {
-        console.log('[FFmpeg]', message);
-      });
-      
-      // Use jsdelivr with correct version and single-threaded mode (no worker needed)
-      const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
-      
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-      });
-      
-      setFfmpegLoaded(true);
-      console.log('[FFmpeg] FFmpeg loaded successfully');
-      toast.success('Video processor ready!');
-      
-    } catch (err) {
-      console.error('[FFmpeg] Failed to load FFmpeg:', err);
-      setFfmpegError('Video processor unavailable. Try using backend processing instead.');
-      toast.error('Local video processor unavailable. Use backend processing for subtitle burning.');
-    } finally {
-      setFfmpegLoading(false);
-    }
-  };
 
   // Calculate time remaining in trial
   const getTrialTimeRemaining = () => {
@@ -324,9 +284,6 @@ export const KyrgyzSubtitleGenerator = () => {
       toast.error(`Video file must be less than 200MB (current: ${Math.round(file.size / 1024 / 1024)}MB). Please compress your video.`);
       return;
     }
-
-    // Store the file for later use in burning subtitles
-    setVideoFile(file);
 
     // Reset all state when uploading a new video
     setVideoUrl(null);
@@ -824,144 +781,23 @@ export const KyrgyzSubtitleGenerator = () => {
     setEditedSubtitles(srt);
     setHasUnsavedChanges(true);
   };
-  const downloadVideoWithSubtitles = async () => {
-    if (!videoFile || !subtitles) {
-      toast.error("No video or subtitles available");
+  const downloadSubtitles = () => {
+    if (!subtitles) {
+      toast.error("No subtitles available");
       return;
     }
 
-    // Ensure FFmpeg is loaded before processing
-    if (!ffmpegLoaded) {
-      if (ffmpegLoading) {
-        toast.info("Loading video processor... Please wait.");
-        return;
-      }
-      toast.error("Video processor not ready. Please refresh the page and try again.");
-      return;
-    }
-    const requestId = generateRequestId();
-    const processingStartTime = Date.now();
-    console.log(`[${requestId}] LOCAL VIDEO PROCESSING START`, {
-      subtitlesLength: subtitles.length,
-      captionStyle: captionStyle,
-      timestamp: new Date().toISOString()
-    });
-    setIsProcessingVideo(true);
-    setProcessingStatus('processing');
-    setProcessingProgress(0);
-    setProcessingStartTime(processingStartTime);
-    try {
-      toast.info("Processing video locally...");
-      const ffmpeg = ffmpegRef.current;
-
-      // Write video file to FFmpeg virtual filesystem
-      console.log(`[${requestId}] Writing video file to FFmpeg...`);
-      await ffmpeg.writeFile('input.mp4', await fetchFile(videoFile));
-      setProcessingProgress(10);
-
-      // Clean and prepare SRT content
-      let cleanSubtitles = subtitles.trim();
-      if (cleanSubtitles.startsWith('```')) {
-        cleanSubtitles = cleanSubtitles.replace(/^```[a-z]*\n/, '').replace(/\n?```$/, '');
-      }
-      const srtContent = cleanSubtitles.split('\n').map((line: string) => {
-        const isTiming = /^\d+:\d+:\d+[,.]\d+\s+-->\s+\d+:\d+:\d+[,.]\d+/.test(line);
-        if (isTiming) return line.trim();
-        return line.replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, ' ').replace(/[ \t]{2,}/g, ' ').trimEnd();
-      }).join('\n');
-      console.log(`[${requestId}] Writing SRT file to FFmpeg...`);
-      await ffmpeg.writeFile('subtitles.srt', new TextEncoder().encode(srtContent));
-      setProcessingProgress(20);
-
-      // Load emoji-capable fonts into FFmpeg FS so emojis render
-      try {
-        console.log(`[${requestId}] Loading emoji fonts for FFmpeg...`);
-        // Symbola
-        const symbolaBinary = await fetchFile('/fonts/Symbola.ttf');
-        await ffmpeg.writeFile('Symbola.ttf', symbolaBinary);
-        // Noto Emoji (monochrome)
-        const notoEmojiResp = await fetch('https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoEmoji-Regular.ttf');
-        const notoEmojiBuf = new Uint8Array(await notoEmojiResp.arrayBuffer());
-        await ffmpeg.writeFile('NotoEmoji-Regular.ttf', notoEmojiBuf);
-        console.log(`[${requestId}] Emoji fonts loaded`);
-      } catch (e) {
-        console.warn(`[${requestId}] Emoji font load failed (will continue without it)`, e);
-      }
-
-      // Build subtitle style based on user selection
-      let subtitleFilter = 'subtitles=subtitles.srt:charenc=UTF-8:fontsdir=.:force_style=';
-      const styleOptions: string[] = [];
-      if (currentStyle.prompt.includes('yellow') || currentStyle.prompt.includes('Highlight')) {
-        styleOptions.push('PrimaryColour=&H00FFFF', 'OutlineColour=&HFFFFFF', 'Outline=2', 'Bold=1');
-      } else if (currentStyle.prompt.includes('green') || currentStyle.prompt.includes('Framed')) {
-        styleOptions.push('PrimaryColour=&H00FF00', 'OutlineColour=&H000000', 'Outline=2', 'BorderStyle=3', 'Bold=1');
-      } else if (currentStyle.prompt.includes('minimal') || currentStyle.prompt.includes('Subtle')) {
-        styleOptions.push('PrimaryColour=&HFFFFFF', 'BackColour=&H80000000', 'FontSize=18', 'Bold=0', 'Outline=1');
-      } else {
-        // Default: white text with black outline (Stroke style)
-        styleOptions.push('PrimaryColour=&HFFFFFF', 'OutlineColour=&H000000', 'Outline=3', 'Bold=1');
-      }
-
-      // Use emoji-capable font fallback order
-      // Note: Color emoji fonts are not supported by libass; use monochrome Noto Emoji + Symbola
-      styleOptions.push('FontSize=18', 'Alignment=2', 'MarginV=20', "FontName=Noto Emoji,Symbola");
-      subtitleFilter += styleOptions.join(',');
-      console.log(`[${requestId}] Local FFmpeg subtitle style:`, {
-        style: currentStyle.name,
-        filter: subtitleFilter,
-        fontsLoaded: ['Symbola.ttf', 'NotoEmoji-Regular.ttf']
-      });
-      console.log(`[${requestId}] Running FFmpeg with filter: ${subtitleFilter}`);
-      setProcessingProgress(30);
-
-      // Run FFmpeg to burn subtitles
-      await ffmpeg.exec(['-i', 'input.mp4', '-vf', subtitleFilter, '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', 'output.mp4']);
-      console.log(`[${requestId}] FFmpeg processing complete`);
-      setProcessingProgress(90);
-
-      // Read the output file
-      const data = await ffmpeg.readFile('output.mp4');
-      const blob = new Blob([data], {
-        type: 'video/mp4'
-      });
-      const downloadSizeMB = (blob.size / (1024 * 1024)).toFixed(2);
-      console.log(`[${requestId}] Creating download link...`, {
-        fileSizeMB: downloadSizeMB
-      });
-      const videoLink = document.createElement('a');
-      videoLink.href = URL.createObjectURL(blob);
-      videoLink.download = 'video_with_subtitles.mp4';
-      document.body.appendChild(videoLink);
-      videoLink.click();
-      document.body.removeChild(videoLink);
-      URL.revokeObjectURL(videoLink.href);
-      const endToEndDuration = ((Date.now() - processingStartTime) / 1000).toFixed(2);
-      console.log(`[${requestId}] DOWNLOAD COMPLETE`, {
-        totalDuration: `${endToEndDuration}s`,
-        fileSizeMB: downloadSizeMB,
-        timestamp: new Date().toISOString()
-      });
-      setProcessingProgress(100);
-      toast.success("Video with burned subtitles downloaded successfully!");
-
-      // Show signup prompt after successful download if user just used their free generation
-      if (!user && freeGenerationsUsed >= 1) {
-        setShowSignupPrompt(true);
-      }
-    } catch (error: any) {
-      const errorDuration = ((Date.now() - processingStartTime) / 1000).toFixed(2);
-      console.error(`[${requestId}] VIDEO PROCESSING FAILED`, {
-        error: error.message,
-        duration: `${errorDuration}s`,
-        timestamp: new Date().toISOString()
-      });
-      toast.error("Processing failed: " + (error?.message || 'Unknown error'));
-    } finally {
-      setIsProcessingVideo(false);
-      setProcessingStatus('');
-      setProcessingProgress(0);
-      setProcessingStartTime(0);
-    }
+    // Download subtitle file
+    const blob = new Blob([subtitles], { type: 'text/plain' });
+    const downloadLink = document.createElement('a');
+    downloadLink.href = URL.createObjectURL(blob);
+    downloadLink.download = 'subtitles.srt';
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    URL.revokeObjectURL(downloadLink.href);
+    
+    toast.success("Subtitles downloaded successfully!");
   };
 
   const generateTitleVariations = async () => {
@@ -1264,37 +1100,19 @@ export const KyrgyzSubtitleGenerator = () => {
                               Update Captions
                             </Button>}
 
-                          <Button onClick={downloadVideoWithSubtitles} size="lg" className={`
+                          <Button onClick={downloadSubtitles} size="lg" className={`
                               ${hasUnsavedChanges ? "flex-1" : "w-full"}
                               bg-blue-600 hover:bg-blue-700
                               text-white font-semibold
                               shadow-lg hover:shadow-xl
                               transition-all duration-300
-                            `} disabled={isProcessingVideo || !subtitles || !ffmpegLoaded}>
-                            {!ffmpegLoaded && ffmpegLoading ? <div className="flex items-center gap-2">
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                <span>Loading video processor...</span>
-                              </div> : !ffmpegLoaded ? <div className="flex items-center gap-2">
-                                <span>Video processor unavailable</span>
-                              </div> : isProcessingVideo ? <div className="w-full space-y-2">
-                                <div className="flex items-center justify-center gap-2">
-                                  <Loader2 className="w-5 h-5 animate-spin" />
-                                  <span className="text-sm">
-                                    {processingStatus.charAt(0).toUpperCase() + processingStatus.slice(1)} - {Math.round(processingProgress)}%
-                                    {estimatedTimeRemaining > 0 && ` ~${formatTimeRemaining(estimatedTimeRemaining)} left`}
-                                  </span>
-                                </div>
-                                <Progress value={processingProgress} className="w-full h-2" />
-                              </div> : <div className="flex items-center gap-2">
-                                <Download className="w-5 h-5" />
-                                <span>Download Video</span>
-                              </div>}
+                            `} disabled={!subtitles}>
+                            <div className="flex items-center gap-2">
+                              <Download className="w-5 h-5" />
+                              <span>Download Subtitles</span>
+                            </div>
                           </Button>
                         </div>
-
-                        {!ffmpegLoaded && !isProcessingVideo && <div className="text-xs text-muted-foreground p-2 rounded border bg-muted/50">
-                            {ffmpegError || "Video processor unavailable. Please refresh the page to try again."}
-                          </div>}
                       </div>
                  </div>}
               </div>
