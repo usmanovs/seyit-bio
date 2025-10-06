@@ -1078,8 +1078,8 @@ export const KyrgyzSubtitleGenerator = () => {
           <CardTitle>Video Subtitle Generator</CardTitle>
           <CardDescription>Upload a video and generate subtitles</CardDescription>
           <div className="mt-2 flex justify-center">
-            <Badge variant={ffmpegLoaded ? "default" : "outline"}>
-              {ffmpegLoaded ? "Local processor ready" : "Using cloud processing"}
+            <Badge variant={ffmpegLoaded ? "default" : ffmpegLoading ? "secondary" : "destructive"}>
+              {ffmpegLoaded ? "Processor ready" : ffmpegLoading ? "Loading processor..." : "Processor unavailable"}
             </Badge>
           </div>
         </CardHeader>
