@@ -1,5 +1,8 @@
 project_id = "namcnwyhexvtklawagip"
 
+[functions.burn-subtitles-backend]
+verify_jwt = true
+
 # [functions.burn-subtitles-lambda]
 # verify_jwt = true
 # DISABLED: Using burn-subtitles-backend (Replicate) instead
