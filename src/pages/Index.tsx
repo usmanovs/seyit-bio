@@ -13,6 +13,22 @@ import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { CheckCircle2, Video, Sparkles, ArrowRight, Shield } from "lucide-react";
 import editingExample from "@/assets/editing-example.png";
+
+// Steps data (static, defined outside component)
+const HOW_IT_WORKS_STEPS = [{
+  number: "01",
+  title: "Upload",
+  description: "Drop your video and our AI instantly starts processing"
+}, {
+  number: "02",
+  title: "AI Magic",
+  description: "Advanced AI generates perfect Kyrgyz subtitles in minutes"
+}, {
+  number: "03",
+  title: "Download",
+  description: "Get your professional video ready to share with the world"
+}];
+
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -208,19 +224,7 @@ const Index = () => {
             {/* Connecting lines */}
             <div className="hidden md:block absolute top-12 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50" />
             
-            {[{
-            number: "01",
-            title: "Upload",
-            description: "Drop your video and our AI instantly starts processing"
-          }, {
-            number: "02",
-            title: "AI Magic",
-            description: "Advanced AI generates perfect Kyrgyz subtitles in minutes"
-          }, {
-            number: "03",
-            title: "Download",
-            description: "Get your professional video ready to share with the world"
-          }].map((step, index) => <div key={index} className="relative">
+            {HOW_IT_WORKS_STEPS.map((step, index) => <div key={index} className="relative">
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="relative">
                     <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-xl shadow-primary/25 relative z-10">

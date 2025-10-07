@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/contexts/AuthContext";
 import { SubscriptionModal } from "./SubscriptionModal";
 import editingExample from "@/assets/editing-example.png";
+import { useMemo } from "react";
 
 // Detect if user is on mobile device
 const isMobileDevice = () => {
@@ -25,6 +26,37 @@ const isMobileDevice = () => {
 const generateRequestId = () => {
   return `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 };
+
+// Language mappings (static, defined outside component)
+const LANGUAGE_NAMES: Record<string, string> = {
+  ky: 'Kyrgyz', kk: 'Kazakh', uz: 'Uzbek', ru: 'Russian', tr: 'Turkish',
+  en: 'English', ar: 'Arabic', zh: 'Chinese', es: 'Spanish', fr: 'French',
+  de: 'German', hi: 'Hindi', ja: 'Japanese', ko: 'Korean'
+};
+
+// Caption styles (static, defined outside component)
+const CAPTION_STYLES = [{
+  id: 'outline',
+  name: 'Stroke',
+  css: 'background-color: transparent; color: white; font-weight: bold; font-size: 2em; text-shadow: -4px -4px 0 #000, 4px -4px 0 #000, -4px 4px 0 #000, 4px 4px 0 #000, -4px 0 0 #000, 4px 0 0 #000, 0 -4px 0 #000, 0 4px 0 #000;',
+  prompt: 'white text with extra thick black outline, no background, bold font, very high contrast'
+}, {
+  id: 'minimal',
+  name: 'Subtle',
+  css: 'background-color: rgba(0, 0, 0, 0.7); color: white; font-weight: 300; font-size: 1.3em; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); padding: 0.3em 0.8em;',
+  prompt: 'white text, light weight, semi-transparent black background, minimal shadow'
+}, {
+  id: 'green',
+  name: 'Highlight',
+  css: 'color: black; font-weight: 900; text-shadow: 0 0 6px rgba(234, 179, 8, 0.95), 0 0 14px rgba(234, 179, 8, 0.85), -2px -2px 0 #ffffff, 2px -2px 0 #ffffff, -2px 2px 0 #ffffff, 2px 2px 0 #ffffff;',
+  prompt: 'black text with strong yellow glow and white outline, extra bold, highly distinct from stroke'
+}, {
+  id: 'boxed',
+  name: 'Framed',
+  css: 'background-color: rgba(0, 0, 0, 0.95); color: #00ff00; font-weight: bold; font-size: 1.6em; border: 4px solid #00ff00; text-shadow: 0 0 10px #00ff00; padding: 0.4em 0.8em;',
+  prompt: 'bright green text with green border box and glow effect, bold font, solid black background'
+}];
+
 export const KyrgyzSubtitleGenerator = () => {
   const { user, subscription, refreshSubscription } = useAuth();
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
@@ -89,28 +121,12 @@ export const KyrgyzSubtitleGenerator = () => {
   });
   const [cloudElapsedTime, setCloudElapsedTime] = useState<number>(0);
   const [videoFile, setVideoFile] = useState<File | null>(null);
-  const captionStyles = [{
-    id: 'outline',
-    name: 'Stroke',
-    css: 'background-color: transparent; color: white; font-weight: bold; font-size: 2em; text-shadow: -4px -4px 0 #000, 4px -4px 0 #000, -4px 4px 0 #000, 4px 4px 0 #000, -4px 0 0 #000, 4px 0 0 #000, 0 -4px 0 #000, 0 4px 0 #000;',
-    prompt: 'white text with extra thick black outline, no background, bold font, very high contrast'
-  }, {
-    id: 'minimal',
-    name: 'Subtle',
-    css: 'background-color: rgba(0, 0, 0, 0.7); color: white; font-weight: 300; font-size: 1.3em; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); padding: 0.3em 0.8em;',
-    prompt: 'white text, light weight, semi-transparent black background, minimal shadow'
-  }, {
-    id: 'green',
-    name: 'Highlight',
-    css: 'color: black; font-weight: 900; text-shadow: 0 0 6px rgba(234, 179, 8, 0.95), 0 0 14px rgba(234, 179, 8, 0.85), -2px -2px 0 #ffffff, 2px -2px 0 #ffffff, -2px 2px 0 #ffffff, 2px 2px 0 #ffffff;',
-    prompt: 'black text with strong yellow glow and white outline, extra bold, highly distinct from stroke'
-  }, {
-    id: 'boxed',
-    name: 'Framed',
-    css: 'background-color: rgba(0, 0, 0, 0.95); color: #00ff00; font-weight: bold; font-size: 1.6em; border: 4px solid #00ff00; text-shadow: 0 0 10px #00ff00; padding: 0.4em 0.8em;',
-    prompt: 'bright green text with green border box and glow effect, bold font, solid black background'
-  }];
-  const currentStyle = captionStyles.find(s => s.id === captionStyle) || captionStyles[0];
+  
+  // Memoize current style to avoid recalculation on every render
+  const currentStyle = useMemo(() => 
+    CAPTION_STYLES.find(s => s.id === captionStyle) || CAPTION_STYLES[0],
+    [captionStyle]
+  );
 
   // Helper function to format time remaining
   const formatTimeRemaining = (seconds: number): string => {
@@ -368,24 +384,14 @@ export const KyrgyzSubtitleGenerator = () => {
   useEffect(() => {
     // Only regenerate if language actually changed (not on initial mount)
     if (prevLanguageRef.current !== selectedLanguage && videoPath && subtitles && !isGenerating) {
-      const languageNames: Record<string, string> = {
-        ky: 'Kyrgyz', kk: 'Kazakh', uz: 'Uzbek', ru: 'Russian', tr: 'Turkish',
-        en: 'English', ar: 'Arabic', zh: 'Chinese', es: 'Spanish', fr: 'French',
-        de: 'German', hi: 'Hindi', ja: 'Japanese', ko: 'Korean'
-      };
-      toast.info(`Regenerating subtitles in ${languageNames[selectedLanguage] || selectedLanguage}...`);
+      toast.info(`Regenerating subtitles in ${LANGUAGE_NAMES[selectedLanguage] || selectedLanguage}...`);
       generateSubtitlesForPath(videoPath);
       // Ensure the video track uses the correct language metadata
       setTimeout(() => {
         const t = trackRef.current;
         if (t) {
           t.srclang = selectedLanguage;
-          const languageLabels: Record<string, string> = {
-            ky: 'Kyrgyz', kk: 'Kazakh', uz: 'Uzbek', ru: 'Russian', tr: 'Turkish',
-            en: 'English', ar: 'Arabic', zh: 'Chinese', es: 'Spanish', fr: 'French',
-            de: 'German', hi: 'Hindi', ja: 'Japanese', ko: 'Korean'
-          };
-          t.label = languageLabels[selectedLanguage] || selectedLanguage;
+          t.label = LANGUAGE_NAMES[selectedLanguage] || selectedLanguage;
         }
       }, 0);
     }
@@ -1497,7 +1503,7 @@ export const KyrgyzSubtitleGenerator = () => {
           {videoUrl && subtitles && <div className="space-y-2">
               <label className="text-sm font-semibold">Caption Style</label>
               <div className="grid grid-cols-4 gap-2">
-                {captionStyles.map(style => {
+                {CAPTION_STYLES.map(style => {
               const getPreviewClasses = () => {
                 switch (style.id) {
                   case 'outline':
