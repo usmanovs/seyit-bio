@@ -12,12 +12,13 @@ serve(async (req) => {
   }
 
   try {
-    const { subtitles, addEmojis, correctSpelling, requestId } = await req.json();
+    const { subtitles, addEmojis, correctSpelling, requestId, language } = await req.json();
     
     console.log(`[${requestId}] Applying modifications to existing subtitles`, {
       addEmojis,
       correctSpelling,
-      subtitleLength: subtitles?.length
+      subtitleLength: subtitles?.length,
+      language
     });
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -25,18 +26,28 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
+    // Determine language name from code
+    const languageNameMap: Record<string, string> = {
+      ky: 'Kyrgyz', kk: 'Kazakh', uz: 'Uzbek', ru: 'Russian', tr: 'Turkish',
+      en: 'English', ar: 'Arabic', zh: 'Chinese', es: 'Spanish', fr: 'French',
+      de: 'German', hi: 'Hindi', ja: 'Japanese', ko: 'Korean'
+    };
+    const languageName = languageNameMap[language] ?? 'Kyrgyz';
+
     // Build the modification prompt
-    let prompt = "You are modifying existing Kyrgyz subtitles. ";
+    let prompt = `You are modifying existing ${languageName} subtitles.` + ' ';
     
     if (correctSpelling && addEmojis) {
-      prompt += "Apply both spelling corrections AND add relevant emojis to the subtitles. ";
+      prompt += 'Apply both spelling corrections AND add relevant emojis to the subtitles. ';
     } else if (correctSpelling) {
-      prompt += "Only correct any spelling mistakes in the subtitles. ";
+      prompt += 'Only correct any spelling mistakes in the subtitles. ';
     } else if (addEmojis) {
-      prompt += "Only add relevant emojis to the subtitles. ";
+      prompt += 'Only add relevant emojis to the subtitles. ';
     }
     
     prompt += `Keep the timing information (timestamps) EXACTLY as they are. Only modify the text content.
+
+Important: Do NOT change the language. Keep all text in ${languageName}.
 
 Here are the subtitles in SRT format:
 

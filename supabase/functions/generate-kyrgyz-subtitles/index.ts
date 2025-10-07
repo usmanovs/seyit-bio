@@ -205,25 +205,15 @@ serve(async (req) => {
     // Generate SRT subtitle file
     let srtContent = generateSRT(transcription);
     
-    // Correct spelling if requested
-    if (correctSpelling) {
-      console.log('[KYRGYZ-SUBTITLES] Correcting spelling with Gemini...');
-      try {
-        const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-        if (!LOVABLE_API_KEY) {
-          console.error('[KYRGYZ-SUBTITLES] LOVABLE_API_KEY not found for spelling correction');
-        } else {
-          const geminiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${LOVABLE_API_KEY}`
-            },
-            body: JSON.stringify({
-              model: 'google/gemini-2.5-flash',
-              messages: [{
-                role: 'user',
-                content: `You are a ${languageName} language expert. Your task is to ensure these subtitles are in ${languageName} language and correct any spelling mistakes.
+    // Ensure subtitles are in the selected language (always), and optionally correct spelling
+    console.log(`[KYRGYZ-SUBTITLES] Ensuring subtitles are in ${languageName}${correctSpelling ? ' with spelling correction' : ''}...`);
+    try {
+      const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+      if (!LOVABLE_API_KEY) {
+        console.error('[KYRGYZ-SUBTITLES] LOVABLE_API_KEY not found for language normalization');
+      } else {
+        const userPrompt = correctSpelling
+          ? `You are a ${languageName} language expert. Your task is to ensure these subtitles are in ${languageName} and correct any spelling mistakes.
 
 CRITICAL RULES:
 - Keep line numbers and timestamps EXACTLY as they are
@@ -232,30 +222,52 @@ CRITICAL RULES:
 - Do NOT change the meaning or rephrase sentences
 - Preserve all punctuation
 - Return the complete SRT file with corrections/translations
-- IMPORTANT: The output MUST be in ${languageName} language only, not Russian or any other language
+- IMPORTANT: The output MUST be in ${languageName} language only
 
 Subtitles to process:
 ${srtContent}`
-              }]
-            })
-          });
-          
-          if (geminiResponse.ok) {
-            const geminiData = await geminiResponse.json();
-            const correctedContent = geminiData.choices[0]?.message?.content;
-            if (correctedContent) {
-              srtContent = correctedContent;
-              console.log('[KYRGYZ-SUBTITLES] Spelling corrected successfully');
-            }
-          } else {
-            const errorText = await geminiResponse.text();
-            console.error('[KYRGYZ-SUBTITLES] Failed to correct spelling:', geminiResponse.status, errorText);
+          : `Translate all subtitle text to ${languageName} while preserving the SRT structure.
+
+CRITICAL RULES:
+- Keep line numbers and timestamps EXACTLY as they are
+- Translate text to ${languageName}; do NOT add or remove words beyond faithful translation
+- Do NOT rephrase or "improve" wording; keep meaning identical
+- Preserve punctuation and line breaks
+- Return ONLY the full SRT in ${languageName}
+
+Subtitles to process:
+${srtContent}`;
+
+        const geminiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash',
+            messages: [{
+              role: 'user',
+              content: userPrompt
+            }]
+          })
+        });
+        
+        if (geminiResponse.ok) {
+          const geminiData = await geminiResponse.json();
+          const out = geminiData.choices?.[0]?.message?.content;
+          if (out) {
+            srtContent = out;
+            console.log('[KYRGYZ-SUBTITLES] Language normalization completed successfully');
           }
+        } else {
+          const errorText = await geminiResponse.text();
+          console.error('[KYRGYZ-SUBTITLES] Failed language normalization:', geminiResponse.status, errorText);
         }
-      } catch (spellingError) {
-        console.error('[KYRGYZ-SUBTITLES] Error correcting spelling:', spellingError);
-        // Continue with original subtitles if spelling correction fails
       }
+    } catch (e) {
+      console.error('[KYRGYZ-SUBTITLES] Error ensuring language:', e);
+      // Continue with original subtitles if normalization fails
     }
     
     // Add emojis if requested

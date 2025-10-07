@@ -661,7 +661,8 @@ export const KyrgyzSubtitleGenerator = () => {
           subtitles: editedSubtitles,
           addEmojis,
           correctSpelling,
-          requestId: rid
+          requestId: rid,
+          language: selectedLanguage,
         }
       });
 
