@@ -12,6 +12,7 @@ import { FAQ } from "@/components/landing/FAQ";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { CheckCircle2, Video, Sparkles, ArrowRight, Shield } from "lucide-react";
+import editingExample from "@/assets/editing-example.png";
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -248,7 +249,7 @@ const Index = () => {
             
             <div className="rounded-2xl overflow-hidden border border-border/40 bg-card shadow-xl">
               <img 
-                src="/src/assets/editing-example.png"
+                src={editingExample}
                 alt="Example of subtitle editing interface showing caption styles, emoji toggle, subtitle editor, and video preview" 
                 className="w-full h-auto"
               />

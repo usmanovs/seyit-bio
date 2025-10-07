@@ -1072,7 +1072,7 @@ export const KyrgyzSubtitleGenerator = () => {
 
       // Read the output file
       const data = await ffmpeg.readFile('output.mp4');
-      const blob = new Blob([data], { type: 'video/mp4' });
+      const blob = new Blob([new Uint8Array(data as any)], { type: 'video/mp4' });
       const downloadSizeMB = (blob.size / (1024 * 1024)).toFixed(2);
       
       console.log(`[${requestId}] Creating download link...`, {
