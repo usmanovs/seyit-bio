@@ -368,14 +368,24 @@ export const KyrgyzSubtitleGenerator = () => {
   useEffect(() => {
     // Only regenerate if language actually changed (not on initial mount)
     if (prevLanguageRef.current !== selectedLanguage && videoPath && subtitles && !isGenerating) {
-      toast.info(`Regenerating subtitles in ${selectedLanguage === 'ky' ? 'Kyrgyz' : selectedLanguage === 'kk' ? 'Kazakh' : selectedLanguage === 'uz' ? 'Uzbek' : selectedLanguage === 'ru' ? 'Russian' : 'Turkish'}...`);
+      const languageNames: Record<string, string> = {
+        ky: 'Kyrgyz', kk: 'Kazakh', uz: 'Uzbek', ru: 'Russian', tr: 'Turkish',
+        en: 'English', ar: 'Arabic', zh: 'Chinese', es: 'Spanish', fr: 'French',
+        de: 'German', hi: 'Hindi', ja: 'Japanese', ko: 'Korean'
+      };
+      toast.info(`Regenerating subtitles in ${languageNames[selectedLanguage] || selectedLanguage}...`);
       generateSubtitlesForPath(videoPath);
       // Ensure the video track uses the correct language metadata
       setTimeout(() => {
         const t = trackRef.current;
         if (t) {
           t.srclang = selectedLanguage;
-          t.label = selectedLanguage === 'ky' ? 'Kyrgyz' : selectedLanguage === 'kk' ? 'Kazakh' : selectedLanguage === 'uz' ? 'Uzbek' : selectedLanguage === 'ru' ? 'Russian' : 'Turkish';
+          const languageLabels: Record<string, string> = {
+            ky: 'Kyrgyz', kk: 'Kazakh', uz: 'Uzbek', ru: 'Russian', tr: 'Turkish',
+            en: 'English', ar: 'Arabic', zh: 'Chinese', es: 'Spanish', fr: 'French',
+            de: 'German', hi: 'Hindi', ja: 'Japanese', ko: 'Korean'
+          };
+          t.label = languageLabels[selectedLanguage] || selectedLanguage;
         }
       }, 0);
     }

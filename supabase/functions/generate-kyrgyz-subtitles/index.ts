@@ -100,8 +100,38 @@ serve(async (req) => {
     }
     
     // Map incoming language to provider code and human-readable name
-    const languageCodeMap: Record<string, string> = { ky: 'ky', kk: 'kk', uz: 'uz', ru: 'ru', tr: 'tr' };
-    const languageNameMap: Record<string, string> = { ky: 'Kyrgyz', kk: 'Kazakh', uz: 'Uzbek', ru: 'Russian', tr: 'Turkish' };
+    const languageCodeMap: Record<string, string> = { 
+      ky: 'ky', 
+      kk: 'kk', 
+      uz: 'uz', 
+      ru: 'ru', 
+      tr: 'tr',
+      en: 'en',
+      ar: 'ar',
+      zh: 'zh',
+      es: 'es',
+      fr: 'fr',
+      de: 'de',
+      hi: 'hi',
+      ja: 'ja',
+      ko: 'ko'
+    };
+    const languageNameMap: Record<string, string> = { 
+      ky: 'Kyrgyz', 
+      kk: 'Kazakh', 
+      uz: 'Uzbek', 
+      ru: 'Russian', 
+      tr: 'Turkish',
+      en: 'English',
+      ar: 'Arabic',
+      zh: 'Chinese',
+      es: 'Spanish',
+      fr: 'French',
+      de: 'German',
+      hi: 'Hindi',
+      ja: 'Japanese',
+      ko: 'Korean'
+    };
     const languageCode = languageCodeMap[language] ?? 'ky';
     const languageName = languageNameMap[language] ?? 'Kyrgyz';
 
