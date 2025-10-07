@@ -193,16 +193,18 @@ serve(async (req) => {
               model: 'google/gemini-2.5-flash',
               messages: [{
                 role: 'user',
-                content: `You are a ${languageName} language expert. Correct spelling mistakes in these ${languageName} subtitles while preserving the exact SRT format.
+                content: `You are a ${languageName} language expert. Your task is to ensure these subtitles are in ${languageName} language and correct any spelling mistakes.
 
 CRITICAL RULES:
 - Keep line numbers and timestamps EXACTLY as they are
-- Only fix obvious spelling errors in ${languageName} text
+- If the subtitle text is NOT in ${languageName}, translate it to ${languageName}
+- If the text is already in ${languageName}, only fix obvious spelling errors
 - Do NOT change the meaning or rephrase sentences
 - Preserve all punctuation
-- Return the complete SRT file with corrections
+- Return the complete SRT file with corrections/translations
+- IMPORTANT: The output MUST be in ${languageName} language only, not Russian or any other language
 
-Subtitles to correct:
+Subtitles to process:
 ${srtContent}`
               }]
             })
@@ -246,7 +248,7 @@ ${srtContent}`
               model: 'google/gemini-2.5-flash',
               messages: [{
                 role: 'user',
-                content: `Add relevant emojis to these subtitles. Keep the exact SRT format (including line numbers and timestamps). Only add 1-2 relevant emojis per subtitle line where appropriate. Keep the ${languageName} text exactly as is.\n\nSubtitles:\n${srtContent}`
+                content: `Add relevant emojis to these ${languageName} subtitles. Keep the exact SRT format (including line numbers and timestamps). Only add 1-2 relevant emojis per subtitle line where appropriate. The text MUST remain in ${languageName} language - do not translate or change the language.\n\nSubtitles:\n${srtContent}`
               }]
             })
         });
