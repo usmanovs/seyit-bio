@@ -102,26 +102,15 @@ All colors MUST be HSL.
   }
 }
 
-/* 
-  Emoji Font Support
-  - Symbola provides broad emoji and Unicode symbol coverage for video subtitle rendering
-  - Used as fallback font in both preview and final video output
-*/
+/* Emoji-capable font and subtitle cue styling */
 @font-face {
   font-family: 'Symbola';
   src: url('/fonts/Symbola.ttf') format('truetype');
   font-display: swap;
 }
 
-/* 
-  Video Subtitle Preview Styling
-  - Ensures emojis render correctly in browser preview using system emoji fonts
-  - Font order matches the final video output for consistency:
-    1. System emoji fonts (Apple/Segoe/Noto) - platform-specific, best emoji coverage
-    2. Symbola - broad Unicode fallback
-    3. sans-serif - final system fallback
-  - This styling should match the ASS subtitle styling used in video output
-*/
+/* Ensure browser-rendered captions can display emojis */
 video::cue, ::cue {
+  /* Prefer system color emoji fonts first, fallback to Symbola last */
   font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'EmojiOne Color', 'Segoe UI Symbol', 'Symbola', ui-sans-serif, system-ui, sans-serif;
 }

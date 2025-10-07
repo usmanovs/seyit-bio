@@ -46,15 +46,10 @@ const Dashboard = () => {
           <p className="text-muted-foreground">Use the generator on the home page to create your subtitled videos</p>
         </div>
 
-        <div className="text-center py-12 space-y-4">
+        <div className="text-center py-12">
           <Button onClick={() => navigate('/')} size="lg" className="rounded-full">
             Go to Video Generator
           </Button>
-          <div className="pt-4">
-            <Button onClick={() => navigate('/lambda-deploy')} variant="outline" size="lg" className="rounded-full">
-              Deploy Lambda Function
-            </Button>
-          </div>
         </div>
       </main>
     </div>

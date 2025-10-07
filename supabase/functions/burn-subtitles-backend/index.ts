@@ -48,7 +48,6 @@ serve(async (req) => {
       console.log(`[${requestId}] Current status: ${prediction.status}`);
 
       if (prediction.status === 'succeeded') {
-        // smart-ffmpeg returns output as a URL or array of URLs
         const outputUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
         console.log(`[${requestId}] PREDICTION SUCCESS`, {
           predictionId,
@@ -56,7 +55,7 @@ serve(async (req) => {
           timestamp: new Date().toISOString()
         });
         return new Response(
-          JSON.stringify({ success: true, status: prediction.status, output: outputUrl }),
+          JSON.stringify({ success: true, status: prediction.status, videoUrl: outputUrl }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -129,82 +128,180 @@ serve(async (req) => {
           .trimEnd();
       })
       .join('\n');
+    const srtBlob = new Blob([srtContent], { type: 'text/plain' });
+    const srtFileName = `subtitles_${Date.now()}.srt`;
     
-    console.log(`[${requestId}] SRT content prepared`, {
-      contentLength: srtContent.length,
+    console.log(`[${requestId}] SRT file prepared`, {
+      fileName: srtFileName,
+      sizeBytes: srtBlob.size,
       timestamp: new Date().toISOString()
     });
-
-    // Parse SRT and convert to FFmpeg drawtext filters
-    function parseTimestamp(timestamp: string): number {
-      const [time, ms] = timestamp.replace(',', '.').split('.');
-      const [hours, minutes, seconds] = time.split(':').map(Number);
-      return hours * 3600 + minutes * 60 + seconds + (ms ? parseFloat(`0.${ms}`) : 0);
-    }
-
-    function escapeText(text: string): string {
-      return text
-        .replace(/\\/g, '\\\\')
-        .replace(/'/g, "\\'")
-        .replace(/:/g, '\\:')
-        .replace(/\n/g, ' ')
-        .trim();
-    }
-
-    function buildDrawtextFilters(srtContent: string): string {
-      const blocks = srtContent.split(/\n\s*\n/).filter(block => block.trim());
-      const filters: string[] = [];
-
-      for (const block of blocks) {
-        const lines = block.split('\n').filter(line => line.trim());
-        if (lines.length < 3) continue;
-
-        // Line 0: index, Line 1: timing, Line 2+: text
-        const timingLine = lines[1];
-        const match = timingLine.match(/(\d{2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{3})/);
-        
-        if (!match) continue;
-
-        const startTime = parseTimestamp(match[1]);
-        const endTime = parseTimestamp(match[2]);
-        const text = lines.slice(2).join(' ');
-        
-        if (!text.trim()) continue;
-
-        const escapedText = escapeText(text);
-        
-        // Build drawtext filter for this subtitle
-        filters.push(
-          `drawtext=text='${escapedText}':fontsize=28:fontcolor=white:borderw=3:bordercolor=black:` +
-          `x=(w-text_w)/2:y=h-80:enable='between(t,${startTime},${endTime})'`
-        );
-      }
-
-      return filters.join(',');
-    }
-
-    const drawtextFilters = buildDrawtextFilters(srtContent);
-    console.log(`[${requestId}] Generated drawtext filters`, {
-      filterCount: drawtextFilters.split(',').length,
-      totalLength: drawtextFilters.length,
-      timestamp: new Date().toISOString()
-    });
-
-
-    // Start Replicate job using smart-ffmpeg model (async)
-    console.log(`[${requestId}] Creating prediction for smart-ffmpeg model with embedded subtitles`);
     
+    // Upload SRT to storage temporarily
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('videos')
+      .upload(`temp/${srtFileName}`, srtBlob, {
+        contentType: 'text/plain',
+        upsert: true
+      });
+
+    if (uploadError) {
+      console.error(`[${requestId}] SRT UPLOAD ERROR`, uploadError);
+      throw new Error('Failed to upload subtitle file');
+    }
+    
+    console.log(`[${requestId}] SRT uploaded successfully to temp/${srtFileName}`);
+
+    const { data: { publicUrl: srtUrl } } = supabase.storage
+      .from('videos')
+      .getPublicUrl(`temp/${srtFileName}`);
+
+    console.log(`[${requestId}] SRT URL:`, srtUrl.substring(0, 50) + '...');
+
+    // Style mapping: CSS preview styles to ASS parameters
+    // These parameters are precisely calibrated to match the browser preview
+    const styleId = body.styleId || 'outline';
+    const styleMapping: Record<string, any> = {
+      // Stroke style: White text with thick black outline (matches 2em, bold, 4px shadow in 8 directions)
+      outline: {
+        FontName: 'Noto Color Emoji,Noto Sans,Arial,sans-serif',
+        FontSize: 20,  // Further reduced for better readability
+        PrimaryColour: '&HFFFFFF',  // White
+        Bold: 1,
+        Italic: 0,
+        Underline: 0,
+        Spacing: 0,  // CRITICAL: No letter spacing
+        Outline: 3,  // Thick outline
+        OutlineColour: '&H000000',  // Black
+        Shadow: 0,  // No drop shadow, just outline
+        BackColour: '&H00000000',  // Transparent
+        BorderStyle: 1,  // Outline only
+        Alignment: 2,  // Bottom center
+        MarginL: 20,
+        MarginR: 20,
+        MarginV: 40,
+      },
+      // Subtle style: Light text with semi-transparent background (matches 1.3em, weight 300)
+      minimal: {
+        FontName: 'Noto Color Emoji,Noto Sans,Arial,sans-serif',
+        FontSize: 18,  // Further reduced
+        PrimaryColour: '&HFFFFFF',  // White
+        Bold: 0,  // Light weight
+        Italic: 0,
+        Underline: 0,
+        Spacing: 0,
+        Outline: 1,  // Minimal outline
+        OutlineColour: '&H000000',
+        Shadow: 1,  // Subtle shadow
+        BackColour: '&HB3000000',  // Semi-transparent black (0.7 opacity = B3 in hex)
+        BorderStyle: 4,  // Background box
+        Alignment: 2,
+        MarginL: 20,
+        MarginR: 20,
+        MarginV: 40,
+      },
+      // Highlight style: Black text with yellow glow and white outline (matches weight 900)
+      green: {
+        FontName: 'Noto Color Emoji,Noto Sans,Arial,sans-serif',
+        FontSize: 22,  // Further reduced
+        PrimaryColour: '&H000000',  // Black text
+        Bold: 1,
+        Italic: 0,
+        Underline: 0,
+        Spacing: 0,
+        Outline: 2,  // White outline (2px to match CSS)
+        OutlineColour: '&HFFFFFF',  // White outline
+        Shadow: 6,  // Yellow glow effect
+        SecondaryColour: '&H00B3EA',  // Yellow for glow (EAB300 in BGR)
+        BackColour: '&H00000000',  // Transparent
+        BorderStyle: 1,
+        Alignment: 2,
+        MarginL: 20,
+        MarginR: 20,
+        MarginV: 40,
+      },
+      // Framed style: Bright green text with border and glow (matches 1.6em, bold, green border)
+      boxed: {
+        FontName: 'Noto Color Emoji,Noto Sans,Arial,sans-serif',
+        FontSize: 24,  // Further reduced
+        PrimaryColour: '&H00FF00',  // Bright green (00FF00 in BGR)
+        Bold: 1,
+        Italic: 0,
+        Underline: 0,
+        Spacing: 0,
+        Outline: 4,  // Thick border to match 4px CSS border
+        OutlineColour: '&H00FF00',  // Green border
+        Shadow: 4,  // Green glow
+        BackColour: '&HF2000000',  // Nearly solid black (0.95 opacity = F2 in hex)
+        BorderStyle: 4,  // Background box with border
+        Alignment: 2,
+        MarginL: 20,
+        MarginR: 20,
+        MarginV: 40,
+      },
+    };
+
+    const style = styleMapping[styleId] || styleMapping.outline;
+    console.log(`[${requestId}] Using style: ${styleId}`, style);
+
+    // Build force_style string from style parameters
+    const forceStyleParams = Object.entries(style)
+      .map(([key, value]) => `${key}=${value}`)
+      .join(',');
+
+    console.log(`[${requestId}] Force style string:`, forceStyleParams);
+
+    // Start Replicate job using predictions API
     const prediction = await replicate.predictions.create({
-      model: "fofr/smart-ffmpeg",
+      model: 'fofr/smart-ffmpeg',
       input: {
-        files: [publicUrl],
-        prompt: `Apply this FFmpeg video filter to embed subtitles: ${drawtextFilters}. Keep the original video quality, resolution, and audio. Output as MP4 with H.264 codec.`
-      }
-    });
+        files: [publicUrl, srtUrl],
+        prompt: `Burn subtitles from SRT file onto video using FFmpeg with these EXACT parameters:
+
+CRITICAL FFmpeg SUBTITLE FILTER PARAMETERS:
+Use subtitles filter with force_style option. Apply these ASS style parameters EXACTLY as specified:
+
+${forceStyleParams}
+
+SPACING IS CRITICAL:
+- Spacing=0 means NO letter spacing (characters are NOT spread apart)
+- Do NOT add any tracking or letter-spacing
+- Characters should be close together like normal text
+- NO gaps between letters
+
+VIDEO QUALITY:
+- Codec: libx264, CRF 15 (CRF 12 for 4K)
+- Preset: slow
+- Profile: high, Level 4.1
+- Pixel format: yuv420p
+- Maintain original resolution and framerate
+- NO downscaling or quality loss
+
+AUDIO:
+- Copy original audio stream: -c:a copy (if AAC)
+- Or re-encode: -c:a aac -b:a 256k
+- Set -movflags +faststart
+
+EMOJI SUPPORT:
+- Font must support emoji rendering
+- Use Noto Color Emoji, Segoe UI Emoji, or system emoji font
+- Ensure emoji render as colored graphics, not monochrome
+
+OUTPUT:
+- Format: MP4 (H.264)
+- Optimize for web playback
+- Maximum 3 attempts
+
+Example FFmpeg command structure:
+ffmpeg -i video.mp4 -vf "subtitles=subs.srt:force_style='${forceStyleParams}'" -c:v libx264 -crf 15 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4`,
+        max_attempts: 3,
+      },
+    } as any);
 
     console.log(`[${requestId}] REPLICATE JOB CREATED`, {
       predictionId: prediction.id,
       model: 'fofr/smart-ffmpeg',
+      styleId: styleId,
       timestamp: new Date().toISOString()
     });
 

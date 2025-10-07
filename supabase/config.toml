@@ -1,17 +1,5 @@
 project_id = "namcnwyhexvtklawagip"
 
-# [functions.burn-subtitles-backend]
-# verify_jwt = true
-# DEPRECATED: Switched to client-side FFmpeg.wasm processing
-
-# [functions.burn-subtitles-lambda]
-# verify_jwt = true
-# DISABLED: Using burn-subtitles-backend (Replicate) instead
-
-# [functions.deploy-lambda]
-# verify_jwt = true
-# DISABLED: Not needed for Replicate-based processing
-
 [functions.create-checkout]
 verify_jwt = true
 
