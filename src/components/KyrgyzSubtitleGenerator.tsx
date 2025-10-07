@@ -121,6 +121,7 @@ export const KyrgyzSubtitleGenerator = () => {
   });
   const [cloudElapsedTime, setCloudElapsedTime] = useState<number>(0);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [processorReady, setProcessorReady] = useState(false);
   
   // Memoize current style to avoid recalculation on every render
   const currentStyle = useMemo(() => 
@@ -968,21 +969,45 @@ export const KyrgyzSubtitleGenerator = () => {
     }
 
     // Check if already processing
-    if (cloudPolling) {
+    if (cloudPolling || isProcessingVideo) {
       toast.error("Video is already processing. Please wait...");
       return;
+    }
+
+    // If video was already processed and ready, download from cloud URL
+    if (cloudVideoUrl && processorReady) {
+      console.log('Download started for file:', cloudVideoUrl);
+      try {
+        const response = await fetch(cloudVideoUrl);
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `kyrgyz_summary_${Date.now()}.mp4`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success("Video downloaded!");
+        return;
+      } catch (error) {
+        console.error('Download error:', error);
+        toast.error('Download failed: ' + (error as Error).message);
+        return;
+      }
     }
 
     // Prefer local FFmpeg processing when available; otherwise use cloud
     if (!ffmpegLoaded) {
       if (cloudVideoUrl) {
+        console.log('Download started for file:', cloudVideoUrl);
         try {
           const response = await fetch(cloudVideoUrl);
           const blob = await response.blob();
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `video-with-subtitles-${Date.now()}.mp4`;
+          a.download = `kyrgyz_summary_${Date.now()}.mp4`;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
@@ -990,13 +1015,13 @@ export const KyrgyzSubtitleGenerator = () => {
           toast.success("Video downloaded!");
           return;
         } catch (error) {
-          console.error("Failed to download cloud video:", error);
-          toast.error("Failed to download. Opening in new tab instead.");
-          window.open(cloudVideoUrl, '_blank');
+          console.error('Download error:', error);
+          toast.error('Download failed: ' + (error as Error).message);
           return;
         }
       }
       toast.info("Starting cloud processing...");
+      setProcessorReady(false);
       await burnVideoInCloud();
       return;
     }
@@ -1119,6 +1144,7 @@ export const KyrgyzSubtitleGenerator = () => {
       });
 
       setProcessingProgress(100);
+      setProcessorReady(true);
       toast.success("Video with burned subtitles downloaded successfully!");
       
       // Show signup prompt after successful download if user just used their free generation
@@ -1179,11 +1205,13 @@ export const KyrgyzSubtitleGenerator = () => {
           setCloudVideoUrl(data.videoUrl);
           setCloudPolling(false);
           setCloudStartTime(0);
+          setProcessorReady(true);
           
           // Clear localStorage
           localStorage.removeItem('cloudPredictionId');
           localStorage.removeItem('cloudStartTime');
           
+          console.log('Download started for file:', data.videoUrl);
           toast.success('Cloud video ready! Downloading...');
           try {
             const response = await fetch(data.videoUrl);
@@ -1191,7 +1219,7 @@ export const KyrgyzSubtitleGenerator = () => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `video-with-subtitles-${Date.now()}.mp4`;
+            a.download = `kyrgyz_summary_${Date.now()}.mp4`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -1652,7 +1680,7 @@ export const KyrgyzSubtitleGenerator = () => {
                               transition-all duration-300
                             `}
                             disabled={
-                              isProcessingVideo || cloudPolling || !subtitles
+                              (isProcessingVideo || cloudPolling) && !processorReady || !subtitles
                             }
                           >
                             {isProcessingVideo ? (
