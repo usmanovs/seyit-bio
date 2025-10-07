@@ -1049,8 +1049,9 @@ export const KyrgyzSubtitleGenerator = () => {
       await ffmpeg.writeFile('input.mp4', await fetchFile(videoFile));
       setProcessingProgress(10);
       
-      // Clean and prepare SRT content
-      let cleanSubtitles = subtitles.trim();
+      // Clean and prepare SRT content - use edited subtitles if available
+      const useSubs = editedSubtitles || subtitles;
+      let cleanSubtitles = useSubs.trim();
       if (cleanSubtitles.startsWith('```')) {
         cleanSubtitles = cleanSubtitles.replace(/^```[a-z]*\n/, '').replace(/\n?```$/, '');
       }
