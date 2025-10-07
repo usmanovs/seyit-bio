@@ -307,9 +307,13 @@ export const KyrgyzSubtitleGenerator = () => {
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !subtitleBlobUrl) return;
+    
+    console.log('[KyrgyzSubtitleGenerator] Subtitle blob updated, reloading video track');
+    
     try {
       video.load();
     } catch {}
+    
     const showTracks = () => {
       const tracks = video.textTracks;
       console.log('[KyrgyzSubtitleGenerator] textTracks count:', tracks.length);
@@ -318,20 +322,25 @@ export const KyrgyzSubtitleGenerator = () => {
         console.log('[KyrgyzSubtitleGenerator] set track', i, 'mode to', tracks[i].mode, 'cues:', tracks[i].cues?.length ?? 0);
       }
     };
+    
     video.addEventListener('loadeddata', showTracks, {
       once: true
     } as any);
     const t = trackRef.current;
-    if (t) t.addEventListener('load', showTracks, {
-      once: true
-    } as any);
+    if (t) {
+      t.addEventListener('load', showTracks, {
+        once: true
+      } as any);
+    }
+    
     const id = setTimeout(showTracks, 800);
+    
     return () => {
       video.removeEventListener('loadeddata', showTracks as any);
       if (t) t.removeEventListener('load', showTracks as any);
       clearTimeout(id);
     };
-  }, [subtitleBlobUrl, captionStyle]);
+  }, [subtitleBlobUrl, captionStyle, selectedLanguage]);
   useEffect(() => {
     const video = videoRef.current;
     if (!video || parsedCues.length === 0) {
@@ -393,19 +402,19 @@ export const KyrgyzSubtitleGenerator = () => {
   useEffect(() => {
     // Only regenerate if language actually changed (not on initial mount)
     if (prevLanguageRef.current !== selectedLanguage && videoPath && subtitles && !isGenerating) {
-      toast.info(`Regenerating subtitles in ${LANGUAGE_NAMES[selectedLanguage] || selectedLanguage}...`);
+      console.log(`[KyrgyzSubtitleGenerator] Language changed from ${prevLanguageRef.current} to ${selectedLanguage}, regenerating subtitles`);
+      toast.info(`Updating subtitles to ${LANGUAGE_NAMES[selectedLanguage] || selectedLanguage}...`);
+      
+      // Clear current subtitle blob to force track refresh
+      if (subtitleBlobUrl) {
+        URL.revokeObjectURL(subtitleBlobUrl);
+        setSubtitleBlobUrl(null);
+      }
+      
       generateSubtitlesForPath(videoPath);
-      // Ensure the video track uses the correct language metadata
-      setTimeout(() => {
-        const t = trackRef.current;
-        if (t) {
-          t.srclang = selectedLanguage;
-          t.label = LANGUAGE_NAMES[selectedLanguage] || selectedLanguage;
-        }
-      }, 0);
     }
     prevLanguageRef.current = selectedLanguage;
-  }, [selectedLanguage]);
+  }, [selectedLanguage, videoPath, subtitles, isGenerating, subtitleBlobUrl]);
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -1766,23 +1775,33 @@ export const KyrgyzSubtitleGenerator = () => {
               <div className="space-y-2">
                 <div className="p-2 h-[800px] flex flex-col">
                   <div className="flex-1 flex items-center justify-center overflow-auto">
-                    <video key={subtitleBlobUrl || 'no-vtt'} ref={videoRef} src={videoUrl} controls className="rounded max-w-full max-h-full object-contain" crossOrigin="anonymous" onLoadedMetadata={() => {
-                  if (videoRef.current) {
-                    const tracks = videoRef.current.textTracks;
-                    for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
-                  }
-                }} onLoadedData={() => {
-                  if (videoRef.current) {
-                    const tracks = videoRef.current.textTracks;
-                    for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
-                  }
-                }}>
+                    <video 
+                      key={`${videoUrl}-${subtitleBlobUrl}-${selectedLanguage}`} 
+                      ref={videoRef} 
+                      src={videoUrl} 
+                      controls 
+                      className="rounded max-w-full max-h-full object-contain" 
+                      crossOrigin="anonymous" 
+                      onLoadedMetadata={() => {
+                        if (videoRef.current) {
+                          const tracks = videoRef.current.textTracks;
+                          for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
+                        }
+                      }} 
+                      onLoadedData={() => {
+                        if (videoRef.current) {
+                          const tracks = videoRef.current.textTracks;
+                          for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
+                        }
+                      }}
+                    >
                       {subtitleBlobUrl && (
                         <track
+                          key={`track-${subtitleBlobUrl}-${selectedLanguage}`}
                           kind="captions"
                           src={subtitleBlobUrl}
                           srcLang={selectedLanguage}
-                          label={selectedLanguage === 'ky' ? 'Kyrgyz' : selectedLanguage === 'kk' ? 'Kazakh' : selectedLanguage === 'uz' ? 'Uzbek' : selectedLanguage === 'ru' ? 'Russian' : 'Turkish'}
+                          label={LANGUAGE_NAMES[selectedLanguage] || selectedLanguage}
                           default
                           ref={trackRef}
                         />
@@ -1791,9 +1810,11 @@ export const KyrgyzSubtitleGenerator = () => {
                   </div>
                 </div>
 
-                {isGenerating && !subtitles && <div className="flex items-center justify-center p-3 border rounded-lg">
-                    <Loader2 className="w-6 h-6 animate-spin mr-2" />
-                    <span className="text-sm text-muted-foreground">Generating Kyrgyz subtitles...</span>
+                {isGenerating && <div className="flex items-center justify-center p-3 border rounded-lg bg-primary/5">
+                    <Loader2 className="w-6 h-6 animate-spin mr-2 text-primary" />
+                    <span className="text-sm font-medium">
+                      {subtitles ? `Updating subtitles to ${LANGUAGE_NAMES[selectedLanguage]}...` : `Generating ${LANGUAGE_NAMES[selectedLanguage]} subtitles...`}
+                    </span>
                   </div>}
               </div>
             </div>}
