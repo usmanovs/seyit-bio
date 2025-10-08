@@ -84,7 +84,10 @@ export const KyrgyzSubtitleGenerator = () => {
   const [captionStyle, setCaptionStyle] = useState<string>('outline');
   const [addEmojis, setAddEmojis] = useState<boolean>(true);
   const [correctSpelling, setCorrectSpelling] = useState<boolean>(true);
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('ky');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(() => {
+    const saved = localStorage.getItem('preferredSubtitleLanguage');
+    return saved || 'ky';
+  });
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
   const [titleVariations, setTitleVariations] = useState<string[]>([]);
   const [isGeneratingSummaries, setIsGeneratingSummaries] = useState(false);
@@ -388,6 +391,11 @@ export const KyrgyzSubtitleGenerator = () => {
   // Auto-regenerate subtitles when language changes
   const prevLanguageRef = useRef(selectedLanguage);
   const languageChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Save language preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('preferredSubtitleLanguage', selectedLanguage);
+  }, [selectedLanguage]);
   
   useEffect(() => {
     // Only regenerate if language actually changed and we have necessary data
