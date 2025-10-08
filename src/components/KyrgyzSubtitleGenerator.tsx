@@ -310,10 +310,6 @@ export const KyrgyzSubtitleGenerator = () => {
     
     console.log('[KyrgyzSubtitleGenerator] Subtitle blob updated, reloading video track');
     
-    try {
-      video.load();
-    } catch {}
-    
     const showTracks = () => {
       const tracks = video.textTracks;
       console.log('[KyrgyzSubtitleGenerator] textTracks count:', tracks.length);
@@ -323,24 +319,16 @@ export const KyrgyzSubtitleGenerator = () => {
       }
     };
     
-    video.addEventListener('loadeddata', showTracks, {
-      once: true
-    } as any);
-    const t = trackRef.current;
-    if (t) {
-      t.addEventListener('load', showTracks, {
-        once: true
-      } as any);
-    }
+    // Reload video to apply new track
+    video.load();
     
-    const id = setTimeout(showTracks, 800);
+    // Show tracks immediately after load
+    video.addEventListener('loadeddata', showTracks, { once: true });
     
     return () => {
-      video.removeEventListener('loadeddata', showTracks as any);
-      if (t) t.removeEventListener('load', showTracks as any);
-      clearTimeout(id);
+      video.removeEventListener('loadeddata', showTracks);
     };
-  }, [subtitleBlobUrl, captionStyle, selectedLanguage]);
+  }, [subtitleBlobUrl]);
   useEffect(() => {
     const video = videoRef.current;
     if (!video || parsedCues.length === 0) {
@@ -399,22 +387,45 @@ export const KyrgyzSubtitleGenerator = () => {
 
   // Auto-regenerate subtitles when language changes
   const prevLanguageRef = useRef(selectedLanguage);
+  const languageChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   useEffect(() => {
-    // Only regenerate if language actually changed (not on initial mount)
-    if (prevLanguageRef.current !== selectedLanguage && videoPath && subtitles && !isGenerating) {
-      console.log(`[KyrgyzSubtitleGenerator] Language changed from ${prevLanguageRef.current} to ${selectedLanguage}, regenerating subtitles`);
-      toast.info(`Updating subtitles to ${LANGUAGE_NAMES[selectedLanguage] || selectedLanguage}...`);
+    // Only regenerate if language actually changed and we have necessary data
+    if (prevLanguageRef.current !== selectedLanguage && prevLanguageRef.current !== '' && videoPath && subtitles) {
+      console.log(`[KyrgyzSubtitleGenerator] Language changed from ${prevLanguageRef.current} to ${selectedLanguage}`);
       
-      // Clear current subtitle blob to force track refresh
-      if (subtitleBlobUrl) {
-        URL.revokeObjectURL(subtitleBlobUrl);
-        setSubtitleBlobUrl(null);
+      // Clear any pending language change
+      if (languageChangeTimeoutRef.current) {
+        clearTimeout(languageChangeTimeoutRef.current);
       }
       
-      generateSubtitlesForPath(videoPath);
+      // Debounce to handle rapid language switches
+      languageChangeTimeoutRef.current = setTimeout(() => {
+        if (isGenerating) {
+          console.log('[KyrgyzSubtitleGenerator] Skipping regeneration - already generating');
+          return;
+        }
+        
+        toast.info(`Updating subtitles to ${LANGUAGE_NAMES[selectedLanguage] || selectedLanguage}...`);
+        
+        // Clear current subtitle blob
+        if (subtitleBlobUrl) {
+          URL.revokeObjectURL(subtitleBlobUrl);
+          setSubtitleBlobUrl(null);
+        }
+        
+        generateSubtitlesForPath(videoPath);
+      }, 300);
     }
+    
     prevLanguageRef.current = selectedLanguage;
-  }, [selectedLanguage, videoPath, subtitles, isGenerating, subtitleBlobUrl]);
+    
+    return () => {
+      if (languageChangeTimeoutRef.current) {
+        clearTimeout(languageChangeTimeoutRef.current);
+      }
+    };
+  }, [selectedLanguage]);
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -1776,28 +1787,16 @@ export const KyrgyzSubtitleGenerator = () => {
                 <div className="p-2 h-[800px] flex flex-col">
                   <div className="flex-1 flex items-center justify-center overflow-auto">
                     <video 
-                      key={`${videoUrl}-${subtitleBlobUrl}-${selectedLanguage}`} 
+                      key={videoUrl} 
                       ref={videoRef} 
                       src={videoUrl} 
                       controls 
                       className="rounded max-w-full max-h-full object-contain" 
-                      crossOrigin="anonymous" 
-                      onLoadedMetadata={() => {
-                        if (videoRef.current) {
-                          const tracks = videoRef.current.textTracks;
-                          for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
-                        }
-                      }} 
-                      onLoadedData={() => {
-                        if (videoRef.current) {
-                          const tracks = videoRef.current.textTracks;
-                          for (let i = 0; i < tracks.length; i++) tracks[i].mode = 'showing';
-                        }
-                      }}
+                      crossOrigin="anonymous"
                     >
                       {subtitleBlobUrl && (
                         <track
-                          key={`track-${subtitleBlobUrl}-${selectedLanguage}`}
+                          key={subtitleBlobUrl}
                           kind="captions"
                           src={subtitleBlobUrl}
                           srcLang={selectedLanguage}
