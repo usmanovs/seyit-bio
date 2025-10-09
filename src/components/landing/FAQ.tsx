@@ -4,6 +4,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Upload, Loader2, Download, Video, Sparkles, Lock, Clock, CheckCircle2, ArrowRight } from "lucide-react";
 
 const faqs = [
   {
