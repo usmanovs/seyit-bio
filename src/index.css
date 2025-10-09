@@ -112,5 +112,12 @@ All colors MUST be HSL.
 /* Ensure browser-rendered captions can display emojis */
 video::cue, ::cue {
   /* Prefer system color emoji fonts first, fallback to Symbola last */
-  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'EmojiOne Color', 'Segoe UI Symbol', 'Symbola', ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'EmojiOne Color', 'Segoe UI Symbol', 'Symbola', ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 1.2em !important;
+  line-height: 1.4 !important;
+}
+
+/* Ensure emojis render properly in text areas and inputs */
+textarea, input {
+  font-family: system-ui, -apple-system, 'Segoe UI', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
 }

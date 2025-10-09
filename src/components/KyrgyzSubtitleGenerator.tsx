@@ -707,7 +707,8 @@ export const KyrgyzSubtitleGenerator = () => {
 
       // Update the video player subtitles
       const webvtt = convertSrtToWebVtt(data.subtitles);
-      const blob = new Blob([webvtt], { type: 'text/vtt' });
+      console.log('[KyrgyzSubtitleGenerator] Modified subtitle preview (first 300 chars):', data.subtitles.substring(0, 300));
+      const blob = new Blob([webvtt], { type: 'text/vtt;charset=utf-8' });
       const blobUrl = URL.createObjectURL(blob);
       setSubtitleBlobUrl(blobUrl);
 
@@ -790,9 +791,10 @@ export const KyrgyzSubtitleGenerator = () => {
 
       // Convert SRT to WebVTT format for video player
       const webvtt = convertSrtToWebVtt(data.subtitles);
+      console.log('[KyrgyzSubtitleGenerator] Subtitle preview (first 300 chars):', data.subtitles.substring(0, 300));
       console.log('[KyrgyzSubtitleGenerator] WebVTT preview:', webvtt.substring(0, 200));
       const blob = new Blob([webvtt], {
-        type: 'text/vtt'
+        type: 'text/vtt;charset=utf-8'
       });
       const blobUrl = URL.createObjectURL(blob);
       setSubtitleBlobUrl(blobUrl);
@@ -960,8 +962,9 @@ export const KyrgyzSubtitleGenerator = () => {
   const applySubtitleChanges = () => {
     setParsedCues(parseSrtToCues(editedSubtitles));
     const webvtt = convertSrtToWebVtt(editedSubtitles);
+    console.log('[KyrgyzSubtitleGenerator] Applying subtitle changes, preview:', editedSubtitles.substring(0, 300));
     const blob = new Blob([webvtt], {
-      type: 'text/vtt'
+      type: 'text/vtt;charset=utf-8'
     });
     const blobUrl = URL.createObjectURL(blob);
     setSubtitleBlobUrl(blobUrl);
