@@ -1247,6 +1247,18 @@ STYLE
           body: { predictionId, requestId: generateRequestId() },
         });
         if (error) throw error;
+        
+        // Check for explicit error response
+        if (data?.success === false) {
+          setCloudStatus('failed');
+          setCloudPolling(false);
+          setCloudStartTime(0);
+          localStorage.removeItem('cloudPredictionId');
+          localStorage.removeItem('cloudStartTime');
+          toast.error(data?.details || data?.error || 'Cloud processing failed');
+          return true;
+        }
+        
         if (data?.status === 'succeeded' && data?.videoUrl) {
           setCloudStatus('succeeded');
           setCloudVideoUrl(data.videoUrl);
@@ -1340,6 +1352,12 @@ STYLE
         },
       });
       if (error) throw error;
+      
+      // Check for explicit error response
+      if (data?.success === false) {
+        throw new Error(data?.details || data?.error || 'Cloud processing failed');
+      }
+      
       if (data?.predictionId) {
         setCloudPredictionId(data.predictionId);
         pollCloudPrediction(data.predictionId, startTime, 0);

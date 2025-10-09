@@ -244,8 +244,9 @@ serve(async (req) => {
     const style = styleMapping[styleId] || styleMapping.outline;
     console.log(`[${requestId}] Using style: ${styleId}`, style);
 
-    // Build force_style string from style parameters
+    // Build force_style string from style parameters (exclude FontName as we'll add it explicitly)
     const forceStyleParams = Object.entries(style)
+      .filter(([key]) => key !== 'FontName')
       .map(([key, value]) => `${key}=${value}`)
       .join(',');
 
@@ -332,10 +333,15 @@ ffmpeg -i input.mp4 -vf "subtitles=subs.srt:charenc=UTF-8:fontsdir=.:force_style
       stack: error.stack?.substring(0, 200),
       timestamp: new Date().toISOString()
     });
+    // Return 200 with error details instead of 500 to avoid triggering "non-2xx" errors
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        success: false, 
+        error: error.message,
+        details: 'Video processing failed. Please try again or contact support if the issue persists.'
+      }),
       {
-        status: 500,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
