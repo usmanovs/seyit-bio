@@ -90,7 +90,7 @@ serve(async (req) => {
     }
 
     // Case 2: Start new job - body contains videoPath and subtitles
-    const { videoPath, subtitles } = body;
+    const { videoPath, subtitles, fontUrl } = body;
     
     if (!videoPath || !subtitles) {
       console.error(`[${requestId}] VALIDATION ERROR: Missing videoPath or subtitles`);
@@ -128,7 +128,7 @@ serve(async (req) => {
           .trimEnd();
       })
       .join('\n');
-    const srtBlob = new Blob([srtContent], { type: 'text/plain' });
+    const srtBlob = new Blob([srtContent], { type: 'text/plain;charset=utf-8' });
     const srtFileName = `subtitles_${Date.now()}.srt`;
     
     console.log(`[${requestId}] SRT file prepared`, {
@@ -164,7 +164,7 @@ serve(async (req) => {
     const styleMapping: Record<string, any> = {
       // Stroke style: White text with thick black outline (matches 2em, bold, 4px shadow in 8 directions)
       outline: {
-        FontName: 'Noto Color Emoji,Noto Sans,Arial,sans-serif',
+        FontName: 'Symbola',
         FontSize: 20,  // Further reduced for better readability
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 1,
@@ -183,7 +183,7 @@ serve(async (req) => {
       },
       // Subtle style: Light text with semi-transparent background (matches 1.3em, weight 300)
       minimal: {
-        FontName: 'Noto Color Emoji,Noto Sans,Arial,sans-serif',
+        FontName: 'Symbola',
         FontSize: 18,  // Further reduced
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 0,  // Light weight
@@ -202,7 +202,7 @@ serve(async (req) => {
       },
       // Highlight style: Black text with yellow glow and white outline (matches weight 900)
       green: {
-        FontName: 'Noto Color Emoji,Noto Sans,Arial,sans-serif',
+        FontName: 'Symbola',
         FontSize: 22,  // Further reduced
         PrimaryColour: '&H000000',  // Black text
         Bold: 1,
@@ -222,7 +222,7 @@ serve(async (req) => {
       },
       // Framed style: Bright green text with border and glow (matches 1.6em, bold, green border)
       boxed: {
-        FontName: 'Noto Color Emoji,Noto Sans,Arial,sans-serif',
+        FontName: 'Symbola',
         FontSize: 24,  // Further reduced
         PrimaryColour: '&H00FF00',  // Bright green (00FF00 in BGR)
         Bold: 1,
@@ -251,17 +251,31 @@ serve(async (req) => {
 
     console.log(`[${requestId}] Force style string:`, forceStyleParams);
 
+    // Build files array - include font if provided
+    const files = [publicUrl, srtUrl];
+    if (fontUrl) {
+      console.log(`[${requestId}] Adding font URL:`, fontUrl);
+      files.push(fontUrl);
+    }
+
     // Start Replicate job using predictions API
     const prediction = await replicate.predictions.create({
       model: 'fofr/smart-ffmpeg',
       input: {
-        files: [publicUrl, srtUrl],
+        files,
         prompt: `Burn subtitles from SRT file onto video using FFmpeg with these EXACT parameters:
 
-CRITICAL FFmpeg SUBTITLE FILTER PARAMETERS:
-Use subtitles filter with force_style option. Apply these ASS style parameters EXACTLY as specified:
+CRITICAL: RENAME DOWNLOADED FILES FIRST
+- Rename the subtitle file to "subs.srt"
+- If a font file (.ttf) was downloaded, rename it to "Symbola.ttf"
+- This ensures consistent references in the FFmpeg command
 
-${forceStyleParams}
+CRITICAL FFmpeg SUBTITLE FILTER PARAMETERS:
+Use subtitles filter with charenc=UTF-8, fontsdir=., and force_style options.
+Force FontName to "Symbola" (or Symbola if the font is present).
+Apply these ASS style parameters EXACTLY as specified:
+
+FontName=Symbola,${forceStyleParams}
 
 SPACING IS CRITICAL:
 - Spacing=0 means NO letter spacing (characters are NOT spread apart)
@@ -283,9 +297,10 @@ AUDIO:
 - Set -movflags +faststart
 
 EMOJI SUPPORT:
-- Font must support emoji rendering
-- Use Noto Color Emoji, Segoe UI Emoji, or system emoji font
-- Ensure emoji render as colored graphics, not monochrome
+- UTF-8 character encoding is mandatory (charenc=UTF-8)
+- Font directory is set to current dir (fontsdir=.)
+- Symbola font (if provided) includes comprehensive emoji coverage
+- Emoji will render as monochrome glyphs (full-color emoji not supported via libass)
 
 OUTPUT:
 - Format: MP4 (H.264)
@@ -293,7 +308,7 @@ OUTPUT:
 - Maximum 3 attempts
 
 Example FFmpeg command structure:
-ffmpeg -i video.mp4 -vf "subtitles=subs.srt:force_style='${forceStyleParams}'" -c:v libx264 -crf 15 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4`,
+ffmpeg -i input.mp4 -vf "subtitles=subs.srt:charenc=UTF-8:fontsdir=.:force_style='FontName=Symbola,${forceStyleParams}'" -c:v libx264 -crf 15 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4`,
         max_attempts: 3,
       },
     } as any);

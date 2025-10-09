@@ -249,10 +249,18 @@ export const KyrgyzSubtitleGenerator = () => {
         console.log('[FFmpeg] FFmpeg loaded successfully (jsDelivr)');
         toast.success('Video processor ready!');
       } catch (e2) {
-        console.warn('[FFmpeg] Both CDNs failed or timed out, will use cloud processing:', e2);
-        setFfmpegError('Video processor unavailable. Cloud processing will be used.');
-        toast.info('Using cloud processing for video rendering. You can proceed.');
-        // Don't throw - cloud processing is a valid fallback
+        console.warn('[FFmpeg] Both CDNs failed, trying local /ffmpeg...', e2);
+        try {
+          await withTimeout(loadFFmpegCore('/ffmpeg'));
+          setFfmpegLoaded(true);
+          console.log('[FFmpeg] FFmpeg loaded successfully (local)');
+          toast.success('Video processor ready!');
+        } catch (e3) {
+          console.warn('[FFmpeg] All sources failed, will use cloud processing:', e3);
+          setFfmpegError('Video processor unavailable. Cloud processing will be used.');
+          toast.info('Using cloud processing for video rendering. You can proceed.');
+          // Don't throw - cloud processing is a valid fallback
+        }
       }
     } finally {
       setFfmpegLoading(false);
@@ -1328,6 +1336,7 @@ STYLE
           subtitles: useSubs,
           styleId: currentStyle.id,
           requestId: rid,
+          fontUrl: `${window.location.origin}/fonts/Symbola.ttf`,
         },
       });
       if (error) throw error;
