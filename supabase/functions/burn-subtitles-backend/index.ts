@@ -77,7 +77,7 @@ serve(async (req) => {
             error: errorMessage,
             details: prediction.logs || 'No additional details available'
           }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
         );
       }
 
