@@ -927,7 +927,13 @@ export const KyrgyzSubtitleGenerator = () => {
       return lines.join('\n');
     }).join('\n\n');
     const withDots = cues.replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2');
-    return 'WEBVTT\n\n' + withDots;
+    const styleHeader = `WEBVTT
+
+STYLE
+::cue { font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'EmojiOne Color', 'Segoe UI Symbol', 'Symbola', ui-sans-serif, system-ui, sans-serif; font-size: 1.1em; line-height: 1.35; }
+
+`;
+    return styleHeader + withDots;
   };
   const parseSrtToCues = (srt: string) => {
     const normalized = srt

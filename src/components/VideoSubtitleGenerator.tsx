@@ -95,7 +95,13 @@ export const VideoSubtitleGenerator = () => {
       if (vttUrl) {
         URL.revokeObjectURL(vttUrl);
       }
-      const vttText = 'WEBVTT\n\n' + String(data.srt || '')
+      const styleHeader = `WEBVTT
+
+STYLE
+::cue { font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'EmojiOne Color', 'Segoe UI Symbol', 'Symbola', ui-sans-serif, system-ui, sans-serif; font-size: 1.1em; line-height: 1.35; }
+
+`;
+      const vttText = styleHeader + String(data.srt || '')
         .replace(/\r+/g, '')
         .replace(/^\d+\s*$/gm, '')
         .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
