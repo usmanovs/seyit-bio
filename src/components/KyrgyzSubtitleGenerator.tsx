@@ -1352,6 +1352,10 @@ STYLE
       setCloudPolling(true);
       setCloudStartTime(startTime);
       
+      // Generate new poll token to cancel any previous polling
+      cloudPollTokenRef.current += 1;
+      const currentToken = cloudPollTokenRef.current;
+      
       const { data, error } = await supabase.functions.invoke('burn-subtitles-backend', {
         body: {
           videoPath,
@@ -1359,8 +1363,7 @@ STYLE
           styleId: currentStyle.id,
           requestId: rid,
           fontUrls: [
-            `${window.location.origin}/fonts/Symbola.ttf`,
-            `${window.location.origin}/fonts/NotoEmoji.ttf`
+            `${window.location.origin}/fonts/Symbola.ttf`
           ],
         },
       });
@@ -1373,8 +1376,8 @@ STYLE
       
       if (data?.predictionId) {
         setCloudPredictionId(data.predictionId);
-        pollCloudPrediction(data.predictionId, startTime, 0);
-        toast.info('Started cloud processing... This may take 2-10 minutes depending on video size.');
+        pollCloudPrediction(data.predictionId, startTime, 0, currentToken);
+        toast.info('Started cloud processing with emoji support... This may take 2-10 minutes depending on video size.');
       } else if (data?.videoUrl) {
         setCloudVideoUrl(data.videoUrl);
         setCloudStatus('succeeded');

@@ -90,7 +90,7 @@ serve(async (req) => {
     }
 
     // Case 2: Start new job - body contains videoPath and subtitles
-    const { videoPath, subtitles, fontUrl } = body;
+    const { videoPath, subtitles, fontUrls } = body;
     
     if (!videoPath || !subtitles) {
       console.error(`[${requestId}] VALIDATION ERROR: Missing videoPath or subtitles`);
@@ -252,11 +252,11 @@ serve(async (req) => {
 
     console.log(`[${requestId}] Force style string:`, forceStyleParams);
 
-    // Build files array - include font if provided
+    // Build files array - include fonts if provided (emoji support)
     const files = [publicUrl, srtUrl];
-    if (fontUrl) {
-      console.log(`[${requestId}] Adding font URL:`, fontUrl);
-      files.push(fontUrl);
+    if (fontUrls && Array.isArray(fontUrls)) {
+      console.log(`[${requestId}] Adding ${fontUrls.length} font URL(s):`, fontUrls);
+      files.push(...fontUrls);
     }
 
     // Start Replicate job using predictions API
@@ -268,12 +268,13 @@ serve(async (req) => {
 
 CRITICAL: RENAME DOWNLOADED FILES FIRST
 - Rename the subtitle file to "subs.srt"
-- If a font file (.ttf) was downloaded, rename it to "Symbola.ttf"
-- This ensures consistent references in the FFmpeg command
+- If font files (.ttf) were downloaded, rename the FIRST .ttf to "Symbola.ttf" (priority emoji font)
+- If additional fonts exist, keep them with original names as fallback
+- This ensures consistent references in the FFmpeg command with emoji support
 
 CRITICAL FFmpeg SUBTITLE FILTER PARAMETERS:
 Use subtitles filter with charenc=UTF-8, fontsdir=., and force_style options.
-Force FontName to "Symbola" (or Symbola if the font is present).
+Force FontName to "Symbola" to enable emoji rendering.
 Apply these ASS style parameters EXACTLY as specified:
 
 FontName=Symbola,${forceStyleParams}
@@ -297,19 +298,27 @@ AUDIO:
 - Or re-encode: -c:a aac -b:a 256k
 - Set -movflags +faststart
 
-EMOJI SUPPORT:
-- UTF-8 character encoding is mandatory (charenc=UTF-8)
-- Font directory is set to current dir (fontsdir=.)
-- Symbola font (if provided) includes comprehensive emoji coverage
+EMOJI SUPPORT (CRITICAL FOR CORRECT RENDERING):
+- UTF-8 character encoding is MANDATORY: charenc=UTF-8
+- Font directory MUST be set to current dir: fontsdir=.
+- FontName=Symbola in force_style ensures emoji font is used
+- Symbola.ttf (renamed from first provided .ttf) includes comprehensive Unicode emoji coverage
+- Additional emoji fonts may be present as fallback in working directory
 - Emoji will render as monochrome glyphs (full-color emoji not supported via libass)
+- This configuration ensures ALL emoji characters (👋 🏙️ 🔜 🇰🇬 🎤 👀 🤗 etc.) display correctly in final video
 
 OUTPUT:
 - Format: MP4 (H.264)
 - Optimize for web playback
 - Maximum 3 attempts
 
-Example FFmpeg command structure:
-ffmpeg -i input.mp4 -vf "subtitles=subs.srt:charenc=UTF-8:fontsdir=.:force_style='FontName=Symbola,${forceStyleParams}'" -c:v libx264 -crf 15 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4`,
+Example FFmpeg command structure (MUST match this exactly):
+ffmpeg -y -i input.mp4 -vf "subtitles=subs.srt:charenc=UTF-8:fontsdir=.:force_style='FontName=Symbola,FontSize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=3,Shadow=0,Bold=1,Italic=0,Underline=0,Spacing=0,Alignment=2,MarginL=20,MarginR=20,MarginV=40'" -c:v libx264 -crf 15 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4
+
+VERIFICATION:
+- After rendering, ALL emoji in subtitles MUST be visible in the output .mp4 file
+- Emoji should NOT appear as empty squares or missing characters
+- Test by checking common emoji: 👋 🏙️ 🔜 🇰🇬 🎤 👀 🤗`,
         max_attempts: 3,
       },
     } as any);
