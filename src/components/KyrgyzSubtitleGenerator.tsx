@@ -123,6 +123,7 @@ export const KyrgyzSubtitleGenerator = () => {
     return saved ? parseInt(saved, 10) : 0;
   });
   const [cloudElapsedTime, setCloudElapsedTime] = useState<number>(0);
+  const cloudPollTokenRef = useRef(0);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [processorReady, setProcessorReady] = useState(false);
   
@@ -200,7 +201,7 @@ export const KyrgyzSubtitleGenerator = () => {
         console.log('[Cloud] Resuming cloud processing from previous session...');
         setCloudPolling(true);
         setCloudStartTime(startTime);
-        pollCloudPrediction(savedPredictionId, startTime, Math.floor(elapsed / 4000));
+        pollCloudPrediction(savedPredictionId, startTime, Math.floor(elapsed / 4000), cloudPollTokenRef.current);
         toast.info('Resuming video processing from previous session...');
       } else {
         // Clear stale data
@@ -502,6 +503,8 @@ export const KyrgyzSubtitleGenerator = () => {
     localStorage.removeItem('cloudPredictionId');
     localStorage.removeItem('cloudVideoUrl');
     localStorage.removeItem('cloudStartTime');
+    // Cancel any in-flight pollers
+    cloudPollTokenRef.current += 1;
     setIsUploading(true);
     setUploadProgress(0);
     
@@ -1218,7 +1221,14 @@ STYLE
   };
 
   // Cloud burning fallback via backend with timeout
-  const pollCloudPrediction = async (predictionId: string, startTime: number = Date.now(), attemptCount: number = 0) => {
+  const pollCloudPrediction = async (
+    predictionId: string,
+    startTime: number = Date.now(),
+    attemptCount: number = 0,
+    token: number = cloudPollTokenRef.current
+  ) => {
+    // Abort if a new job has started
+    if (token !== cloudPollTokenRef.current) return;
     setCloudPolling(true);
     setCloudStatus('queued');
     
@@ -1307,7 +1317,7 @@ STYLE
       const done = await pollOnce();
       // Use longer polling interval after 2 minutes to reduce server load
       const pollInterval = attemptCount > 30 ? 6000 : 4000;
-      if (!done) setTimeout(() => pollCloudPrediction(predictionId, startTime, attemptCount + 1), pollInterval);
+      if (!done) setTimeout(() => pollCloudPrediction(predictionId, startTime, attemptCount + 1, token), pollInterval);
     } catch (e: any) {
       setCloudPolling(false);
       setCloudStatus('error');
@@ -1348,7 +1358,10 @@ STYLE
           subtitles: useSubs,
           styleId: currentStyle.id,
           requestId: rid,
-          fontUrl: `${window.location.origin}/fonts/Symbola.ttf`,
+          fontUrls: [
+            `${window.location.origin}/fonts/Symbola.ttf`,
+            `${window.location.origin}/fonts/NotoEmoji.ttf`
+          ],
         },
       });
       if (error) throw error;
