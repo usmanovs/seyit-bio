@@ -45,24 +45,18 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
+      const code = response.status;
       const errorText = await response.text();
-      console.error('[GEMINI-CHAT] AI Gateway error:', response.status, errorText);
-      
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'Payment required. Please add credits to your workspace.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      throw new Error(`AI Gateway error: ${response.status} ${errorText}`);
+      console.error('[GEMINI-CHAT] AI Gateway error:', code, errorText);
+      const msg = code === 429
+        ? 'Rate limit exceeded. Please try again later.'
+        : code === 402
+        ? 'Payment required. Please add credits to your workspace.'
+        : `AI Gateway error: ${code}`;
+      return new Response(
+        JSON.stringify({ success: false, code, error: msg, details: errorText }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const data = await response.json();
@@ -78,8 +72,8 @@ serve(async (req) => {
   } catch (error) {
     console.error('[GEMINI-CHAT] Error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

@@ -71,21 +71,18 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'Payment required. Please add credits to your workspace.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      const code = response.status;
       const errorText = await response.text();
-      console.error('[VIDEO-SUMMARY] AI gateway error:', response.status, errorText);
-      throw new Error('AI gateway error');
+      console.error('[VIDEO-SUMMARY] AI gateway error:', code, errorText);
+      const msg = code === 429
+        ? 'Rate limit exceeded. Please try again later.'
+        : code === 402
+        ? 'Payment required. Please add credits to your workspace.'
+        : 'AI gateway error';
+      return new Response(
+        JSON.stringify({ success: false, code, error: msg, details: errorText }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const data = await response.json();
@@ -106,9 +103,9 @@ serve(async (req) => {
   } catch (error: any) {
     console.error('[VIDEO-SUMMARY] Error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ success: false, error: error.message }),
       {
-        status: 500,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );

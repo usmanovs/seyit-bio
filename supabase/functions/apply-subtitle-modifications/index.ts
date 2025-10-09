@@ -105,9 +105,9 @@ Return ONLY the modified subtitles in the exact same SRT format with the same ti
     console.error('Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ success: false, error: errorMessage }),
       { 
-        status: 500, 
+        status: 200, 
         headers: { 
           ...corsHeaders, 
           'Content-Type': 'application/json' 

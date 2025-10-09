@@ -38,9 +38,13 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
+      const code = response.status;
       const errorText = await response.text();
-      console.error('[GENERATE-NEWS-IMAGE] Error:', response.status, errorText);
-      throw new Error(`Image generation failed: ${response.status}`);
+      console.error('[GENERATE-NEWS-IMAGE] Error:', code, errorText);
+      return new Response(
+        JSON.stringify({ success: false, code, error: 'Image generation failed', details: errorText }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const data = await response.json();
@@ -60,8 +64,8 @@ serve(async (req) => {
   } catch (error) {
     console.error('[GENERATE-NEWS-IMAGE] Error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
