@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Loader2, Download, Video, Sparkles, Lock, Clock, CheckCircle2, ArrowRight } from "lucide-react";
+import { Upload, Loader2, Download, Video, Sparkles, Lock, Clock, CheckCircle2, ArrowRight, RefreshCw } from "lucide-react";
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -1220,6 +1220,50 @@ STYLE
     }
   };
 
+  // Manual queue clear/refresh function
+  const handleClearQueue = () => {
+    // Cancel any ongoing polling
+    cloudPollTokenRef.current += 1;
+    
+    // Reset all state
+    setVideoUrl(null);
+    setVideoPath(null);
+    setSubtitles("");
+    setEditedSubtitles("");
+    setTranscription("");
+    setSubtitleBlobUrl(null);
+    setParsedCues([]);
+    setCurrentCueIndex(-1);
+    setIsProcessingVideo(false);
+    setIsGenerating(false);
+    setIsUploading(false);
+    setProcessingStatus('');
+    setProcessingProgress(0);
+    setUploadProgress(0);
+    setHasUnsavedChanges(false);
+    setVideoFile(null);
+    
+    // Clear cloud processing state
+    setCloudPredictionId(null);
+    setCloudVideoUrl(null);
+    setCloudStatus('');
+    setCloudPolling(false);
+    setCloudStartTime(0);
+    setCloudElapsedTime(0);
+    
+    // Clear all localStorage
+    localStorage.removeItem('cloudPredictionId');
+    localStorage.removeItem('cloudVideoUrl');
+    localStorage.removeItem('cloudStartTime');
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    
+    toast.success('Queue cleared and refreshed');
+  };
+
   // Cloud burning fallback via backend with timeout
   const pollCloudPrediction = async (
     predictionId: string,
@@ -1548,9 +1592,19 @@ STYLE
       
       <Card className="max-w-4xl mx-auto relative">
 
-        <CardHeader className="text-center">
+        <CardHeader className="text-center relative">
           <CardTitle>Kyrgyz Video Subtitle Generator</CardTitle>
           <CardDescription>Upload a video and generate Kyrgyz subtitles</CardDescription>
+          <Button
+            onClick={handleClearQueue}
+            disabled={isUploading || isGenerating}
+            variant="outline"
+            size="sm"
+            className="absolute top-4 right-4"
+            title="Clear queue and refresh"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
         </CardHeader>
         <CardContent className="space-y-3">
           {/* Only show upload area when no video is uploaded */}
