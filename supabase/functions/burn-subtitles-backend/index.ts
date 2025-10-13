@@ -166,7 +166,7 @@ serve(async (req) => {
     const styleMapping: Record<string, any> = {
       // Stroke style: White text with thick black outline (matches 2em, bold, 4px shadow in 8 directions)
       outline: {
-        FontName: 'NotoEmoji-Regular',
+        FontName: 'Noto Emoji',
         FontSize: 28,  // Increased for better emoji readability
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 1,
@@ -185,7 +185,7 @@ serve(async (req) => {
       },
       // Subtle style: Light text with semi-transparent background (matches 1.3em, weight 300)
       minimal: {
-        FontName: 'NotoEmoji-Regular',
+        FontName: 'Noto Emoji',
         FontSize: 24,  // Increased for better emoji readability
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 0,  // Light weight
@@ -204,7 +204,7 @@ serve(async (req) => {
       },
       // Highlight style: Black text with yellow glow and white outline (matches weight 900)
       green: {
-        FontName: 'NotoEmoji-Regular',
+        FontName: 'Noto Emoji',
         FontSize: 30,  // Increased for better emoji readability
         PrimaryColour: '&H000000',  // Black text
         Bold: 1,
@@ -224,7 +224,7 @@ serve(async (req) => {
       },
       // Framed style: Bright green text with border and glow (matches 1.6em, bold, green border)
       boxed: {
-        FontName: 'NotoEmoji-Regular',
+        FontName: 'Noto Emoji',
         FontSize: 32,  // Increased for better emoji readability
         PrimaryColour: '&H00FF00',  // Bright green (00FF00 in BGR)
         Bold: 1,
@@ -253,12 +253,11 @@ serve(async (req) => {
 
     console.log(`[${requestId}] Force style string:`, forceStyleParams);
 
-    // Build files array - only use one emoji font to avoid conflicts
+    // Build files array - include fonts if provided (emoji support and fallback)
     const files = [publicUrl, srtUrl];
     if (fontUrls && Array.isArray(fontUrls) && fontUrls.length > 0) {
-      // Use only the first font (NotoEmoji-Regular)
-      console.log(`[${requestId}] Adding font URL:`, fontUrls[0]);
-      files.push(fontUrls[0]);
+      console.log(`[${requestId}] Adding ${fontUrls.length} font URL(s):`, fontUrls);
+      files.push(...fontUrls);
     }
 
     // Start Replicate job using predictions API with retry logic
@@ -278,11 +277,11 @@ serve(async (req) => {
 mv *.srt subtitles.srt
 
 # Step 2: Run FFmpeg with subtitle burning
-ffmpeg -y -i *.MP4 -vf "subtitles=subtitles.srt:fontsdir=.:force_style='${forceStyleParams}'" -c:v libx264 -crf 18 -preset medium -c:a copy -movflags +faststart output.mp4
+ffmpeg -y -i *.MP4 -vf "subtitles=subtitles.srt:charenc=UTF-8:fontsdir=.:force_style='${forceStyleParams}'" -c:v libx264 -crf 18 -preset medium -c:a copy -movflags +faststart output.mp4
 
 CRITICAL REQUIREMENTS:
 - Input video is *.MP4 in current directory
-- Font file NotoEmoji-Regular.ttf is in current directory
+- Font files (NotoEmoji-Regular.ttf, NotoSansSymbols2-Regular.ttf, Symbola.ttf) are in current directory
 - Must include fontsdir=. to load fonts from current directory
 - Use force_style parameters exactly as provided
 - Output file MUST be named output.mp4`,
