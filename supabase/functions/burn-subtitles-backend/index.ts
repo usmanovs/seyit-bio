@@ -123,8 +123,10 @@ serve(async (req) => {
         const isTiming = /^\d+:\d+:\d+[,.]\d+\s+-->\s+\d+:\d+:\d+[,.]\d+/.test(line);
         if (isTiming) return line.trim();
         return line
-          .replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, ' ') // exotic spaces to normal
-          .replace(/[ \t]{2,}/g, ' ') // collapse multiple spaces/tabs
+          .replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, ' ')
+          .replace(/\uFE0F/g, '') // strip emoji variation selector to improve fallback rendering
+          .replace(/\uFE0E/g, '') // strip text variation selector if present
+          .replace(/[ \t]{2,}/g, ' ')
           .trimEnd();
       })
       .join('\n');
@@ -274,15 +276,14 @@ serve(async (req) => {
 
 STEP 1 - Rename files:
 mv *.srt subs.srt
-mv *.ttf Symbola.ttf
 
 STEP 2 - Run FFmpeg with these exact parameters:
-ffmpeg -y -i *.MP4 -vf "subtitles=subs.srt:charenc=UTF-8:fontsdir=.:force_style='FontName=Symbola,${forceStyleParams}'" -c:v libx264 -crf 15 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4
+ffmpeg -y -i *.MP4 -vf "subtitles=subs.srt:charenc=UTF-8:fontsdir=.:force_style='FontName=${style.FontName},${forceStyleParams}'" -c:v libx264 -crf 15 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4
 
 CRITICAL:
 - Use single quotes around force_style value
 - Include charenc=UTF-8 for emoji support
-- Set fontsdir=. to use Symbola.ttf
+- Set fontsdir=. so all provided TTFs are available (do NOT rename fonts)
 - Copy audio stream with -c:a copy
 - Output file must be named output.mp4`,
             max_attempts: 2,
