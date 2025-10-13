@@ -166,7 +166,7 @@ serve(async (req) => {
     const styleMapping: Record<string, any> = {
       // Stroke style: White text with thick black outline (matches 2em, bold, 4px shadow in 8 directions)
       outline: {
-        FontName: 'Noto Emoji',
+        FontName: 'NotoEmoji-Regular',
         FontSize: 20,  // Further reduced for better readability
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 1,
@@ -185,7 +185,7 @@ serve(async (req) => {
       },
       // Subtle style: Light text with semi-transparent background (matches 1.3em, weight 300)
       minimal: {
-        FontName: 'Noto Emoji',
+        FontName: 'NotoEmoji-Regular',
         FontSize: 18,  // Further reduced
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 0,  // Light weight
@@ -204,7 +204,7 @@ serve(async (req) => {
       },
       // Highlight style: Black text with yellow glow and white outline (matches weight 900)
       green: {
-        FontName: 'Noto Emoji',
+        FontName: 'NotoEmoji-Regular',
         FontSize: 22,  // Further reduced
         PrimaryColour: '&H000000',  // Black text
         Bold: 1,
@@ -224,7 +224,7 @@ serve(async (req) => {
       },
       // Framed style: Bright green text with border and glow (matches 1.6em, bold, green border)
       boxed: {
-        FontName: 'Noto Emoji',
+        FontName: 'NotoEmoji-Regular',
         FontSize: 24,  // Further reduced
         PrimaryColour: '&H00FF00',  // Bright green (00FF00 in BGR)
         Bold: 1,
@@ -246,9 +246,8 @@ serve(async (req) => {
     const style = styleMapping[styleId] || styleMapping.outline;
     console.log(`[${requestId}] Using style: ${styleId}`, style);
 
-    // Build force_style string from style parameters (exclude FontName as we'll add it explicitly)
+    // Build force_style string from style parameters
     const forceStyleParams = Object.entries(style)
-      .filter(([key]) => key !== 'FontName')
       .map(([key, value]) => `${key}=${value}`)
       .join(',');
 
@@ -272,21 +271,17 @@ serve(async (req) => {
           model: 'fofr/smart-ffmpeg',
           input: {
             files,
-            prompt: `Execute this FFmpeg command to burn subtitles:
+            prompt: `Burn subtitles into video using this FFmpeg command:
 
-STEP 1 - Rename files:
-mv *.srt subs.srt
+mv *.srt subtitles.srt
 
-STEP 2 - Run FFmpeg with these exact parameters:
-ffmpeg -y -i *.MP4 -vf "subtitles=subs.srt:charenc=UTF-8:fontsdir=.:force_style='FontName=${style.FontName},${forceStyleParams}'" -c:v libx264 -crf 15 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4
+ffmpeg -y -i *.MP4 -vf "subtitles=subtitles.srt:fontsdir=.:force_style='${forceStyleParams}'" -c:v libx264 -crf 18 -preset medium -c:a copy output.mp4
 
-CRITICAL:
-- Use single quotes around force_style value
-- Include charenc=UTF-8 for emoji support
-- Set fontsdir=. so all provided TTFs are available (do NOT rename fonts)
-- Copy audio stream with -c:a copy
-- Output file must be named output.mp4`,
-            max_attempts: 2,
+Requirements:
+- All .ttf fonts are in current directory
+- Use exact force_style parameters provided
+- Output must be named output.mp4`,
+            max_attempts: 1,
           },
         } as any);
         
