@@ -166,7 +166,7 @@ serve(async (req) => {
     const styleMapping: Record<string, any> = {
       // Stroke style: White text with thick black outline (matches 2em, bold, 4px shadow in 8 directions)
       outline: {
-        FontName: 'Symbola',
+        FontName: 'Noto Emoji',
         FontSize: 20,  // Further reduced for better readability
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 1,
@@ -185,7 +185,7 @@ serve(async (req) => {
       },
       // Subtle style: Light text with semi-transparent background (matches 1.3em, weight 300)
       minimal: {
-        FontName: 'Symbola',
+        FontName: 'Noto Emoji',
         FontSize: 18,  // Further reduced
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 0,  // Light weight
@@ -204,7 +204,7 @@ serve(async (req) => {
       },
       // Highlight style: Black text with yellow glow and white outline (matches weight 900)
       green: {
-        FontName: 'Symbola',
+        FontName: 'Noto Emoji',
         FontSize: 22,  // Further reduced
         PrimaryColour: '&H000000',  // Black text
         Bold: 1,
@@ -224,7 +224,7 @@ serve(async (req) => {
       },
       // Framed style: Bright green text with border and glow (matches 1.6em, bold, green border)
       boxed: {
-        FontName: 'Symbola',
+        FontName: 'Noto Emoji',
         FontSize: 24,  // Further reduced
         PrimaryColour: '&H00FF00',  // Bright green (00FF00 in BGR)
         Bold: 1,

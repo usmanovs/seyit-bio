@@ -1407,8 +1407,9 @@ STYLE
           styleId: currentStyle.id,
           requestId: rid,
           fontUrls: [
-            `${window.location.origin}/fonts/Symbola.ttf`,
-            `${window.location.origin}/fonts/NotoSansSymbols2-Regular.ttf`
+            `${window.location.origin}/fonts/NotoEmoji-Regular.ttf`,
+            `${window.location.origin}/fonts/NotoSansSymbols2-Regular.ttf`,
+            `${window.location.origin}/fonts/Symbola.ttf`
           ],
         },
       });
