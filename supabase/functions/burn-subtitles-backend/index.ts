@@ -270,62 +270,22 @@ serve(async (req) => {
           model: 'fofr/smart-ffmpeg',
           input: {
             files,
-            prompt: `Burn subtitles from SRT file onto video using FFmpeg with these EXACT parameters:
+            prompt: `Execute this FFmpeg command to burn subtitles:
 
-CRITICAL: RENAME DOWNLOADED FILES FIRST
-- Rename the subtitle file to "subs.srt"
-- If font files (.ttf) were downloaded, rename the FIRST .ttf to "Symbola.ttf" (priority emoji font)
-- If additional fonts exist, keep them with original names as fallback
-- This ensures consistent references in the FFmpeg command with emoji support
+STEP 1 - Rename files:
+mv *.srt subs.srt
+mv *.ttf Symbola.ttf
 
-CRITICAL FFmpeg SUBTITLE FILTER PARAMETERS:
-Use subtitles filter with charenc=UTF-8, fontsdir=., and force_style options.
-Force FontName to "Symbola" to enable emoji rendering.
-Apply these ASS style parameters EXACTLY as specified:
+STEP 2 - Run FFmpeg with these exact parameters:
+ffmpeg -y -i *.MP4 -vf "subtitles=subs.srt:charenc=UTF-8:fontsdir=.:force_style='FontName=Symbola,${forceStyleParams}'" -c:v libx264 -crf 15 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4
 
-FontName=Symbola,${forceStyleParams}
-
-SPACING IS CRITICAL:
-- Spacing=0 means NO letter spacing (characters are NOT spread apart)
-- Do NOT add any tracking or letter-spacing
-- Characters should be close together like normal text
-- NO gaps between letters
-
-VIDEO QUALITY:
-- Codec: libx264, CRF 15 (CRF 12 for 4K)
-- Preset: slow
-- Profile: high, Level 4.1
-- Pixel format: yuv420p
-- Maintain original resolution and framerate
-- NO downscaling or quality loss
-
-AUDIO:
-- Copy original audio stream: -c:a copy (if AAC)
-- Or re-encode: -c:a aac -b:a 256k
-- Set -movflags +faststart
-
-EMOJI SUPPORT (CRITICAL FOR CORRECT RENDERING):
-- UTF-8 character encoding is MANDATORY: charenc=UTF-8
-- Font directory MUST be set to current dir: fontsdir=.
-- FontName=Symbola in force_style ensures emoji font is used
-- Symbola.ttf (renamed from first provided .ttf) includes comprehensive Unicode emoji coverage
-- Additional emoji fonts may be present as fallback in working directory
-- Emoji will render as monochrome glyphs (full-color emoji not supported via libass)
-- This configuration ensures ALL emoji characters (👋 🏙️ 🔜 🇰🇬 🎤 👀 🤗 etc.) display correctly in final video
-
-OUTPUT:
-- Format: MP4 (H.264)
-- Optimize for web playback
-- Maximum 3 attempts
-
-Example FFmpeg command structure (MUST match this exactly):
-ffmpeg -y -i input.mp4 -vf "subtitles=subs.srt:charenc=UTF-8:fontsdir=.:force_style='FontName=Symbola,FontSize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=3,Shadow=0,Bold=1,Italic=0,Underline=0,Spacing=0,Alignment=2,MarginL=20,MarginR=20,MarginV=40'" -c:v libx264 -crf 15 -preset slow -profile:v high -level 4.1 -pix_fmt yuv420p -c:a copy -movflags +faststart output.mp4
-
-VERIFICATION:
-- After rendering, ALL emoji in subtitles MUST be visible in the output .mp4 file
-- Emoji should NOT appear as empty squares or missing characters
-- Test by checking common emoji: 👋 🏙️ 🔜 🇰🇬 🎤 👀 🤗`,
-            max_attempts: 3,
+CRITICAL:
+- Use single quotes around force_style value
+- Include charenc=UTF-8 for emoji support
+- Set fontsdir=. to use Symbola.ttf
+- Copy audio stream with -c:a copy
+- Output file must be named output.mp4`,
+            max_attempts: 2,
           },
         } as any);
         
