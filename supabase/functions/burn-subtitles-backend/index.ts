@@ -259,12 +259,18 @@ serve(async (req) => {
       files.push(...fontUrls);
     }
 
-    // Start Replicate job using predictions API
-    const prediction = await replicate.predictions.create({
-      model: 'fofr/smart-ffmpeg',
-      input: {
-        files,
-        prompt: `Burn subtitles from SRT file onto video using FFmpeg with these EXACT parameters:
+    // Start Replicate job using predictions API with retry logic
+    let prediction;
+    let retries = 3;
+    let lastError;
+    
+    while (retries > 0) {
+      try {
+        prediction = await replicate.predictions.create({
+          model: 'fofr/smart-ffmpeg',
+          input: {
+            files,
+            prompt: `Burn subtitles from SRT file onto video using FFmpeg with these EXACT parameters:
 
 CRITICAL: RENAME DOWNLOADED FILES FIRST
 - Rename the subtitle file to "subs.srt"
@@ -319,9 +325,30 @@ VERIFICATION:
 - After rendering, ALL emoji in subtitles MUST be visible in the output .mp4 file
 - Emoji should NOT appear as empty squares or missing characters
 - Test by checking common emoji: 👋 🏙️ 🔜 🇰🇬 🎤 👀 🤗`,
-        max_attempts: 3,
-      },
-    } as any);
+            max_attempts: 3,
+          },
+        } as any);
+        
+        // Success - break the retry loop
+        break;
+      } catch (err: any) {
+        lastError = err;
+        retries--;
+        console.error(`[${requestId}] Replicate API error (${3 - retries}/3 attempts):`, err.message);
+        
+        if (retries > 0) {
+          // Wait before retry with exponential backoff
+          const waitTime = (4 - retries) * 2000; // 2s, 4s, 6s
+          console.log(`[${requestId}] Retrying in ${waitTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
+    }
+    
+    if (!prediction) {
+      console.error(`[${requestId}] Failed to create prediction after 3 attempts:`, lastError);
+      throw new Error(`Replicate API failed: ${lastError?.message || 'Unknown error'}`);
+    }
 
     console.log(`[${requestId}] REPLICATE JOB CREATED`, {
       predictionId: prediction.id,

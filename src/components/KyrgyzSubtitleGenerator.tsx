@@ -229,7 +229,7 @@ export const KyrgyzSubtitleGenerator = () => {
     setFfmpegError(null);
     console.log('[FFmpeg] Starting to load FFmpeg...');
 
-    const withTimeout = async <T,>(p: Promise<T>, ms = 7000): Promise<T> => {
+    const withTimeout = async <T,>(p: Promise<T>, ms = 15000): Promise<T> => {
       return await Promise.race([
         p,
         new Promise<T>((_, reject) => setTimeout(() => reject(new Error('ffmpeg_load_timeout')), ms)) as Promise<T>,
