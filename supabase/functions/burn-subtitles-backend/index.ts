@@ -278,13 +278,14 @@ serve(async (req) => {
 mv *.srt subtitles.srt
 
 # Step 2: Run FFmpeg with subtitle burning
-ffmpeg -y -i input.MP4 -vf "subtitles=subtitles.srt:force_style='${forceStyleParams}'" -c:v libx264 -crf 18 -preset medium -c:a copy -movflags +faststart output.mp4
+ffmpeg -y -i *.MP4 -vf "subtitles=subtitles.srt:fontsdir=.:force_style='${forceStyleParams}'" -c:v libx264 -crf 18 -preset medium -c:a copy -movflags +faststart output.mp4
 
-IMPORTANT:
+CRITICAL REQUIREMENTS:
 - Input video is *.MP4 in current directory
-- Font file (NotoEmoji-Regular.ttf) is available in current directory
-- Use force_style exactly as provided
-- Output MUST be named output.mp4`,
+- Font file NotoEmoji-Regular.ttf is in current directory
+- Must include fontsdir=. to load fonts from current directory
+- Use force_style parameters exactly as provided
+- Output file MUST be named output.mp4`,
             max_attempts: 1,
           },
         } as any);
