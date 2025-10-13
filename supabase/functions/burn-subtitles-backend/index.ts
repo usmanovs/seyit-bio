@@ -166,7 +166,6 @@ serve(async (req) => {
     const styleMapping: Record<string, any> = {
       // Stroke style: White text with thick black outline (matches 2em, bold, 4px shadow in 8 directions)
       outline: {
-        FontName: 'Symbola',
         FontSize: 28,  // Increased for better emoji readability
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 1,
@@ -185,7 +184,6 @@ serve(async (req) => {
       },
       // Subtle style: Light text with semi-transparent background (matches 1.3em, weight 300)
       minimal: {
-        FontName: 'Symbola',
         FontSize: 24,  // Increased for better emoji readability
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 0,  // Light weight
@@ -204,7 +202,6 @@ serve(async (req) => {
       },
       // Highlight style: Black text with yellow glow and white outline (matches weight 900)
       green: {
-        FontName: 'Symbola',
         FontSize: 30,  // Increased for better emoji readability
         PrimaryColour: '&H000000',  // Black text
         Bold: 1,
@@ -224,7 +221,7 @@ serve(async (req) => {
       },
       // Framed style: Bright green text with border and glow (matches 1.6em, bold, green border)
       boxed: {
-        FontName: 'Symbola',
+        
         FontSize: 32,  // Increased for better emoji readability
         PrimaryColour: '&H00FF00',  // Bright green (00FF00 in BGR)
         Bold: 1,
