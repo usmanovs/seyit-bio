@@ -167,51 +167,51 @@ serve(async (req) => {
       // Stroke style: White text with thick black outline (matches 2em, bold, 4px shadow in 8 directions)
       outline: {
         FontName: 'NotoEmoji-Regular',
-        FontSize: 20,  // Further reduced for better readability
+        FontSize: 28,  // Increased for better emoji readability
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 1,
         Italic: 0,
         Underline: 0,
         Spacing: 0,  // CRITICAL: No letter spacing
-        Outline: 3,  // Thick outline
+        Outline: 4,  // Thick outline for better contrast
         OutlineColour: '&H000000',  // Black
-        Shadow: 0,  // No drop shadow, just outline
+        Shadow: 2,  // Added shadow for depth
         BackColour: '&H00000000',  // Transparent
         BorderStyle: 1,  // Outline only
         Alignment: 2,  // Bottom center
         MarginL: 20,
         MarginR: 20,
-        MarginV: 40,
+        MarginV: 50,  // More margin from bottom
       },
       // Subtle style: Light text with semi-transparent background (matches 1.3em, weight 300)
       minimal: {
         FontName: 'NotoEmoji-Regular',
-        FontSize: 18,  // Further reduced
+        FontSize: 24,  // Increased for better emoji readability
         PrimaryColour: '&HFFFFFF',  // White
         Bold: 0,  // Light weight
         Italic: 0,
         Underline: 0,
         Spacing: 0,
-        Outline: 1,  // Minimal outline
+        Outline: 2,  // Slight outline for contrast
         OutlineColour: '&H000000',
-        Shadow: 1,  // Subtle shadow
+        Shadow: 2,  // Subtle shadow
         BackColour: '&HB3000000',  // Semi-transparent black (0.7 opacity = B3 in hex)
         BorderStyle: 4,  // Background box
         Alignment: 2,
         MarginL: 20,
         MarginR: 20,
-        MarginV: 40,
+        MarginV: 50,
       },
       // Highlight style: Black text with yellow glow and white outline (matches weight 900)
       green: {
         FontName: 'NotoEmoji-Regular',
-        FontSize: 22,  // Further reduced
+        FontSize: 30,  // Increased for better emoji readability
         PrimaryColour: '&H000000',  // Black text
         Bold: 1,
         Italic: 0,
         Underline: 0,
         Spacing: 0,
-        Outline: 2,  // White outline (2px to match CSS)
+        Outline: 3,  // White outline
         OutlineColour: '&HFFFFFF',  // White outline
         Shadow: 6,  // Yellow glow effect
         SecondaryColour: '&H00B3EA',  // Yellow for glow (EAB300 in BGR)
@@ -220,12 +220,12 @@ serve(async (req) => {
         Alignment: 2,
         MarginL: 20,
         MarginR: 20,
-        MarginV: 40,
+        MarginV: 50,
       },
       // Framed style: Bright green text with border and glow (matches 1.6em, bold, green border)
       boxed: {
         FontName: 'NotoEmoji-Regular',
-        FontSize: 24,  // Further reduced
+        FontSize: 32,  // Increased for better emoji readability
         PrimaryColour: '&H00FF00',  // Bright green (00FF00 in BGR)
         Bold: 1,
         Italic: 0,
@@ -239,7 +239,7 @@ serve(async (req) => {
         Alignment: 2,
         MarginL: 20,
         MarginR: 20,
-        MarginV: 40,
+        MarginV: 50,
       },
     };
 
@@ -253,11 +253,12 @@ serve(async (req) => {
 
     console.log(`[${requestId}] Force style string:`, forceStyleParams);
 
-    // Build files array - include fonts if provided (emoji support)
+    // Build files array - only use one emoji font to avoid conflicts
     const files = [publicUrl, srtUrl];
-    if (fontUrls && Array.isArray(fontUrls)) {
-      console.log(`[${requestId}] Adding ${fontUrls.length} font URL(s):`, fontUrls);
-      files.push(...fontUrls);
+    if (fontUrls && Array.isArray(fontUrls) && fontUrls.length > 0) {
+      // Use only the first font (NotoEmoji-Regular)
+      console.log(`[${requestId}] Adding font URL:`, fontUrls[0]);
+      files.push(fontUrls[0]);
     }
 
     // Start Replicate job using predictions API with retry logic
@@ -271,16 +272,19 @@ serve(async (req) => {
           model: 'fofr/smart-ffmpeg',
           input: {
             files,
-            prompt: `Burn subtitles into video using this FFmpeg command:
+            prompt: `Execute these commands to burn subtitles with emoji support:
 
+# Step 1: Rename subtitle file
 mv *.srt subtitles.srt
 
-ffmpeg -y -i *.MP4 -vf "subtitles=subtitles.srt:fontsdir=.:force_style='${forceStyleParams}'" -c:v libx264 -crf 18 -preset medium -c:a copy output.mp4
+# Step 2: Run FFmpeg with subtitle burning
+ffmpeg -y -i input.MP4 -vf "subtitles=subtitles.srt:force_style='${forceStyleParams}'" -c:v libx264 -crf 18 -preset medium -c:a copy -movflags +faststart output.mp4
 
-Requirements:
-- All .ttf fonts are in current directory
-- Use exact force_style parameters provided
-- Output must be named output.mp4`,
+IMPORTANT:
+- Input video is *.MP4 in current directory
+- Font file (NotoEmoji-Regular.ttf) is available in current directory
+- Use force_style exactly as provided
+- Output MUST be named output.mp4`,
             max_attempts: 1,
           },
         } as any);
